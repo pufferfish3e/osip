@@ -2,7 +2,7 @@ import { t } from './i18n.mjs';
 import { escapeHtml as esc, icon } from './ui.mjs';
 
 /** @typedef {{url:string,title:string,start:number,end:number}} WebCitation */
-/** @typedef {{text:string,citations:WebCitation[]}} PlantWebResult */
+/** @typedef {{text:string,citations:WebCitation[],images?:{source:string,url:string}[]}} PlantWebResult */
 const MAX_TEXT_LENGTH = 8000;
 const MAX_CITATIONS = 20;
 /** @param {unknown} value @returns {value is Record<string,unknown>} */
@@ -16,6 +16,7 @@ const isSafeUrl = (value) => {
 /** @param {unknown} value @returns {PlantWebResult} */
 export function validateWebResult(value) {
   if (!isRecord(value) || typeof value.text !== 'string' || !value.text.trim() || value.text.length > MAX_TEXT_LENGTH || !Array.isArray(value.citations) || !value.citations.length || value.citations.length > MAX_CITATIONS) throw new Error('No cited web results were returned. Try a more specific plant symptom.');
+  if (value.images !== undefined && (!Array.isArray(value.images) || value.images.length > 10 || value.images.some((image) => !isRecord(image) || !isSafeUrl(image.url) || !value.citations.some((citation) => citation.url === image.source)))) throw new Error('Product images could not be read.');
   let end = 0;
   for (const citation of value.citations) {
     if (!isRecord(citation) || !isSafeUrl(citation.url) || typeof citation.title !== 'string' || !citation.title.trim() || citation.title.length > 500 || !Number.isInteger(citation.start) || !Number.isInteger(citation.end) || citation.start < end || citation.end <= citation.start || citation.end > value.text.length) throw new Error('The web result could not be read. Please try again.');
@@ -29,8 +30,8 @@ export function validateWebResult(value) {
   }
   return /** @type {PlantWebResult} */ (value);
 }
-/** @param {PlantWebResult} result @returns {string} */
-export function renderPlantWebResult(result) {
+/** @param {PlantWebResult} result @param {boolean} [isOptions] @returns {string} */
+export function renderPlantWebResult(result, isOptions = false) {
   validateWebResult(result);
   let cursor = 0;
   const fragments = result.citations.map((citation, index) => {
@@ -38,11 +39,13 @@ export function renderPlantWebResult(result) {
     cursor = citation.end; return fragment;
   });
   const sources = [...new Map(result.citations.map((citation) => [citation.url, citation])).values()];
-  return `<section class="plant-web-result"><div class="section-heading"><h2>${esc(t('From the web'))}</h2><span class="muted">${esc(t('AI search'))}</span></div><div class="card card-pad plant-web-summary">${fragments.join('')}${esc(result.text.slice(cursor))}</div><div class="plant-guide-list card">${sources.map((source) => `<a class="plant-guide-row plant-web-source" href="${esc(source.url)}" target="_blank" rel="noopener noreferrer"><span class="plant-guide-icon">${icon('book', 25)}</span><span class="row-copy"><span class="plant-guide-category">${esc(new URL(source.url).hostname)}</span><strong>${esc(source.title)}</strong></span>${icon('arrow-up-right', 18)}</a>`).join('')}</div><p class="muted plant-web-note">${esc(t('AI web research, not a confirmed plant diagnosis.'))}</p></section>`;
+  const text = `${fragments.join('')}${esc(result.text.slice(cursor))}`;
+  const summary = isOptions ? `<div class="pesticide-findings">${text.split(/\n\s*\n/).filter((paragraph) => paragraph.trim()).map((paragraph, index) => `<article class="card card-pad pesticide-finding"><span class="eyebrow">${esc(t('Finding {number}', { number: index + 1 }))}</span><p>${paragraph}</p></article>`).join('')}</div>` : `<div class="card card-pad plant-web-summary">${text}</div>`;
+  return `<section class="plant-web-result ${isOptions ? 'pesticide-results' : ''}"><div class="section-heading"><h2>${esc(t(isOptions ? 'Options to explore' : 'From the web'))}</h2><span class="muted">${esc(t('AI search'))}</span></div>${summary}<details class="card card-pad pesticide-sources" ${isOptions ? '' : 'open'}><summary>${esc(t('Sources'))} <span class="muted">(${sources.length})</span></summary><div class="plant-guide-list">${sources.map((source) => `<a class="plant-guide-row plant-web-source" href="${esc(source.url)}" target="_blank" rel="noopener noreferrer"><span class="plant-guide-icon">${icon('book', 25)}</span><span class="row-copy"><span class="plant-guide-category">${esc(new URL(source.url).hostname)}</span><strong>${esc(source.title)}</strong></span>${icon('arrow-up-right', 18)}</a>`).join('')}</div></details><p class="muted plant-web-note">${esc(t('AI web research, not a confirmed plant diagnosis.'))}</p></section>`;
 }
-/** @param {string} query @param {string} locale @param {AbortSignal} signal @param {typeof fetch} [fetchImpl] @returns {Promise<PlantWebResult>} */
-export async function searchPlantWeb(query, locale, signal, fetchImpl = fetch) {
-  const response = await fetchImpl('/api/plant-search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, locale }), signal });
+/** @param {string} query @param {string} locale @param {AbortSignal} signal @param {typeof fetch} [fetchImpl] @param {string} [mode] @returns {Promise<PlantWebResult>} */
+export async function searchPlantWeb(query, locale, signal, fetchImpl = fetch, mode = 'general', image = '') {
+  const response = await fetchImpl('/api/plant-search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, locale, ...(mode === 'general' ? {} : { mode }), ...(image ? { image } : {}) }), signal });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload?.error?.message ?? 'Web search is unavailable. Please try again.');
   return validateWebResult(payload);

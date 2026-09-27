@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { completeFieldSchedule, renderFieldSchedules } from '../src/field-care.mjs';
+import { fieldTaskUrgency, renderFieldTaskMarker } from '../src/land-map.mjs';
+
+const FIELD = { id: 'plot-1', name: 'Field 1', crop: 'Rice', area: 1 };
+const TASK = { id: 'original', farmId: 'farm-1', plotId: FIELD.id, title: 'Check water', category: 'Water', dueDate: '2030-06-20', time: '08:00', done: false, reminder: false, repeat: 'custom', repeatUnit: 'days', repeatInterval: 1 };
+const NOW = new Date('2030-06-20T09:00:00');
+
+test('completed daily occurrence and its future recurrence agree in marker and popup', () => {
+  const state = { tasks: [structuredClone(TASK)] };
+  completeFieldSchedule(state, 'farm-1', FIELD.id, TASK.id);
+  const next = state.tasks.at(-1);
+  assert.equal(fieldTaskUrgency(state.tasks, 'farm-1', FIELD.id, NOW).urgency, 'upcoming');
+  const marker = renderFieldTaskMarker(FIELD, state.tasks, 'farm-1', NOW);
+  assert.match(marker, /Scheduled later/);
+  assert.doesNotMatch(marker, /is-task-complete|All done today!/);
+  const popup = renderFieldSchedules(state.tasks, 'farm-1', FIELD.id, NOW);
+  assert.match(popup, /Next occurrence · Scheduled later/);
+  assert.match(popup, /2030-06-21/);
+  assert.match(popup, /Latest completion/);
+  assert.match(popup, new RegExp(`data-care-task="${next.id}"`));
+  assert.doesNotMatch(popup, /data-care-complete=|data-care-task="original"/);
+});
+
+test('minute recurrence offers completion only after the next occurrence is due', () => {
+  const state = { tasks: [{ ...TASK, repeatUnit: 'minutes', repeatInterval: 30 }] };
+  completeFieldSchedule(state, 'farm-1', FIELD.id, TASK.id);
+  const before = new Date('2030-06-20T08:10:00');
+  assert.equal(fieldTaskUrgency(state.tasks, 'farm-1', FIELD.id, before).urgency, 'soon');
+  assert.doesNotMatch(renderFieldSchedules(state.tasks, 'farm-1', FIELD.id, before), /data-care-complete=/);
+  const after = new Date('2030-06-20T08:31:00');
+  assert.equal(fieldTaskUrgency(state.tasks, 'farm-1', FIELD.id, after).urgency, 'overdue');
+  assert.match(renderFieldSchedules(state.tasks, 'farm-1', FIELD.id, after), /Next occurrence · Overdue/);
+  assert.match(renderFieldSchedules(state.tasks, 'farm-1', FIELD.id, after), /data-care-complete=/);
+});
+
+test('finished nonrecurring work is read-only instead of opening schedule setup', () => {
+  const tasks = [{ ...TASK, repeat: 'none', done: true }];
+  assert.equal(fieldTaskUrgency(tasks, 'farm-1', FIELD.id, NOW).urgency, 'complete');
+  const popup = renderFieldSchedules(tasks, 'farm-1', FIELD.id, NOW);
+  assert.match(popup, /Latest completion/);
+  assert.doesNotMatch(popup, /data-care-complete|data-care-schedule/);
+});

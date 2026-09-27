@@ -1,4 +1,6 @@
-import { renderMixturePlanner } from './mixture-planner.mjs';
+import { renderDealSearch, renderShopOffers } from './shop-deals.mjs';
+// Pesticide calculator disabled at user request; retain integration for restoration.
+// import { renderMixturePlanner, renderPesticideOptions, renderProductMatchPage, renderTankPreparation } from './mixture-planner.mjs';
 import { renderPilotMatcher, renderPilotReviews } from './pilot-matcher.mjs';
 import { renderArticleLibrary, renderLearningArticleCard, localizeLearningArticle } from './article-library.mjs';
 import { ARTICLES, COURSES, NEWS, PILOTS, PRODUCTS } from './data.mjs';
@@ -14,7 +16,7 @@ import { emptyState, escapeHtml as esc, localizeDemoState, icon, pageHeading } f
 const AREA_UNITS = [{ value: 'ha', label: 'Hectares' }, { value: 'acre', label: 'Acres' }, { value: 'm2', label: 'Square metres' }];
 const CALCULATION_TITLES = { area: 'Area conversion', cost: 'Input cost', margin: 'Simple margin' };
 const CALCULATORS = [
-  { id: 'spray', title: 'Spray estimate', description: 'Spray mixture and product quantities from your land area.', icon: 'plant-2' },
+  // { id: 'spray', title: 'Spray estimate', description: 'Spray mixture and product quantities from your land area.', icon: 'plant-2' },
   { id: 'area', title: 'Area converter', description: 'Hectares, acres and square metres.', icon: 'map-pin' },
   { id: 'cost', title: 'Input cost', description: 'Plan material costs for your field.', icon: 'calculator' },
   { id: 'margin', title: 'Gross margin', description: 'Compare revenue with your costs.', icon: 'shopping-bag' },
@@ -149,13 +151,17 @@ const myCourses = (state) => {
 };
 
 /** @returns {string} */
-const servicesHome = () => `${pageHeading(t('Services & shop'), t('Services & shop'))}
-  <label class="search-field">${icon('search')}<input type="search" data-service-search maxlength="200" aria-label="${esc(t('Search services and shop'))}" placeholder="${esc(t('Search pilots, equipment, or a job…'))}"></label><div data-service-results aria-live="polite" hidden></div><div data-service-browse>
+const servicesHome = () => `${pageHeading('', t('Services'))}
+  <label class="search-field">${icon('search')}<input type="search" data-service-search maxlength="200" aria-label="${esc(t('Search pilots'))}" placeholder="${esc(t('Search pilots or a job…'))}"></label><div data-service-results aria-live="polite" hidden></div><div data-service-browse>
   <div class="card-grid"><a class="media-card learning-photo-card services-feature-card" href="/services/pilots">${photo(PILOTS[0]?.portrait ?? '/assets/course.jpg', '')}<div class="learning-photo-body"><p class="learning-photo-meta">${esc(t('Drone pilots'))}</p><h2>${esc(t('Book a drone pilot'))}</h2><div class="learning-photo-footer"><span class="button">${esc(t('Find a pilot'))}${icon('arrow-up-right', 18)}</span></div></div></a>
-  <a class="media-card learning-photo-card services-feature-card" href="/shop">${photo('/assets/shop-power.jpg', '')}<div class="learning-photo-body"><p class="learning-photo-meta">${esc(t('The field shop'))}</p><h2>${esc(t('Explore equipment'))}</h2><div class="learning-photo-footer"><span class="button">${esc(t('The field shop'))}${icon('arrow-up-right', 18)}</span></div></div></a></div>
+</div>
   <div class="section-heading"><h2>${esc(t('Your services'))}</h2></div><div class="card list">
+${/* Pesticide calculator disabled; restore this link with its route.
+<a class="list-row" href="/tools"><span class="row-icon">${icon('calculator')}</span><span class="row-copy"><span class="row-title">${esc(t('Pesticide calculator'))}</span></span>${icon('chevron-right', 18)}</a>
+*/ ''}
+    <a class="list-row" href="/weather"><span class="row-icon">${icon('cloud')}</span><span class="row-copy"><span class="row-title">${esc(t('Weather'))}</span></span>${icon('chevron-right', 18)}</a>
     <a class="list-row" href="/bookings"><span class="row-icon">${icon('calendar')}</span><span class="row-copy"><span class="row-title">${esc(t('Your bookings'))}</span><span class="row-subtitle">${esc(t('Requests, schedules and conversations'))}</span></span>${icon('chevron-right', 18)}</a>
-    <a class="list-row" href="/orders"><span class="row-icon">${icon('shopping-bag')}</span><span class="row-copy"><span class="row-title">${esc(t('Shop orders'))}</span><span class="row-subtitle">${esc(t('Order drafts and payment details'))}</span></span>${icon('chevron-right', 18)}</a></div></div>`;
+</div></div>`;
 
 /** @param {Pilot} pilot @returns {string} */
 const pilotCard = (pilot) => `<article class="pilot-portrait-card pilot-catalog-card" data-search-item data-search-text="${esc([pilot.name, pilot.serviceArea, pilot.equipment, ...pilot.services].flatMap((value) => [value, t(value)]).join(' ').toLowerCase())}">
@@ -196,30 +202,21 @@ const pilotBooking = (id, state) => {
 };
 
 /** @param {Product} product @returns {string} */
-const productCard = (product) => `<article class="pilot-portrait-card pilot-catalog-card shop-product-card"><img class="pilot-match-cover" src="${esc(product.image)}" alt="" loading="lazy" width="1000" height="1200"><div class="pilot-match-body">
-  <p class="pilot-match-specialty">${esc(t(product.isDemo ? 'Sample product' : product.regionalLabel))}</p><h2><a href="/shop/products/${esc(product.id)}">${esc(t(product.name))}</a></h2>
-  ${product.isIllustrativeImage ? `<p class="pilot-match-specialty">${esc(t('Illustrative field image'))}</p>` : ''}
-  <div class="pilot-match-footer"><span class="price">${money(product.price)}</span>${product.isDemo ? `<button class="button" type="button" data-action="add-cart" data-id="${esc(product.id)}" aria-label="${esc(t('Add {name} to cart', { name:t(product.name) }))}">${icon('plus', 20)}${esc(t('Add to cart'))}</button>` : `<a class="button" href="/shop/products/${esc(product.id)}">${esc(t('Details'))}${icon('arrow-up-right', 20)}</a>`}</div></div></article>`;
-
-/** @param {Product} product @returns {string} */
-const productSources = (product) => product.isDemo ? '' : `<aside class="notice"><p>${esc(t('Listed price · {supplier} · Checked {date}', { supplier:product.supplier, date:product.checkedAt }))}</p><p>${esc(t(product.packageName))} · ${esc(t(product.availability))}</p><p>${esc(t('Confirm current price, package contents and availability with the supplier. Cart and checkout create local drafts only.'))}</p><a href="${esc(product.supplierUrl)}" target="_blank" rel="noopener noreferrer">${esc(t('View supplier listing'))}${icon('arrow-up-right', 16)}</a><p>${sourceReference('DJI', product.sourceUrl)} · <a href="${esc(product.regionalSourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(t(product.regionalLabel))}</a></p></aside>`;
+const productCard = (product) => `<a class="shop-sample-card" href="/shop/products/${esc(product.id)}"><span class="shop-sample-icon" aria-hidden="true">${icon(product.productIcon ?? 'drone', 28)}</span><span class="row-copy"><span class="eyebrow">${esc(t(product.category))}</span><h2>${esc(t(product.name))}</h2><span class="muted">${esc(t('Listed price'))}</span><strong class="shop-sample-price">${money(product.price)}</strong></span>${icon('arrow-up-right',20)}</a>`;
 
 /** @param {AppState} state @returns {string} */
 const shopHome = (state) => {
-  const count = state.cart.reduce((total, item) => total + item.quantity, 0);
   return `${backLink('/services', 'Services')}${pageHeading(t('The field shop'), t('The field shop'))}
-    <div class="toolbar"><span class="badge badge-blue">${esc(t('Malaysian equipment'))}</span><a class="button button-secondary button-small" href="/shop/cart">${icon('shopping-bag', 18)}${esc(t('Cart'))}${count ? ` (${count})` : ''}</a></div>
-    <div class="card-grid">${PRODUCTS.map(productCard).join('')}</div>`;
+    ${renderDealSearch()}
+    <section class="shop-samples"><h2>${esc(t('Everyday tools'))}</h2><div class="shop-sample-grid">${PRODUCTS.filter((product) => product.productIcon).map(productCard).join('')}</div></section><details class="shop-advanced"><summary>${esc(t('Drone equipment'))}</summary><div class="shop-sample-grid">${PRODUCTS.filter((product) => !product.isDemo && product.category === 'Drones').map(productCard).join('')}</div></details>`;
 };
 
 /** @param {string} id @returns {string} */
 const productDetail = (id) => {
   const product = PRODUCTS.find((item) => item.id === id);
   if (!product) return missingPage('Product not found', '/shop', 'Explore shop');
-  return `${backLink('/shop', 'The field shop')}<div class="two-column"><div><div class="detail-hero">${photo(product.image, product.isIllustrativeImage ? t('Illustrative field image') : product.name)}</div>${product.isIllustrativeImage ? `<p class="muted">${esc(t('Illustrative field image'))}</p>` : ''}</div><div class="form-stack">
-    ${pageHeading(t(product.category), t(product.name), t(product.description))}<span class="badge badge-blue">${esc(t(product.isDemo ? 'Sample product' : product.regionalLabel))}</span><p class="price">${money(product.price)}</p>${productSources(product)}
-    <button class="button" type="button" data-action="add-cart" data-id="${esc(product.id)}">${icon('plus', 18)}${esc(t('Add to cart'))}</button><a class="button button-secondary" href="/shop/cart">${esc(t('View cart'))}</a>
-    <h2>${esc(t('Details'))}</h2><ul>${product.specs.map((spec) => `<li>${esc(t(spec))}</li>`).join('')}</ul></div></div>`;
+  const offers = product.supplierUrl ? [{ retailer:product.supplier, price:product.price, url:product.supplierUrl }] : [];
+  return `${backLink('/shop', 'The field shop')}${pageHeading('', t(product.name))}${renderShopOffers(offers)}${renderDealSearch(product.searchName ?? product.name, product.price)}`;
 };
 
 /** @param {Product} product @param {number} quantity @returns {string} */
@@ -321,9 +318,13 @@ export function renderDiscover(path, state) {
   if (section === 'shop') return renderShop(segments, state);
   if (segments.length > 2) return null;
   if (section === 'news') return id ? newsDetail(id) : newsList();
-  if (section === 'tools' && id === 'spray') return renderMixturePlanner(state);
+  // if (section === 'tools' && id === 'tank') return renderTankPreparation();
+  // if (section === 'tools' && id === 'products') return renderProductMatchPage();
+  // if (section === 'tools' && id === 'options') return renderPesticideOptions(state);
+  // if (section === 'tools' && id === 'spray') return renderMixturePlanner(state);
   if (section === 'tools' && id === 'saved') return savedCalculations(state);
-  if (section === 'tools') return id ? calculatorPage(id) : renderMixturePlanner(state);
+  // if (section === 'tools') return id ? calculatorPage(id) : renderMixturePlanner(state);
+  if (section === 'tools' && id && !['spray', 'tank', 'products', 'options'].includes(id)) return calculatorPage(id);
   return null;
 }
 
@@ -356,7 +357,6 @@ export function searchServices(query) {
   if (!tokens.length) return [];
   const entries = [
     ...PILOTS.map((pilot) => ({ id: pilot.id, title: pilot.name, subtitle: pilot.services.map(t).join(' · '), href: `/services/pilots/${pilot.id}`, kind: 'pilot', tags: ['book pilot drone', 'tempah juruterbang', pilot.name, pilot.serviceArea, pilot.equipment, pilot.bio, ...pilot.services] })),
-    ...PRODUCTS.map((product) => ({ id: product.id, title: t(product.name), subtitle: t(product.category), href: `/shop/products/${product.id}`, kind: 'shop', tags: ['shop equipment', product.name, product.category, product.description, ...product.specs] })),
   ];
   return entries.map(({ tags, ...entry }) => {
     const words = serviceTokens(tags.flatMap((tag) => [tag, t(tag)]).join(' '));

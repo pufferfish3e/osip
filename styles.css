@@ -477,7 +477,7 @@ summary {cursor:pointer;min-height:44px;}
  .article-card .card-body>.toolbar { gap:4px; flex-wrap:nowrap; margin:0; font-size:12px; }
  .article-card .toolbar>.icon-button { width:32px; height:32px; position:relative; flex-shrink:0; }
  .article-card .toolbar>.icon-button::after { content:""; position:absolute; inset:-6px; }
- .quick-actions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+ .quick-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
  .quick-action { min-width:0; font-size:13px; line-height:1.3; }
  .quick-action>span { width:52px; height:52px; box-shadow:inset 0 1px 0 #fff; }
  .weather-metrics { flex-wrap:wrap; gap:10px 18px; }
@@ -1106,3 +1106,121 @@ body:has(.is-map-expanded) { overflow:hidden; }
 .task-field-pill span { display:inline-flex; align-items:center; min-height:44px; padding:10px 16px; border-radius:999px; background:var(--surface); border:1px solid var(--line); font-size:14px; overflow-wrap:anywhere; }
 .task-field-pill input:checked + span { background:var(--blue); border-color:var(--blue); color:#fff; }
 .task-field-pill input:focus-visible + span { outline:3px solid #79a8ff; outline-offset:3px; }
+
+[data-mixture-planner] [hidden] { display:none !important; }
+
+.pesticide-query { display:flex; flex-wrap:wrap; gap:8px; }
+.pesticide-findings { display:grid; gap:12px; }
+.pesticide-finding p { margin:10px 0 0; line-height:1.65; font-size:16px; overflow-wrap:anywhere; }
+.pesticide-finding .eyebrow { color:var(--muted); }
+.pesticide-sources summary { cursor:pointer; min-height:44px; align-content:center; font-weight:600; }
+.pesticide-sources .plant-guide-row { padding:16px 0; }
+.pesticide-sources .plant-guide-category { overflow-wrap:anywhere; }
+
+.formula-option-pill { background:var(--blue); color:#fff; white-space:normal; text-decoration:none; gap:10px; }
+.formula-option dl { display:grid; gap:14px; margin:20px 0; }
+.formula-option dt { font-weight:600; font-size:14px; }
+.formula-option dd { margin:5px 0 0; line-height:1.55; color:var(--muted); }
+
+.task-empty { display:flex; align-items:center; gap:12px; padding:20px 0; color:var(--muted); }
+.task-empty p { margin:0; font-size:16px; }
+
+.formula-option { padding:16px 0; border-bottom:1px solid var(--line); }
+.formula-option:last-child { border-bottom:0; }
+.formula-option p { margin:12px 0 8px; font-size:14px; line-height:1.5; color:var(--muted); }
+.options-loading { padding:20px 0; color:var(--muted); }
+[data-mixture-form] .field > span { font-size:14px; }
+@media (max-width:759px) {
+  [data-mixture-planner] [data-mixture-step] h2 { font-size:24px; }
+  [data-mixture-planner] .field .input { min-height:46px; font-size:16px; }
+  [data-mixture-planner] .page-description { display:none; }
+}
+
+[data-pesticide-options] { gap:20px; }
+[data-pesticide-options] [data-options-error]:empty { display:none; }
+[data-pesticide-options] .pesticide-query .chip { background:#e8eeeb; color:#40534a; border:0; box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; min-height:32px; padding:6px 12px; font-size:13px; }
+.formula-option .formula-option-pill { background:#075bea; color:#fff; border:0; box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; padding:10px 16px; min-height:44px; font-weight:600; }
+.formula-option .formula-option-pill:hover { background:#064dcc; }
+.formula-option .formula-option-pill:focus-visible { outline:3px solid #79a8ff; outline-offset:3px; }
+[data-pesticide-options] [data-options-results] h2 { font-size:22px; margin:16px 0 0; }
+[data-pesticide-options] .formula-option { padding:16px 0; }
+[data-pesticide-options] .formula-option .link { font-size:13px; }
+[data-pesticide-options] > p.muted { font-size:13px; margin:0; }
+
+.product-match-list { display:grid; gap:12px; }
+.product-match .role-card { width:100%; padding:14px 16px; gap:12px; text-align:left; }
+.product-match .row-subtitle { white-space:normal; line-height:1.45; }
+.product-match > .link { display:inline-flex; margin:6px 16px; font-size:13px; }
+
+[data-product-page] .product-match-list { gap:0; }
+[data-product-page] .product-match { padding:12px 0; border-bottom:1px solid var(--line); }
+[data-product-page] .product-match .role-card { background:#f4f6f5; color:var(--ink); border:0; box-shadow:none; border-radius:16px; min-height:72px; }
+[data-product-page] > p.muted { font-size:13px; }
+
+#main.is-product-results { padding-bottom:100px; }
+#main.is-product-results > [data-product-page] { position:static; inset:auto; max-height:none; overflow:visible; border:0; border-radius:0; background:transparent; box-shadow:none; padding:0; }
+.product-match-image { width:64px; height:72px; flex-shrink:0; display:grid; place-items:center; background:#e8eeeb; border-radius:12px; color:#66786e; }
+.product-match-image img { width:100%; height:100%; object-fit:contain; border-radius:inherit; }
+[data-product-page] .product-match .role-card { display:flex; align-items:center; }
+
+[data-product-page] .product-photo-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+[data-product-page] .product-photo-grid .product-match { border:0; padding:0; min-width:0; }
+[data-product-page] .product-photo-grid .role-card { height:100%; flex-direction:column; align-items:stretch; gap:12px; padding:12px; }
+.product-photo-grid .product-match-image { width:100%; height:140px; background:#fff; }
+.product-photo-grid .row-title { font-size:14px; line-height:1.35; overflow-wrap:anywhere; }
+.product-photo-grid .role-card > svg { display:none; }
+@media(min-width:760px) { [data-product-page] .product-photo-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+
+.tank-preparation { display:grid; gap:20px; max-width:640px; margin:0 auto; }
+.tank-visual { width:min(300px,80vw); margin:0 auto; }
+.tank-visual svg { display:block; width:100%; }
+.tank-ingredients { display:grid; gap:12px; }
+.tank-ingredients > div { display:flex; align-items:center; gap:10px; }
+.tank-ingredients strong { margin-left:auto; }
+.tank-swatch { width:14px; height:14px; border-radius:50%; flex-shrink:0; }
+.tank-product { background:#f2bf53; } .tank-water { background:#c9e5fb; border:1px solid #7db6dc; }
+.tank-colour-note { font-size:13px; margin:0; }
+.tank-evidence { display:grid; gap:12px; border-top:1px solid var(--line); padding-top:20px; }
+.tank-evidence p,.tank-totals p { margin:0; line-height:1.5; }
+
+.mixture-review { display:grid; gap:24px; }
+.mixture-review h3 { margin:0 0 12px; font-size:16px; font-weight:600; }
+.mixture-review dl { display:grid; gap:12px; margin:0; }
+.mixture-review dl > div { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.35fr); gap:16px; align-items:start; font-size:14px; line-height:1.5; }
+.mixture-review dt { color:var(--muted); }
+.mixture-review dd { margin:0; text-align:right; font-weight:500; overflow-wrap:anywhere; }
+
+.land-task-actions { margin:0 0 20px; flex-wrap:wrap; gap:12px; }
+
+.shop-offers { display:grid; gap:12px; }
+.shop-offer { display:flex; align-items:center; gap:16px; padding:20px; min-width:0; border-radius:24px; background:#fff; }
+.shop-offer .row-copy { flex:1; min-width:0; overflow-wrap:anywhere; }
+.shop-offer-price { font-size:22px; font-weight:600; white-space:nowrap; }
+@media(max-width:360px) { .shop-offer { padding:16px; gap:12px; } .shop-offer-price { font-size:18px; } }
+
+.task-repeat-custom { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; }
+.task-repeat-custom[hidden] { display:none; }
+.field-task-marker { position:relative; width:48px; height:48px; padding:0; }
+.field-task-marker::before { content:""; position:absolute; inset:-5px; border-radius:50%; padding:3px; background:conic-gradient(#25875c var(--task-progress),#ffffff45 0); -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0); mask-composite:exclude; pointer-events:none; }
+.field-task-badge { position:absolute; left:calc(100% - 4px); top:2px; display:flex; align-items:center; gap:3px; min-height:23px; padding:4px 6px; border:2px solid #fff; border-radius:999px; background:#eff4f0; color:#345143; font-size:11px; font-weight:600; box-shadow:0 2px 5px #0002; }
+.is-task-soon .field-task-badge { background:#fff0dc; color:#8b500c; }
+.is-task-overdue .field-task-badge { background:#ffeded; color:#b32f38; }
+.is-task-upcoming .field-task-badge { background:#edf4ff; color:#075bea; }
+.is-task-complete .field-task-badge { background:#25875c; color:#fff; }
+.field-task-legend { display:flex; flex-wrap:wrap; gap:8px 18px; color:var(--muted); font-size:12px; margin:14px 0 24px; }
+.field-task-legend > span { display:inline-flex; align-items:center; gap:6px; }
+
+.field-task-legend .task-state-dot { width:9px; height:9px; border-radius:50%; background:var(--task-state-color); }
+
+.shop-samples { margin-top:32px; }
+.shop-samples > h2 { margin-bottom:16px; }
+.shop-sample-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; }
+.shop-sample-card { display:flex; align-items:center; gap:16px; padding:20px; border-radius:24px; background:#fff; min-width:0; }
+.shop-sample-card .row-copy { flex:1; min-width:0; }
+.shop-sample-card h2 { font-size:18px; line-height:1.25; margin:4px 0 12px; overflow-wrap:anywhere; }
+.shop-sample-card .eyebrow,.shop-sample-card .muted { font-size:12px; }
+.shop-sample-price { display:block; font-size:24px; line-height:1.3; }
+.shop-sample-icon { display:grid; place-items:center; width:52px; height:52px; flex-shrink:0; border-radius:16px; background:#edf2ee; }
+.shop-advanced { margin-top:24px; }
+.shop-advanced summary { display:flex; align-items:center; font-weight:600; margin-bottom:12px; }
+@media(min-width:760px) { .shop-sample-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }

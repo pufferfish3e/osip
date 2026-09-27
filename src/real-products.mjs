@@ -32,3 +32,13 @@ export const REAL_PRODUCTS = [
     regionalSourceUrl:PERAK_CENTRES_URL, regionalLabel:'Malaysian supplier listing',
   },
 ].map((product) => ({ ...product, image:'/assets/farm.jpg', isDemo:false, isIllustrativeImage:true, supplier:'FLY ZONE', packageName:'Standard package', checkedAt:CHECKED_AT, availability:'Supplier lists pre-order' }));
+
+
+export const EVERYDAY_PRODUCTS = [
+  { id:'guantai-manual-sprayer-16l', name:'16L manual knapsack sprayer', searchName:'Guantai knapsack sprayer 16L SKU 58469620 manual', category:'Sprayers', price:109, supplier:'Guan Tai Hardware', supplierUrl:'https://www.guantai-hardware.com/online-shopping/knapsack-sprayer-16l', specs:['16 L', 'Manual pump', 'SKU 58469620'], productIcon:'bottle' },
+  { id:'veoda-tl160b', name:'VEODA TL160B battery sprayer', searchName:'VEODA TL160B VQ16B 16L battery sprayer 12V 8AH', category:'Sprayers', price:115, supplier:'Corated', supplierUrl:'https://www.corated.com.my/shop/vq16b-veoda-16l-knapsack-rechargeable-battery-sprayer-16263', specs:['16 L', '12V / 8Ah', 'TL160B'], productIcon:'bottle' },
+  { id:'spring-hc01610', name:'SPRING HC01610 hose connector', searchName:'SPRING HC01610 hose connector 1/2 inch x 5/8 inch', category:'Replacement parts', price:5, supplier:'HomePro', supplierUrl:'https://www.homepro.com.my/p/1070800', specs:['1/2 inch × 5/8 inch', 'HC01610'], productIcon:'tool' },
+  { id:'spring-pl-pre7', name:'SPRING PL-PRE7 watering nozzle', searchName:'SPRING PL-PRE7 7-pattern garden hose nozzle', category:'Irrigation', price:19.5, supplier:'HomePro', supplierUrl:'https://www.homepro.com.my/m/p/1075307', specs:['7 patterns', 'Clean water only'], productIcon:'droplet' },
+  { id:'3m-tekk-gloves-l', name:'3M TEKK rubber gloves · L', searchName:'3M TEKK chemical resistant rubber gloves large 1040650', category:'Protective gear', price:30.9, supplier:'HomePro', supplierUrl:'https://www.homepro.com.my/p/1040650', specs:['Large', 'Polychloroprene', 'Check chemical compatibility'], productIcon:'shield' },
+  { id:'spring-pruning-shears-8', name:'SPRING pruning shears · 8 inch', searchName:'SPRING pruning shears rubber handle 8 inch 1074813', category:'Hand tools', price:20.9, supplier:'HomePro', supplierUrl:'https://www.homepro.com.my/p/1074813', specs:['8 inch', 'Rubber handle', 'SKU 1074813'], productIcon:'scissors' },
+].map((product) => ({ ...product, description:product.specs.join(' · '), sourceUrl:product.supplierUrl, regionalSourceUrl:product.supplierUrl, regionalLabel:product.category, checkedAt:CHECKED_AT, priceBasis:'Indexed listing', isDemo:false, isIllustrativeImage:false, image:'/assets/crops.jpg', packageName:product.specs.join(' · '), availability:'Check retailer' }));

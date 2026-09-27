@@ -1,7 +1,8 @@
 const CACHE_PREFIX = 'osip-shell-';
 // The build fingerprints shell content so browsers discover asset updates.
-const CACHE_NAME = `${CACHE_PREFIX}v3-1da06bcdb8b77f8a`;
+const CACHE_NAME = `${CACHE_PREFIX}v3-2bde9805025c0fa5`;
 const SHELL_FILES = [
+  '/src/shop-deals.mjs',
   '/data/active.json', '/data/demo.json', '/data/newuser.json', '/src/storage-seed.mjs',
   '/src/real-products.mjs', '/src/land-covers.mjs',
   '/src/malaysia-articles.mjs',
@@ -19,7 +20,7 @@ const SHELL_FILES = [
   '/assets/icon-192.png', '/assets/icon-512.png', '/assets/icon-maskable.png',
 ];
 const SHELL_PATHS = new Set(SHELL_FILES);
-const APP_ROUTES = ['/farm', '/learn', '/services', '/tools', '/weather', '/onboarding', '/auth', '/account', '/notifications', '/bookings', '/messages', '/pilot', '/shop', '/checkout', '/orders', '/news', '/plant-help'];
+const APP_ROUTES = ['/schedule', '/farm', '/learn', '/services', '/tools', '/weather', '/onboarding', '/auth', '/account', '/notifications', '/bookings', '/messages', '/pilot', '/shop', '/checkout', '/orders', '/news', '/plant-help'];
 
 /** @param {string} pathname @returns {boolean} */
 const isAppRoute = (pathname) => pathname === '/' || pathname === '/index.html'

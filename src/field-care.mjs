@@ -1,6 +1,7 @@
 import { applyAction } from './actions.mjs';
 import { getFormatLocale, t } from './i18n.mjs';
-import { calendarDate } from './schedule.mjs';
+import { fieldTaskUrgency } from './land-map.mjs';
+import { calendarDate, taskRepeatLabel } from './schedule.mjs';
 import { escapeHtml as esc, icon } from './ui.mjs';
 
 const CARE_TYPES = ['Fertilizer', 'Pesticide'];
@@ -58,12 +59,23 @@ export function renderFieldCareSheet() {
 export function renderFieldScheduleChoice() {
   return `<section class="field-care-section"><h3>${esc(t('Set up a schedule for this field?'))}</h3><p>${esc(t('Choose pesticide or fertiliser reminders. You can also leave this field without a schedule.'))}</p><div class="field-care-actions"><button type="button" class="button" data-care-schedule>${esc(t('Set up a schedule'))}</button><button type="button" class="button button-secondary" data-care-close>${esc(t('Not now'))}</button></div></section>`;
 }
-/** @param {import('./store.mjs').Task[]} tasks @param {string} farmId @param {string} plotId @returns {string} */
-export function renderFieldSchedules(tasks, farmId, plotId) {
-  const pending = tasks.filter((task) => task.farmId === farmId && task.plotId === plotId && !task.done).sort((first, second) => `${first.dueDate}${first.time}`.localeCompare(`${second.dueDate}${second.time}`));
-  if (!pending.length) return renderFieldScheduleChoice();
-  return pending.map((task) => `<section class="field-care-section" data-care-task="${esc(task.id)}"><h3>${esc(task.title)}</h3><p>${esc(t(task.category))} · ${esc(task.dueDate)} · ${esc(task.time)}</p><div class="field-care-actions"><button type="button" class="button" data-care-complete="${esc(task.id)}">${esc(t('Complete'))}</button><button type="button" class="button button-secondary" data-care-skip="${esc(task.id)}">${esc(t('Not now'))}</button></div></section>`).join('');
+/** @param {import('./store.mjs').Task[]} tasks @param {string} farmId @param {string} plotId @param {Date} [now] @returns {string} */
+export function renderFieldSchedules(tasks, farmId, plotId, now = new Date()) {
+  const assigned = tasks.filter((task) => task.farmId === farmId && task.plotId === plotId);
+  const pending = assigned.filter((task) => !task.done).sort((first, second) => `${first.dueDate}${first.time}`.localeCompare(`${second.dueDate}${second.time}`));
+  const last = assigned.filter((task) => task.done).sort((first, second) => (second.completedAt ?? `${second.dueDate}T${second.time}`).localeCompare(first.completedAt ?? `${first.dueDate}T${first.time}`))[0];
+  const completed = last ? `<section class="field-care-section field-care-completed"><h3>${icon('circle-check', 18)} ${esc(t('Latest completion'))}</h3><p>${esc(last.title)} · ${esc(t('Completed'))}</p></section>` : '';
+  if (!pending.length) return completed || renderFieldScheduleChoice();
+  return pending.map((task) => renderFieldTaskOccurrence(task, farmId, plotId, now)).join('') + completed;
 }
+/** @param {import('./store.mjs').Task} task @param {string} farmId @param {string} plotId @param {Date} now @returns {string} */
+const renderFieldTaskOccurrence = (task, farmId, plotId, now) => {
+  const state = fieldTaskUrgency([task], farmId, plotId, now);
+  const status = t({ upcoming: 'Scheduled later', soon: 'Due within 2 hours', overdue: 'Overdue' }[state.urgency]);
+  const canComplete = new Date(`${task.dueDate}T${task.time}`) <= now;
+  const action = canComplete ? `<button type="button" class="button" data-care-complete="${esc(task.id)}">${esc(t('Complete'))}</button>` : `<a class="button button-secondary" href="/farm/${esc(farmId)}/tasks/${esc(task.id)}">${esc(t('View task'))}</a>`;
+  return `<section class="field-care-section" data-care-task="${esc(task.id)}"><h3>${esc(task.title)}</h3><p class="field-care-occurrence">${esc(task.repeatFromId ? t('Next occurrence') : status)}${task.repeatFromId ? ` · ${esc(status)}` : ''}</p><p>${esc(t(task.category))} · ${esc(task.dueDate)} · ${esc(task.time)}</p>${task.repeat && task.repeat !== 'none' ? `<p>${esc(taskRepeatLabel(task))}</p>` : ''}<div class="field-care-actions">${action}<button type="button" class="button button-secondary" data-care-skip="${esc(task.id)}">${esc(t('Not now'))}</button></div></section>`;
+};
 /** @param {import('./store.mjs').AppState} state @param {string} farmId @param {string} plotId @param {string} taskId @returns {void} */
 export function completeFieldSchedule(state, farmId, plotId, taskId) {
   const task = state.tasks.find((item) => item.id === taskId && item.farmId === farmId && item.plotId === plotId);
@@ -129,8 +141,10 @@ export function initializeFieldCare(root, store) {
     }
     try {
       if (button.dataset.careComplete || button.dataset.careSkip) {
-        if (button.dataset.careComplete) store.update((state) => completeFieldSchedule(state, farmId, plotId, button.dataset.careComplete));
-        button.closest('[data-care-task]')?.remove();
+        if (button.dataset.careComplete) {
+          store.update((state) => completeFieldSchedule(state, farmId, plotId, button.dataset.careComplete));
+          sheet.querySelector('[data-care-content]').innerHTML = renderFieldSchedules(store.getState().tasks, farmId, plotId);
+        } else button.closest('[data-care-task]')?.remove();
         if (!sheet.querySelector('[data-care-task]')) motion.close(() => root.dispatchEvent(new CustomEvent('land-field-saved', { bubbles: true })));
         return;
       }

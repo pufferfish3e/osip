@@ -6,8 +6,7 @@ import { escapeHtml as esc, localizeDemoState, icon, friendlyDate } from './ui.m
 const QUICK_ACTIONS = [
   ['/services/pilots', 'drone', 'Book a pilot'],
   ['/learn/courses', 'school', 'Find a course'],
-  ['/tools', 'plant-2', 'Spray estimate'],
-  ['/shop', 'shopping-bag', 'Shop'],
+  // ['/tools', 'calculator', 'Pesticide calculator'],
 ];
 
 /** @param {import('./store.mjs').AppState} state @returns {{farm:import('./store.mjs').Farm,count:number}|undefined} */
@@ -31,7 +30,7 @@ const farmOverview = (state) => {
 };
 
 /** @param {string} farmId @returns {string} */
-const weatherCard = (farmId) => `<a class="weather-preview card" href="/weather/${esc(farmId)}"><div class="flex items-center justify-between"><span class="eyebrow">${esc(t('In your field'))}</span>${icon('arrow-up-right', 20)}</div><p class="weather-location">${esc(t(WEATHER.location))}</p><div class="weather-current"><strong>${WEATHER.temperature}°</strong><span class="weather-sun" aria-hidden="true">⛅</span></div><p class="weather-condition">${esc(t(WEATHER.condition))}</p><div class="weather-metrics"><span>${icon('wind', 18)} ${esc(t('Northeast {speed} km/h', { speed: WEATHER.windSpeed }))}</span><span>${icon('droplet', 18)} ${esc(t('{chance}% rain', { chance: WEATHER.rainChance }))}</span></div><p class="weather-caption">${esc(t('Sample forecast · not live'))}</p></a>`;
+const weatherCard = () => `<a class="weather-preview card" href="/weather"><div class="flex items-center justify-between"><span class="eyebrow">${esc(t('Weather'))}</span>${icon('arrow-up-right', 20)}</div><p class="weather-location">${esc(t(WEATHER.location))}</p><div class="weather-current"><strong>${WEATHER.temperature}°</strong><span class="weather-sun" aria-hidden="true">⛅</span></div><p class="weather-condition">${esc(t(WEATHER.condition))}</p><div class="weather-metrics"><span>${icon('wind', 18)} ${esc(t('Northeast {speed} km/h', { speed: WEATHER.windSpeed }))}</span><span>${icon('droplet', 18)} ${esc(t('{chance}% rain', { chance: WEATHER.rainChance }))}</span></div><p class="weather-caption">${esc(t('Sample forecast · not live'))}</p></a>`;
 
 /** @param {import('./store.mjs').AppState} state @returns {string} */
 const scheduleSection = (state) => {
@@ -61,5 +60,5 @@ export function renderHome(inputState) {
   const heading = hasChosenRole
     ? `<header class="home-heading"><div><p class="eyebrow">${date}</p><h1 tabindex="-1">${esc(greeting)}</h1>${!state.profile.onboarded ? `<a class="link" href="/onboarding/${state.profile.role}">${esc(t('Finish your setup'))} ${icon('arrow-right', 16)}</a>` : ''}</div><a class="button button-secondary desktop-only" href="/farm">${icon('plant-2', 18)} ${esc(t('My land'))}</a></header>`
     : `<header class="home-heading home-welcome"><div><h1 tabindex="-1">${esc(t('Make yourself at home'))}</h1><p class="muted">${esc(t('Set up your farmer or pilot profile.'))}</p></div><a class="button" href="/onboarding/role">${esc(t('Choose role'))} ${icon('arrow-right', 18)}</a></header>`;
-  return `${heading}<div class="overview-grid">${farmOverview(state)}${weatherCard(state.farms[0]?.id ?? 'farm-1')}</div><div class="quick-actions" aria-label="${esc(t('Quick actions'))}">${QUICK_ACTIONS.map(([href, symbol, label]) => `<a href="${href}" class="quick-action"><span>${icon(symbol, 25)}</span>${esc(t(label))}</a>`).join('')}</div><div class="home-lower">${scheduleSection(state)}${learnSection()}</div>${latestStory()}`;
+  return `${heading}<div class="overview-grid">${farmOverview(state)}${weatherCard()}</div><div class="quick-actions" aria-label="${esc(t('Quick actions'))}">${QUICK_ACTIONS.map(([href, symbol, label]) => `<a href="${href}" class="quick-action"><span>${icon(symbol, 25)}</span>${esc(t(label))}</a>`).join('')}</div><div class="home-lower">${scheduleSection(state)}${learnSection()}</div>${latestStory()}`;
 }

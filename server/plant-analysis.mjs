@@ -108,9 +108,10 @@ const trustedLanOrigin = (origin) => {
   return new URL(origin).origin === origin ? origin : '';
 };
 
-/** @param {import('node:http').IncomingMessage} request @param {string} lanOrigin @returns {boolean} */
-const isTrustedRequest = (request, lanOrigin) => {
+/** @param {import('node:http').IncomingMessage} request @param {string} lanOrigin @param {string[]} [webOrigins] @returns {boolean} */
+const isTrustedRequest = (request, lanOrigin, webOrigins = []) => {
   const host = request.headers.host ?? '';
+  if (webOrigins.includes(`https://${host}`) && request.headers.origin === `https://${host}`) return true;
   const requestOrigin = `http://${host}`;
   if (request.headers.origin !== requestOrigin) return false;
   const isLocalHost = /^(?:localhost|127\.0\.0\.1|\[::1\])(?::[0-9]{1,5})?$/i.test(host);
@@ -119,10 +120,10 @@ const isTrustedRequest = (request, lanOrigin) => {
   return (isLocalHost && isLocalAddress) || (Boolean(lanOrigin) && requestOrigin === lanOrigin && isPrivateIpv4(address));
 };
 
-/** @param {import('node:http').IncomingMessage} request @param {string} lanOrigin @returns {void} */
-const validateRequest = (request, lanOrigin) => {
+/** @param {import('node:http').IncomingMessage} request @param {string} lanOrigin @param {string[]} [webOrigins] @returns {void} */
+const validateRequest = (request, lanOrigin, webOrigins = []) => {
   if (request.method !== 'POST') throw new PlantAnalysisError(STATUS.method, 'method_not_allowed', 'Use a photo upload to request a summary.');
-  if (!isTrustedRequest(request, lanOrigin)) {
+  if (!isTrustedRequest(request, lanOrigin, webOrigins)) {
     throw new PlantAnalysisError(STATUS.forbidden, 'local_only', 'Photo analysis is not available here. You can search the guides instead.');
   }
   const contentType = request.headers['content-type'] ?? '';

@@ -1,6 +1,22 @@
 /** @type {Record<string, Record<string, string>>} */
 export const DISCOVER_TRANSLATIONS = {
   "ms": {
+    "Product label": "Label produk",
+    "Label rate": "Kadar label",
+    "Tank settings": "Tetapan tangki",
+    "Tank preparation": "Penyediaan tangki",
+    "Prepare a calculation first.": "Sediakan pengiraan dahulu.",
+    "Illustrative tank. Colours identify ingredients, not their actual appearance.": "Tangki ilustrasi. Warna mengenal pasti bahan, bukan rupa sebenar.",
+    "Top up to {volume} L": "Tambah air hingga {volume} L",
+    "Illustrative colours. Follow the label’s mixing order.": "Warna ilustrasi. Ikut urutan pencampuran pada label.",
+    "{loads} tank loads · {area} ha": "{loads} muatan tangki · {area} ha",
+    "Total product: {amount} {unit}": "Jumlah produk: {amount} {unit}",
+    "Final load: {volume} L · {amount} {unit} product": "Muatan akhir: {volume} L · {amount} {unit} produk",
+    "Verification status": "Status pengesahan",
+    "Not independently verified": "Belum disahkan secara bebas",
+    "Calculated from your entered rate. Product identity, crop suitability and label instructions still need verification.": "Dikira daripada kadar yang anda masukkan. Identiti produk, kesesuaian tanaman dan arahan label masih perlu disahkan.",
+    "Open provided reference": "Buka rujukan yang diberikan",
+
     "Finding your pilot…": "Mencari juruterbang anda…",
     "Demo matching": "Padanan demo",
     "Demo match": "Padanan demo",
@@ -406,6 +422,22 @@ export const DISCOVER_TRANSLATIONS = {
     "The sample course catalogue shows how farmers could compare topics, formats, and dates. All courses are free. All instructors, venues, seats, and enrollments in this prototype are illustrative.": "Katalog kursus contoh menunjukkan cara petani membandingkan topik, format dan tarikh. Semua kursus adalah percuma. Semua pengajar, lokasi, tempat dan pendaftaran dalam prototaip ini hanyalah ilustrasi."
   },
   "zh-Hans": {
+    "Product label": "产品标签",
+    "Label rate": "标签用量",
+    "Tank settings": "药箱设置",
+    "Tank preparation": "药箱配制",
+    "Prepare a calculation first.": "请先完成计算。",
+    "Illustrative tank. Colours identify ingredients, not their actual appearance.": "药箱示意图。颜色用于区分成分，不代表实际外观。",
+    "Top up to {volume} L": "加水至 {volume} L",
+    "Illustrative colours. Follow the label’s mixing order.": "颜色仅作示意。请遵循标签上的混合顺序。",
+    "{loads} tank loads · {area} ha": "{loads} 箱 · {area} ha",
+    "Total product: {amount} {unit}": "产品总量：{amount} {unit}",
+    "Final load: {volume} L · {amount} {unit} product": "最后一箱：{volume} L · 产品 {amount} {unit}",
+    "Verification status": "核实状态",
+    "Not independently verified": "尚未独立核实",
+    "Calculated from your entered rate. Product identity, crop suitability and label instructions still need verification.": "根据您输入的用量计算。产品身份、作物适用性和标签说明仍需核实。",
+    "Open provided reference": "打开提供的参考资料",
+
     "Finding your pilot…": "正在寻找飞手…",
     "Demo matching": "演示匹配",
     "Demo match": "演示匹配",

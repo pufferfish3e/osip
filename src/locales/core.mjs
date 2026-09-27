@@ -1,5 +1,6 @@
 export const CORE_TRANSLATIONS = {
   ms: {
+    "Scheduler": "Jadual",
     "Plan your next field task.": "Rancang tugas petak anda yang seterusnya.",
     "{count} tasks to do": "{count} tugas perlu dibuat",
     "days": "hari",
@@ -456,6 +457,7 @@ export const CORE_TRANSLATIONS = {
     'Crop care': 'Penjagaan tanaman',
   },
   'zh-Hans': {
+    "Scheduler": "日程",
     "Plan your next field task.": "安排下一项田块任务。",
     "{count} tasks to do": "{count}项待办任务",
     "days": "天",

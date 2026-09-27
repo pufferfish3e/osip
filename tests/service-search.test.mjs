@@ -6,11 +6,11 @@ import { INITIAL_STATE, PILOTS, PRODUCTS } from '../src/data.mjs';
 
 afterEach(() => setLocale('en'));
 
-test('search covers pilots and products with phrases, synonyms and intent', () => {
+test('search covers pilots while hiding shop products', () => {
   assert.ok(searchServices('aerial survey').some((item) => item.kind === 'pilot'));
   assert.deepEqual(searchServices('hire drone spray').map((item) => item.id), ['maya']);
-  assert.equal(searchServices('buy batteries')[0].id, 'field-battery');
-  assert.ok(searchServices('drone').some((item) => item.kind === 'shop'));
+  assert.deepEqual(searchServices('buy batteries'), []);
+  assert.equal(searchServices('drone').some((item) => item.kind === 'shop'), false);
   assert.ok(searchServices('drone').some((item) => item.kind === 'pilot'));
   assert.equal(searchServices('Maya')[0].id, 'maya');
   assert.deepEqual(searchServices('impossiblekeyword'), []);
@@ -19,16 +19,16 @@ test('search covers pilots and products with phrases, synonyms and intent', () =
 
 test('Malay and Chinese synonyms match across the same catalogue', () => {
   setLocale('ms');
-  assert.ok(searchServices('beli bateri').some((item) => item.id === 'field-battery'));
+  assert.deepEqual(searchServices('beli bateri'), []);
   assert.ok(searchServices('pemetaan').some((item) => item.kind === 'pilot'));
   setLocale('zh-Hans');
-  assert.ok(searchServices('购买电池').some((item) => item.id === 'field-battery'));
+  assert.deepEqual(searchServices('购买电池'), []);
   assert.ok(searchServices('无人机测绘').some((item) => item.kind === 'pilot'));
 });
 
 test('services exposes one cross-catalogue search with safe empty results', () => {
   assert.match(renderDiscover('/services', INITIAL_STATE), /data-service-search/);
-  assert.match(renderServiceResults('buy batteries'), /href="\/shop\/products\/field-battery"/);
+  assert.doesNotMatch(renderServiceResults('buy batteries'), /href="\/shop/);
   assert.doesNotMatch(renderServiceResults('<script>alert(1)</script>'), /<script>/);
 });
 
@@ -44,19 +44,17 @@ test('pilot catalogue uses portrait cards with reviews, rates and searchable equ
  assert.doesNotMatch(html, /badge badge-blue/);
 });
 
-test('shop uses pilot-style cards with distinct product images and labelled cart actions', () => {
+test('hidden shop catalogue remains available without cart actions', () => {
   const html = renderDiscover('/shop', INITIAL_STATE);
-  assert.equal((html.match(/pilot-portrait-card pilot-catalog-card shop-product-card/g) ?? []).length, PRODUCTS.length);
-  for (const image of ['/assets/drone.jpg', '/assets/shop-power.jpg', '/assets/shop-weather.jpg']) assert.ok(html.includes(image));
-  assert.equal((html.match(/data-action="add-cart"/g) ?? []).length, 3);
-  assert.match(html, /aria-label="Add Field power kit to cart"/);
+  assert.match(html, /Everyday tools/);
+  assert.doesNotMatch(html, /data-action="add-cart"/);
 });
 
 test('services entry cards share the photo overlay style with distinct images and pill links', () => {
   const html = renderDiscover('/services', INITIAL_STATE);
-  assert.equal((html.match(/learning-photo-card services-feature-card/g) ?? []).length, 2);
-  assert.ok(html.includes('/assets/shop-power.jpg'));
+  assert.equal((html.match(/learning-photo-card services-feature-card/g) ?? []).length, 1);
+  assert.doesNotMatch(html, /shop-power/);
   assert.ok(html.includes(PILOTS[0].portrait));
   assert.match(html, /href="\/services\/pilots"/);
-  assert.match(html, /href="\/shop"/);
+  assert.doesNotMatch(html, /href="\/shop"/);
 });

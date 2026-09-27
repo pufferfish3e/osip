@@ -3,7 +3,7 @@ import { MALAYSIA_ARTICLES, MALAYSIA_CONTEXT } from './malaysia-articles.mjs';
 import { PLANT_GUIDES } from './plant-guides.mjs';
 import { EXTENSION_ARTICLES } from './extension-articles.mjs';
 import { ARTICLE_CATALOGUE } from './article-catalogue.mjs';
-import { REAL_PRODUCTS } from './real-products.mjs';
+import { EVERYDAY_PRODUCTS, REAL_PRODUCTS } from './real-products.mjs';
 const TODAY = new Date();
 const DATE_OFFSET_DAYS = { tomorrow: 1, course: 6, workshop: 12, nextCourse: 18 };
 
@@ -556,6 +556,7 @@ export const PILOTS = [
 ];
 
 export const PRODUCTS = [
+  ...EVERYDAY_PRODUCTS,
   ...REAL_PRODUCTS,
   {
     id: 'scout-drone', name: 'Field Scout drone', category: 'Drones', price: 4800, image: '/assets/drone.jpg',

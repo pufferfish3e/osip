@@ -5,7 +5,7 @@ import { deleteField, fieldAreaHectares, mappedFields, normalizeFieldBoundary, s
 
 /** @typedef {import('./land-boundary.mjs').LandPoint} LandPoint */
 /** @typedef {{lat:number,lng:number}} LatLng */
-/** @typedef {{addTo:(map:LandMap|LayerGroup)=>Layer,on:(name:string,handler:()=>void)=>Layer,bindTooltip:(content:string,options:object)=>Layer}} Layer */
+/** @typedef {{addTo:(map:LandMap|LayerGroup)=>Layer,on:(name:string,handler:()=>void)=>Layer,bindTooltip:(content:string,options:object)=>Layer,setStyle:(options:object)=>Layer,setTooltipContent:(content:string)=>Layer}} Layer */
 /** @typedef {Layer & {clearLayers:()=>void}} LayerGroup */
 /** @typedef {{setView:(center:number[],zoom:number)=>LandMap,removeLayer:(layer:Layer)=>void,on:(name:string,handler:(event:{latlng:LatLng})=>void)=>void,off:(name:string,handler:(event:{latlng:LatLng})=>void)=>void,fitBounds:(bounds:unknown,options:object)=>void,getZoom:()=>number,getCenter:()=>LatLng,remove:()=>void,invalidateSize:(options:object)=>LandMap}} LandMap */
 /** @typedef {{map:(element:HTMLElement,options:object)=>LandMap,tileLayer:(url:string,options:object)=>Layer,layerGroup:()=>LayerGroup,polygon:(points:LandPoint[],options:object)=>Layer,circleMarker:(point:number[],options:object)=>Layer,latLngBounds:(points:LandPoint[])=>unknown}} Leaflet */
@@ -24,7 +24,9 @@ const BOUNDARY_PADDING = [24, 24];
 const BOUNDARY_FILL_OPACITY = 0.22;
 const EDIT_COLOR = '#075bea';
 const SAVED_COLOR = '#225e42';
-const OVERVIEW_OUTLINE_COLOR = '#075bea';
+const FIELD_URGENCY_COLORS = { idle: '#87948e', upcoming: '#075bea', soon: '#d99119', overdue: '#d64747', complete: '#25875c' };
+const DUE_SOON_MILLISECONDS = 2 * 60 * 60 * 1000;
+const TASK_STATUS_REFRESH_MILLISECONDS = 60 * 1000;
 const OVERVIEW_HALO_COLOR = '#ffffff';
 const OVERVIEW_HALO_WEIGHT = 7;
 const OVERVIEW_OUTLINE_WEIGHT = 3;
@@ -433,18 +435,65 @@ const showFieldDeletion = (editor) => {
   editor.panel.querySelector('[data-field-delete-dialog]').showModal();
 };
 
+/** @param {import('./store.mjs').Task[]} tasks @param {string} farmId @param {string} plotId @param {Date} [now] @returns {{urgency:string,color:string,pending:number,done:number,total:number,progress:number}} */
+export function fieldTaskUrgency(tasks, farmId, plotId, now = new Date()) {
+  const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+  const assigned = tasks.filter((task) => task.farmId === farmId && task.plotId === plotId);
+  const outstanding = assigned.filter((task) => !task.done);
+  const pending = outstanding.filter((task) => task.dueDate <= today).length;
+  const done = assigned.filter((task) => task.done && task.dueDate === today).length;
+  const total = done + pending;
+  const nextDue = Math.min(...outstanding.map((task) => new Date(`${task.dueDate}T${task.time}`).getTime()));
+  const remaining = nextDue - now.getTime();
+  const urgency = remaining < 0 ? 'overdue' : remaining <= DUE_SOON_MILLISECONDS ? 'soon' : outstanding.length ? 'upcoming' : total > 0 && pending === 0 ? 'complete' : 'idle';
+  return { urgency, color: FIELD_URGENCY_COLORS[urgency], pending, done, total, progress: total ? Math.round(done / total * 100) : 0 };
+}
+/** @param {import('./store.mjs').Plot} field @param {import('./store.mjs').Task[]} tasks @param {string} farmId @param {Date} [now] @returns {string} */
+export function renderFieldTaskMarker(field, tasks, farmId, now = new Date()) {
+  const state = fieldTaskUrgency(tasks, farmId, field.id, now);
+  const urgencyLabel = t({ idle: 'No tasks today', upcoming: 'Scheduled later', soon: 'Due within 2 hours', overdue: 'Overdue', complete: 'All done today!' }[state.urgency]);
+  const status = state.total ? t('{done} of {total} done today', { done: state.done, total: state.total }) : '';
+  const symbol = state.urgency === 'complete' ? 'check' : state.urgency === 'overdue' ? 'alert-circle' : state.urgency === 'idle' ? 'plus' : 'clock';
+  const label = `${field.name} · ${urgencyLabel}${status ? ` · ${status}` : ''}`;
+  return `<button type="button" class="field-care-map-button field-task-marker is-task-${state.urgency}" style="--task-progress:${state.progress}%;--task-state-color:${state.color}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}"><span class="field-task-crop" aria-hidden="true">${cropEmoji(field.crop)}</span><span class="field-task-badge" aria-hidden="true">${icon(symbol, 13)}${state.pending ? `<span>${state.pending > 99 ? '99+' : state.pending}</span>` : ''}</span></button>`;
+}
+
+/** @param {Array<{field:import('./store.mjs').Plot,polygon:Layer,content:string}>} taskLayers @param {import('./store.mjs').AppStore} store @param {string} farmId @returns {()=>void} */
+const watchFieldTaskUrgency = (taskLayers, store, farmId) => {
+  const refreshTaskUrgency = () => {
+    if (globalThis.document?.hidden) return;
+    const tasks = store.getState().tasks;
+    const now = new Date();
+    for (const item of taskLayers) {
+      const content = renderFieldTaskMarker(item.field, tasks, farmId, now);
+      if (content === item.content) continue;
+      item.polygon.setStyle({ color: fieldTaskUrgency(tasks, farmId, item.field.id, now).color });
+      item.polygon.setTooltipContent(content);
+      item.content = content;
+    }
+  };
+  const unsubscribeTasks = store.subscribe(refreshTaskUrgency);
+  const urgencyTimer = setInterval(refreshTaskUrgency, TASK_STATUS_REFRESH_MILLISECONDS);
+  globalThis.document?.addEventListener?.('visibilitychange', refreshTaskUrgency);
+  return () => { unsubscribeTasks(); clearInterval(urgencyTimer); globalThis.document?.removeEventListener?.('visibilitychange', refreshTaskUrgency); };
+};
+
 /** @param {HTMLElement} panel @param {import('./store.mjs').Farm} farm @param {LandMap} map @param {Leaflet} leaflet @param {import('./store.mjs').AppStore} store @param {Layer} baseLayer @returns {()=>void} */
 const initializeLandOverview = (panel, farm, map, leaflet, store, baseLayer) => {
   const boundary = displayedLandBoundary(farm);
   if (boundary.length) leaflet.polygon(boundary, { color: SAVED_COLOR, weight: 2, fillOpacity: 0.08, interactive: false }).addTo(map);
   const fields = mappedFields(farm);
+  const taskLayers = [];
   for (const field of fields) {
     if (!field.boundary?.length) continue;
     leaflet.polygon(field.boundary, { color: OVERVIEW_HALO_COLOR, weight: OVERVIEW_HALO_WEIGHT, opacity: 0.95, fill: false, interactive: false }).addTo(map);
-    const polygon = leaflet.polygon(field.boundary, { color: OVERVIEW_OUTLINE_COLOR, weight: OVERVIEW_OUTLINE_WEIGHT, opacity: 1, fillOpacity: 0.08, interactive: true }).addTo(map);
-    polygon.bindTooltip(`<button type="button" class="field-care-map-button" aria-label="${escapeHtml(field.name)} · ${escapeHtml(t('Field care'))}"><span aria-hidden="true">${cropEmoji(field.crop)}</span></button>`, { permanent: true, direction: 'center', className: 'field-care-label', opacity: 1, interactive: true });
+    const polygon = leaflet.polygon(field.boundary, { color: fieldTaskUrgency(store.getState().tasks, farm.id, field.id).color, weight: OVERVIEW_OUTLINE_WEIGHT, opacity: 1, fillOpacity: 0.08, interactive: true }).addTo(map);
+    polygon.bindTooltip(renderFieldTaskMarker(field, store.getState().tasks, farm.id), { permanent: true, direction: 'center', className: 'field-care-label', opacity: 1, interactive: true });
+    taskLayers.push({ field, polygon, content: renderFieldTaskMarker(field, store.getState().tasks, farm.id) });
     polygon.on('click', () => panel.closest('main')?.querySelector('[data-field-care-sheet]')?.dispatchEvent(new CustomEvent('field-care-open', { detail: { farmId: farm.id, plotId: field.id } })));
   }
+  const stopTaskUrgency = watchFieldTaskUrgency(taskLayers, store, farm.id);
+  const badgeMotion = !globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? globalThis.gsap?.from(panel.querySelectorAll('.field-task-badge'), { scale: 0.85, opacity: 0, duration: 0.25, stagger: 0.03, ease: 'power2.out', clearProps: 'transform,opacity' }) : null;
   const bounds = [...boundary, ...fields.flatMap((field) => field.boundary ?? [])];
   if (bounds.length) map.fitBounds(leaflet.latLngBounds(bounds), { padding: BOUNDARY_PADDING, maxZoom: LOCATION_ZOOM });
   localizeZoom(panel);
@@ -465,7 +514,7 @@ const initializeLandOverview = (panel, farm, map, leaflet, store, baseLayer) => 
   };
   panel.addEventListener('change', onChange);
   const closeExpandedMap = initializeExpandedMap(panel, map);
-  return () => { closeExpandedMap(); panel.removeEventListener('change', onChange); map.remove(); };
+  return () => { stopTaskUrgency(); badgeMotion?.kill(); closeExpandedMap(); panel.removeEventListener('change', onChange); map.remove(); };
 };
 
 /** @type {Array<[string, RegExp]>} */

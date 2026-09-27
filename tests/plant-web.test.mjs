@@ -88,3 +88,61 @@ test('every advice paragraph needs a citation and citations must come from retri
   payload.output[0].action.sources = [];
   assert.throws(() => parseSearchResult(payload), /retrieved sources/);
 });
+
+
+test('Vercel search accepts only the configured HTTPS origin and host together', async () => {
+  const previous = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  process.env.VERCEL_PROJECT_PRODUCTION_URL = 'aura-test.vercel.app';
+  try {
+    const handler = makeHandler();
+    assert.equal((await requestSearch(handler, { headers: { host: 'aura-test.vercel.app', origin: 'https://aura-test.vercel.app' } })).status, 200);
+    for (const headers of [{ host: 'aura-test.vercel.app', origin: 'https://other.vercel.app' }, { host: 'other.vercel.app', origin: 'https://other.vercel.app' }, { host: 'aura-test.vercel.app', origin: 'http://aura-test.vercel.app' }]) {
+      assert.equal((await requestSearch(handler, { headers })).status, 403);
+    }
+  } finally {
+    if (previous === undefined) delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    else process.env.VERCEL_PROJECT_PRODUCTION_URL = previous;
+  }
+});
+
+
+test('production alias is accepted even without Vercel host metadata', async () => {
+  const result = await requestSearch(makeHandler(), { headers: { host: 'aurafarming-eight.vercel.app', origin: 'https://aurafarming-eight.vercel.app' } });
+  assert.equal(result.status, 200);
+  const rejected = await requestSearch(makeHandler(), { headers: { host: 'aurafarming-eight.vercel.app', origin: 'https://untrusted.example' } });
+  assert.equal(rejected.status, 403);
+  assert.equal(rejected.body.error.code, 'local_only');
+});
+
+
+test('uncited introductory paragraphs are omitted while cited content retains valid offsets', () => {
+  const payload = providerPayload();
+  const answer = payload.output[1].content[0];
+  const prefix = 'Uncited introduction.\n\n';
+  answer.text = prefix + answer.text + '\n\nUncited ending.';
+  for (const citation of answer.annotations) { citation.start_index += prefix.length; citation.end_index += prefix.length; }
+  assert.deepEqual(parseSearchResult(payload), RESULT);
+});
+
+test('pesticide results separate findings and retain citations in expandable sources', () => {
+  const text = `${RESULT.text}\n\n${RESULT.text}`;
+  const offset = RESULT.text.length + 2;
+  const result = { text, citations: [RESULT.citations[0], { ...RESULT.citations[0], start: RESULT.citations[0].start + offset, end: RESULT.citations[0].end + offset }] };
+  const html = renderPlantWebResult(result, true);
+  assert.equal((html.match(/<article /g) ?? []).length, 2);
+  assert.match(html, /Finding 1/);
+  assert.match(html, /Finding 2/);
+  assert.match(html, /<details class="card card-pad pesticide-sources" >/);
+  assert.match(html, /plant-web-citation/);
+});
+
+
+test('product identification supports a packaging image without asking for rates', async () => {
+  let sent;
+  const handler = makeHandler({ fetchImpl: async (_url, options) => { sent = JSON.parse(options.body); return Response.json(providerPayload()); } });
+  const image = 'data:image/jpeg;base64,/9j/AAAA';
+  assert.equal((await requestSearch(handler, { body: { query: 'Identify packaging', locale: 'en', mode: 'pesticide-products', image } })).status, 200);
+  assert.ok(sent.input[0].content.some((item) => item.type === 'input_image' && item.image_url === image));
+  assert.match(sent.instructions, /Do not suggest dosage/);
+  assert.equal((await requestSearch(handler, { body: { query: 'Identify packaging', mode: 'pesticide-products', image: 'data:image/svg+xml;base64,AAAA' } })).status, 400);
+});

@@ -39,7 +39,7 @@ const findIcons = () => {
   const source = ['app.js', ...readdirSync(new URL('src/', ROOT)).filter((name) => name.endsWith('.mjs')).sort().map((name) => `src/${name}`)].map(read).join('\n');
   const iconNames = new Set([...source.matchAll(/icon\(['"]([a-z0-9-]+)['"]/g)].map((match) => match[1]));
   // Dynamic navigation, task, and service icons share this small explicit allowlist.
-  for (const name of ['home','plant-2','book','drone','calculator','calendar','droplet','arrow-up-right','bell','sun','wind','message-circle','settings','user','school','shopping-bag','heart','map','map-pin','check','plus','cloud','cloud-rain','chevron-right','arrow-left','arrow-right','bookmark','search','clock','minus','credit-card','shield-check','adjustments','chart-bar','crop','pencil','trash','crosshair','wallet','ruler','leaf','download','x','logout','circle-check','circle','dots','menu-2','external-link','refresh','compass','alert-circle','chevron-down','send','arrow-up','device-mobile']) iconNames.add(name);
+  for (const name of ['tool','shield','scissors','home','plant-2','book','drone','calculator','calendar','droplet','arrow-up-right','bell','sun','wind','message-circle','settings','user','school','shopping-bag','heart','map','map-pin','check','plus','cloud','cloud-rain','chevron-right','arrow-left','arrow-right','bookmark','search','clock','minus','credit-card','shield-check','adjustments','chart-bar','crop','pencil','trash','crosshair','wallet','ruler','leaf','download','x','logout','circle-check','circle','dots','menu-2','external-link','refresh','compass','alert-circle','chevron-down','send','arrow-up','device-mobile']) iconNames.add(name);
   return iconNames;
 };
 

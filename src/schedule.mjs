@@ -2,6 +2,12 @@ import { getFormatLocale, t } from './i18n.mjs';
 import { escapeHtml as esc, icon } from './ui.mjs';
 
 const DAYS_PER_WEEK = 7;
+/** @param {import('./store.mjs').Task} task @returns {string} */
+export function taskRepeatLabel(task) {
+  if (task.repeat === 'custom') return t('Every {count} {unit}', { count: task.repeatInterval, unit: t(task.repeatInterval === 1 ? { minutes: 'minute', hours: 'hour', days: 'day' }[task.repeatUnit] : task.repeatUnit) });
+  return t({ none: 'Never', daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' }[task.repeat ?? 'none']);
+}
+
 const SELECTED_DATES = new Map();
 const CALENDAR_VIEWS = new Map();
 
@@ -93,6 +99,7 @@ export function initializeSchedule(root) {
   bindTaskSheet(panel, dialog, form, picker, marked, () => { step = 0; form.reset(); form.dataset.creationKey = crypto.randomUUID(); delete form.dataset.submitted; if (!form.elements.id) form.elements.dueDate.value = selected; drawPicker(); updateStep(); }, () => {
     const input = step === 1 ? form.elements.title : step === 2 ? form.elements.time : null;
     if (input && !input.reportValidity()) return;
+    if (step === 3 && form.elements.repeat.value === 'custom' && !form.elements.repeatInterval.reportValidity()) return;
     step = Math.min(4, step + 1); updateStep();
   }, () => { step = Math.max(0, step - 1); updateStep(); });
   form.addEventListener('submit', () => { SELECTED_DATES.set(panel.dataset.schedule, form.elements.dueDate.value); });
@@ -101,13 +108,22 @@ export function initializeSchedule(root) {
 
 /** @param {HTMLFormElement} form @param {HTMLDialogElement} dialog @returns {void} */
 const renderTaskReview = (form, dialog) => {
-  const values = [form.elements.title.value, parseDate(form.elements.dueDate.value).toLocaleDateString(getFormatLocale(), { dateStyle: 'long' }), form.elements.time.value, t(form.elements.category.value), t({ none: 'Never', daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' }[form.elements.repeat.value])];
+  const values = [form.elements.title.value, parseDate(form.elements.dueDate.value).toLocaleDateString(getFormatLocale(), { dateStyle: 'long' }), form.elements.time.value, t(form.elements.category.value), taskRepeatLabel({ repeat: form.elements.repeat.value, repeatInterval: Number(form.elements.repeatInterval.value), repeatUnit: form.elements.repeatUnit.value })];
   values.push([...form.querySelectorAll('[name="plotIds"]:checked')].map((input) => input.nextElementSibling.textContent).join(', ') || t('Whole land'));
   dialog.querySelectorAll('[data-task-review]').forEach((item, index) => { item.textContent = values[index]; });
 };
 /** @param {HTMLElement} panel @param {HTMLDialogElement} dialog @param {HTMLFormElement} form @param {HTMLElement} picker @param {string[]} marked @param {()=>void} open @param {()=>void} next @param {()=>void} back @returns {void} */
 const bindTaskSheet = (panel, dialog, form, picker, marked, open, next, back) => {
+  const updateRepeat = () => {
+    const isCustom = form.elements.repeat.value === 'custom';
+    form.querySelector('[data-repeat-custom]').hidden = !isCustom;
+    form.elements.repeatInterval.disabled = !isCustom;
+    form.elements.repeatUnit.disabled = !isCustom;
+  };
+  updateRepeat();
+  form.addEventListener('reset', () => { queueMicrotask(updateRepeat); });
   form.addEventListener('change', (event) => {
+    if (event.target.name === 'repeat') updateRepeat();
     if (event.target.name !== 'plotIds') return;
     const inputs = [...form.querySelectorAll('[name="plotIds"]')];
     if (event.target.checked) inputs.filter((input) => event.target.value ? !input.value : input !== event.target).forEach((input) => { input.checked = false; });

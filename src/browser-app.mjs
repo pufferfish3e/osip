@@ -1,5 +1,6 @@
+import { initializeShopDeals } from './shop-deals.mjs';
 import { initializeProfilePicture } from './profile-photo.mjs';
-import { initializeMixturePlanner } from './mixture-planner.mjs';
+// import { initializeMixturePlanner } from './mixture-planner.mjs';
 import { initializeArticleReader } from './article-reader.mjs';
 import { initializeFieldCare } from './field-care.mjs';
 import { initializePilotMatcher } from './pilot-matcher.mjs';
@@ -49,7 +50,7 @@ let activeFilter = 'all';
 let activeSearch = '';
 let plantQuery = '';
 let plantWebRequest = null;
-let disposeSprayCalculator = () => {};
+// let disposeSprayCalculator = () => {};
 let plantCategory = 'all';
 
 /** @param {string} message @returns {void} */
@@ -83,7 +84,7 @@ const render = (shouldAnimate = false) => {
   const disposePreviousLandMap = disposeLandMap;
   disposeLandMap = () => {};
   disposePreviousLandMap();
-  disposeSprayCalculator();
+//   disposeSprayCalculator();
   animationContext?.revert();
   const state = STORE.getState();
   const path = window.location.pathname.replace(/\/$/, '') || '/';
@@ -106,11 +107,12 @@ const render = (shouldAnimate = false) => {
     if (planner) { planner.click(); history.replaceState({}, '', window.location.pathname); }
   }
   initializeFieldCare(MAIN, STORE);
+  initializeShopDeals(MAIN);
   initializePilotMatcher(MAIN);
   initializeArticleLibrary(MAIN, state);
   void initializeArticleReader(MAIN).catch((error) => console.error('Article reader failed.', error));
   initializeKeypadCalculator(MAIN, STORE);
-  disposeSprayCalculator = initializeMixturePlanner(MAIN, STORE);
+//   disposeSprayCalculator = initializeMixturePlanner(MAIN, STORE);
   initializeCourseBookingSheet();
   restoreFormDraft();
   initializeMobileOnboarding(path);
@@ -157,11 +159,19 @@ const initializeMobileRoles = () => {
 
 /** @param {string} path @returns {void} */
 const initializeMobileOnboarding = (path) => {
-  MAIN.classList.remove('is-role-onboarding');
+  MAIN.classList.remove('is-role-onboarding', 'onboarding-sheet');
+  // MAIN.classList.toggle('is-product-results', path === '/tools/products');
+  MAIN.classList.remove('is-product-results');
   const isSetupComplete = path.endsWith('/setup-complete');
   MAIN.classList.toggle('mobile-onboarding', isSetupComplete || path.startsWith('/onboarding/') || path.startsWith('/auth/'));
   if (path === '/onboarding/role') { initializeMobileRoles(); return; }
   if (!window.matchMedia('(max-width: 759px)').matches) return;
+//   if (path === '/tools') {
+//     MAIN.classList.add('is-role-onboarding');
+//     createOnboardingVisual('calculator');
+//     MAIN.querySelector('[data-mixture-planner]').prepend(MAIN.querySelector('.page-heading'));
+//     return;
+//   }
   if (isSetupComplete) {
     MAIN.classList.add('is-role-onboarding');
     createOnboardingVisual('check');

@@ -12,8 +12,9 @@ const ROOT = dirname(fileURLToPath(import.meta.url));
 const HOST = '0.0.0.0';
 const DEFAULT_PORT = 4173;
 const MAX_PORT = 65535;
-const ROUTE_PREFIXES = ['/farm', '/learn', '/services', '/tools', '/weather', '/onboarding', '/auth', '/account', '/notifications', '/bookings', '/messages', '/pilot', '/shop', '/checkout', '/orders', '/news', '/plant-help'];
+const ROUTE_PREFIXES = ['/schedule', '/farm', '/learn', '/services', '/tools', '/weather', '/onboarding', '/auth', '/account', '/notifications', '/bookings', '/messages', '/pilot', '/shop', '/checkout', '/orders', '/news', '/plant-help'];
 const PUBLIC_FILES = new Set([
+  '/src/shop-deals.mjs',
   '/data/active.json', '/data/demo.json', '/data/newuser.json', '/src/storage-seed.mjs',
   '/src/real-products.mjs', '/src/land-covers.mjs',
   '/src/mixture-planner.mjs',

@@ -103,9 +103,12 @@ const saveTask = (state, fields) => {
   const plotIds = selectedTaskFields(fields, farm, plotId);
   for (const selectedId of plotIds) if (selectedId) find(farm.plots, (plot) => plot.id === selectedId, 'Field');
   const repeat = text(fields, 'repeat', false) || existing?.repeat || 'none';
-  if (!['none', 'daily', 'weekly', 'monthly'].includes(repeat)) throw new ActionError('Choose a valid repeat frequency.');
+  if (!['none', 'daily', 'weekly', 'monthly', 'custom'].includes(repeat)) throw new ActionError('Choose a valid repeat frequency.');
+  const repeatInterval = Number(fields.repeatInterval ?? existing?.repeatInterval ?? 1);
+  const repeatUnit = text(fields, 'repeatUnit', false) || existing?.repeatUnit || 'days';
+  if (repeat === 'custom' && (!Number.isInteger(repeatInterval) || repeatInterval < 1 || repeatInterval > 999 || !['minutes', 'hours', 'days'].includes(repeatUnit))) throw new ActionError('Choose an interval from 1 to 999 minutes, hours or days.');
   const repeatAnchorDay = existing?.dueDate === dueDate ? (existing.repeatAnchorDay ?? Number(dueDate.slice(8))) : Number(dueDate.slice(8));
-  const next = { ...(creationKey ? { creationKey } : {}), repeat, repeatAnchorDay, id: id || makeId('task'), farmId, plotId, title: text(fields, 'title'), dueDate, time, category: text(fields, 'category'), done: existing?.done ?? false, reminder: Boolean(fields.reminder) };
+  const next = { ...(creationKey ? { creationKey } : {}), repeat, ...(repeat === 'custom' ? { repeatInterval, repeatUnit } : {}), repeatAnchorDay, id: id || makeId('task'), farmId, plotId, title: text(fields, 'title'), dueDate, time, category: text(fields, 'category'), done: existing?.done ?? false, reminder: Boolean(fields.reminder) };
   for (const [index, selectedId] of plotIds.entries()) {
     const assigned = { ...next, plotId: selectedId, id: index === 0 ? next.id : makeId('task') };
     if (existing && index === 0) Object.assign(existing, assigned); else state.tasks.push(assigned);
@@ -115,15 +118,18 @@ const saveTask = (state, fields) => {
 /** @param {AppState} state @param {AppState['tasks'][number]} task @returns {void} */
 const createNextOccurrence = (state, task) => {
   if (!task.repeat || task.repeat === 'none' || state.tasks.some((item) => item.repeatFromId === task.id)) return;
-  const date = new Date(`${task.dueDate}T12:00:00`);
-  if (task.repeat === 'monthly') {
+  const date = new Date(`${task.dueDate}T${task.time}`);
+  if (task.repeat === 'custom') {
+    if (task.repeatUnit === 'days') date.setDate(date.getDate() + task.repeatInterval);
+    else date.setMinutes(date.getMinutes() + task.repeatInterval * (task.repeatUnit === 'hours' ? 60 : 1));
+  } else if (task.repeat === 'monthly') {
     const anchor = task.repeatAnchorDay ?? date.getDate();
     date.setDate(1); date.setMonth(date.getMonth() + 1);
     date.setDate(Math.min(anchor, new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()));
   } else date.setDate(date.getDate() + (task.repeat === 'weekly' ? 7 : 1));
   const dueDate = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
   const { creationKey, completedAt, ...occurrence } = task;
-  state.tasks.push({ ...occurrence, id: makeId('task'), dueDate, done: false, repeatFromId: task.id });
+  state.tasks.push({ ...occurrence, id: makeId('task'), dueDate, time: [date.getHours(), date.getMinutes()].map((value) => String(value).padStart(2, '0')).join(':'), done: false, repeatFromId: task.id });
 };
 
 /** @param {AppState} state @param {Fields} fields @param {boolean} isCourse @returns {ActionResult} */
