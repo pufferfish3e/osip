@@ -1,4 +1,6 @@
 import { escapeHtml } from '../src/ui.mjs';
+import { renderMixturePlanner } from '../src/mixture-planner.mjs';
+import { renderSprayCalculator } from '../src/spray-calculator.mjs';
 import { PLANT_TRANSLATIONS } from '../src/locales/plant.mjs';
 import { DISCOVER_TRANSLATIONS } from '../src/locales/discover.mjs';
 import { WORKSPACE_TRANSLATIONS } from '../src/locales/workspace.mjs';
@@ -45,12 +47,33 @@ test('every route, catalogue detail, and plant guide translates visible copy and
 
 test('all literal translation calls and server photo errors have both translations', () => {
   const files = ['app.js', ...readdirSync(new URL('../src/', import.meta.url)).filter((name) => name.endsWith('.mjs')).map((name) => `src/${name}`)];
-  const messages = files.flatMap((file) => [...readFileSync(new URL(`../${file}`, import.meta.url), 'utf8').matchAll(/\bt\('([^'\n]+)'/g)].map((match) => match[1]));
+  const messages = files.flatMap((file) => [...readFileSync(new URL(`../${file}`, import.meta.url), 'utf8').matchAll(/\bt\(\s*(['"])(.*?)\1/g)].map((match) => match[2]));
   const server = readFileSync(new URL('../server/plant-analysis.mjs', import.meta.url), 'utf8');
   messages.push(...[...server.matchAll(/new PlantAnalysisError\([^,]+, '[^']+', '([^']+)'/g)].map((match) => match[1]));
   for (const locale of ['ms', 'zh-Hans']) {
     const dictionary = Object.assign({}, ...DICTIONARIES.map((item) => item[locale]));
     for (const message of messages.filter(Boolean)) assert.ok(Object.hasOwn(dictionary, message), `${locale}: ${message}`);
+  }
+});
+
+test('spray and mixture planners translate controls and preserve entered field names', () => {
+  const customState = structuredClone(INITIAL_STATE);
+  customState.farms[0].plots[0].name = 'My custom field';
+  for (const locale of ['ms', 'zh-Hans']) {
+    setLocale(locale);
+    const html = `${renderMixturePlanner(customState)}${renderSprayCalculator(customState)}`;
+    assert.match(html, /My custom field/);
+    assert.doesNotMatch(html, />Prepare a field mixture<|>Choose your land<|>Your tank preparation<|>Find sourced options<|>mL\/L finished spray<|placeholder="My tank is/);
+    assert.ok(html.includes(t('Product name and formulation from the label')));
+    assert.ok(html.includes(t('Label rate units')));
+  }
+});
+
+test('core translations preserve interpolation parameters in both languages', () => {
+  for (const locale of ['ms', 'zh-Hans']) {
+    for (const [source, translation] of Object.entries(CORE_TRANSLATIONS[locale])) {
+      assert.deepEqual(translation.match(/\{\w+\}/g)?.sort() ?? [], source.match(/\{\w+\}/g)?.sort() ?? [], `${locale}: ${source}`);
+    }
   }
 });
 

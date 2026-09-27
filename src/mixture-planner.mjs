@@ -1,4 +1,4 @@
-import { getLocale, t } from './i18n.mjs';
+import { getFormatLocale, getLocale, t } from './i18n.mjs';
 import { renderPlantWebResult, searchPlantWeb } from './plant-web.mjs';
 import { escapeHtml as esc, icon, pageHeading } from './ui.mjs';
 
@@ -75,7 +75,11 @@ const readAllFields = (form) => {
 /** @param {HTMLElement} panel @param {Recipe} recipe @returns {void} */
 const renderPreparation = (panel, recipe) => {
   const result = prepareMixture(recipe);
-  panel.querySelector('[data-mixture-result]').innerHTML = `<h3>${esc(recipe.product)}</h3><p>${esc(recipe.crop)} · ${esc(recipe.purpose)}</p><p class="price">${result.amount.toLocaleString(undefined, { maximumFractionDigits: 3 })} ${result.unit} product</p><p>Prepare ${result.finished} L of finished mixture for ${recipe.area} ha: ${Math.ceil(result.finished / recipe.tank)} tank loads at up to ${recipe.tank} L each. Top up each load to its finished volume. Follow the label’s mixing order, protective equipment and application restrictions.</p><p>Full tank: ${(result.amount / result.finished * Math.min(recipe.tank, result.finished)).toLocaleString(undefined, { maximumFractionDigits: 3 })} ${result.unit} product. Final tank: ${(result.finished - (Math.ceil(result.finished / recipe.tank) - 1) * recipe.tank).toLocaleString(undefined, { maximumFractionDigits: 3 })} L finished mixture.</p><p class="muted">Reference: ${esc(recipe.source)}</p><p class="muted">Scaled from your entered label rate; this recipe has not been independently verified. Do not combine products unless their labels permit it.</p>`;
+  const format = (value) => value.toLocaleString(getFormatLocale(), { maximumFractionDigits: 3 });
+  const loads = Math.ceil(result.finished / recipe.tank);
+  const fullTank = result.amount / result.finished * Math.min(recipe.tank, result.finished);
+  const finalTank = result.finished - (loads - 1) * recipe.tank;
+  panel.querySelector('[data-mixture-result]').innerHTML = `<h3>${esc(recipe.product)}</h3><p>${esc(recipe.crop)} · ${esc(recipe.purpose)}</p><p class="price">${esc(t('{amount} {unit} product', { amount: format(result.amount), unit: result.unit }))}</p><p>${esc(t('Prepare {finished} L of finished mixture for {area} ha: {loads} tank loads at up to {tank} L each. Top up each load to its finished volume. Follow the label’s mixing order, protective equipment and application restrictions.', { finished: format(result.finished), area: format(recipe.area), loads, tank: format(recipe.tank) }))}</p><p>${esc(t('Full tank: {amount} {unit} product. Final tank: {volume} L finished mixture.', { amount: format(fullTank), unit: result.unit, volume: format(finalTank) }))}</p><p class="muted">${esc(t('Reference: {source}', { source: recipe.source }))}</p><p class="muted">${esc(t('Scaled from your entered label rate; this recipe has not been independently verified. Do not combine products unless their labels permit it.'))}</p>`;
 };
 /** @param {HTMLElement} panel @param {AbortSignal} signal @returns {Promise<void>} */
 const researchOptions = async (panel, signal) => {
