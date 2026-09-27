@@ -158,9 +158,16 @@ const initializeMobileRoles = () => {
 /** @param {string} path @returns {void} */
 const initializeMobileOnboarding = (path) => {
   MAIN.classList.remove('is-role-onboarding');
-  MAIN.classList.toggle('mobile-onboarding', path.startsWith('/onboarding/') || path.startsWith('/auth/'));
+  const isSetupComplete = path.endsWith('/setup-complete');
+  MAIN.classList.toggle('mobile-onboarding', isSetupComplete || path.startsWith('/onboarding/') || path.startsWith('/auth/'));
   if (path === '/onboarding/role') { initializeMobileRoles(); return; }
   if (!window.matchMedia('(max-width: 759px)').matches) return;
+  if (isSetupComplete) {
+    MAIN.classList.add('is-role-onboarding');
+    createOnboardingVisual('check');
+    MAIN.querySelector('.land-setup-confirmation').prepend(MAIN.querySelector('.page-heading'));
+    return;
+  }
   if (!['/onboarding/farmer', '/onboarding/pilot', '/auth/sign-in', '/auth/sign-up'].includes(path)) return;
   const form = MAIN.querySelector('form[data-form]');
   if (!form) return;
@@ -317,7 +324,7 @@ const onClick = async (event) => {
     const url = new URL(link.href);
     if (url.origin !== location.origin || url.hash) return;
     event.preventDefault();
-    navigate(url.pathname);
+    navigate(`${url.pathname}${url.search}`);
   } catch (error) { reportError(error); }
 };
 /** @param {HTMLFormElement} form @returns {Record<string,string|string[]>} */

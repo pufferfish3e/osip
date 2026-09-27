@@ -1,6 +1,7 @@
 /** Authored UI copy only; user-entered records keep their original language. */
 export const WORKSPACE_TRANSLATIONS = {
   "ms": {
+    "{count} field ready": "{count} petak siap",
     "Want to plan your first task?": "Mahu merancang tugas pertama anda?",
     "Plan a task": "Rancang tugas",
     "Skip for now": "Langkau buat masa ini",
@@ -489,6 +490,7 @@ export const WORKSPACE_TRANSLATIONS = {
     "{service} with {name}": "{service} bersama {name}"
   },
   "zh-Hans": {
+    "{count} field ready": "{count} 个田块已就绪",
     "Want to plan your first task?": "想安排您的第一个任务吗？",
     "Plan a task": "安排任务",
     "Skip for now": "暂时跳过",

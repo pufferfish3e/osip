@@ -41,5 +41,7 @@ test('whole-land and legacy single-field submissions remain supported', () => {
   }
   const html = renderWorkspace(`/farm/${FARM.id}/schedule`, structuredClone(DEMO));
   assert.match(html, /type="checkbox" name="plotIds"/);
+  assert.match(html, /class="task-field-pills"/);
+  assert.match(html, /class="task-field-pill"/);
   assert.doesNotMatch(html, /select[^>]*name="plotId"/);
 });
