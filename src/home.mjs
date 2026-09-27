@@ -1,0 +1,45 @@
+import { ARTICLES, WEATHER } from './data.mjs';
+import { convertArea } from './calculators.mjs';
+import { getFormatLocale, t } from './i18n.mjs';
+import { escapeHtml as esc, localizeDemoState, icon, friendlyDate } from './ui.mjs';
+
+const QUICK_ACTIONS = [
+  ['/services/pilots', 'drone', 'Book a pilot'],
+  ['/learn/courses', 'school', 'Find a course'],
+  ['/tools', 'calculator', 'Calculate'],
+  ['/shop', 'shopping-bag', 'Shop'],
+];
+
+/** @param {import('./store.mjs').AppState} state @returns {string} */
+const farmOverview = (state) => {
+  const farm = state.farms[0];
+  const unit = state.settings.unit === 'acre' ? 'acre' : 'ha';
+  const area = convertArea(state.farms.reduce((total, item) => total + item.area, 0), 'ha', unit);
+  return `<section class="farm-overview"><img src="/assets/farm.jpg" alt="${esc(t('Aerial view of rice fields'))}" fetchpriority="high"><div class="farm-overview-content"><div class="flex items-center justify-between gap-3"><span class="photo-label">${icon('plant-2', 16)} ${esc(farm?.name ?? t('My land'))}</span><span class="photo-label">${esc(t(farm?.isDemo || farm?.id === 'farm-1' ? 'Land' : 'My land'))}</span></div><div class="farm-total"><p>${esc(t('Your growing space'))}</p><h2>${area.toLocaleString(getFormatLocale(), { maximumFractionDigits: 2 })}<span>${esc(t(unit))}</span></h2><p>${esc(t(state.farms.length === 1 ? '{count} land parcel' : '{count} land parcels', { count: state.farms.length }))} <span aria-hidden="true">·</span> ${esc(farm?.crop ?? t('Ready for a new season'))}</p></div><a class="photo-button" href="/farm">${esc(t('View my land'))} ${icon('arrow-up-right', 18)}</a></div></section>`;
+};
+
+/** @param {string} farmId @returns {string} */
+const weatherCard = (farmId) => `<a class="weather-preview card" href="/weather/${esc(farmId)}"><div class="flex items-center justify-between"><span class="eyebrow">${esc(t('In your field'))}</span>${icon('arrow-up-right', 20)}</div><p class="weather-location">${esc(t('Perak'))}</p><div class="weather-current"><strong>${WEATHER.temperature}°</strong><span class="weather-sun">${icon('cloud', 72)}</span></div><p class="weather-condition">${esc(t(WEATHER.condition))}</p><div class="weather-metrics"><span>${icon('wind', 18)} ${esc(t('Northeast {speed} km/h', { speed: WEATHER.windSpeed }))}</span><span>${icon('droplet', 18)} ${esc(t('{chance}% rain', { chance: WEATHER.rainChance }))}</span></div><p class="weather-caption">${esc(t('A little context for your day.'))}</p></a>`;
+
+/** @param {import('./store.mjs').AppState} state @returns {string} */
+const scheduleSection = (state) => {
+  const tasks = [...state.tasks].sort((first, second) => `${first.dueDate}${first.time}`.localeCompare(`${second.dueDate}${second.time}`)).slice(0, 3);
+  return `<section class="home-schedule"><div class="section-heading"><h2>${esc(t('On your schedule'))}</h2><a class="link" href="/farm/${esc(state.farms[0]?.id ?? 'farm-1')}/schedule">${esc(t('See all'))} ${icon('chevron-right', 16)}</a></div><div class="card task-list">${tasks.length ? tasks.map((task) => `<div class="task-row ${task.done ? 'is-done' : ''}"><button class="task-check" data-action="toggle-task" data-id="${esc(task.id)}" aria-label="${esc(t(task.done ? 'Reopen {title}' : 'Complete {title}', { title: task.title }))}" aria-pressed="${task.done}">${task.done ? icon('check', 16) : ''}</button><a class="row-copy" href="/farm/${esc(task.farmId)}/tasks/${esc(task.id)}"><strong class="row-title">${esc(task.title)}</strong><span class="row-subtitle">${esc(t(task.category))} <span aria-hidden="true">·</span> ${friendlyDate(task.dueDate)}</span></a><span class="task-time">${esc(task.time)}</span></div>`).join('') : `<p class="card-pad muted">${esc(t('A clear schedule. Add your next field task.'))}</p>`}<a class="add-task" href="/farm/${esc(state.farms[0]?.id ?? 'farm-1')}/schedule">${icon('plus', 19)} ${esc(t('Add a task'))}</a></div></section>`;
+};
+
+/** @returns {string} */
+const learnSection = () => `<section class="home-learn"><div class="section-heading"><h2>${esc(t('Grow your know-how'))}</h2><a class="link" href="/learn">${esc(t('Explore'))} ${icon('chevron-right', 16)}</a></div><a class="knowledge-feature card" href="/learn/knowledge/${ARTICLES[0].slug}"><div class="knowledge-copy"><p class="eyebrow">${esc(t('Field notes · 4 min read'))}</p><h3>${esc(t('Better farming starts below the surface.'))}</h3><span class="link">${esc(t('Get to know your soil'))} ${icon('arrow-up-right', 18)}</span></div><img src="/assets/crops.jpg" alt="${esc(t('Rice growing on green terraces'))}" loading="lazy"></a></section>`;
+
+/** @param {import('./store.mjs').AppState} inputState @returns {string} */
+export function renderHome(inputState) {
+  inputState = localizeDemoState(inputState);
+  const realFarms = inputState.farms.filter((farm) => farm.isDemo === false || (!farm.isDemo && farm.id !== 'farm-1'));
+  const state = realFarms.length ? { ...inputState, farms: realFarms, tasks: inputState.tasks.filter((task) => realFarms.some((farm) => farm.id === task.farmId)) } : inputState;
+  const date = new Intl.DateTimeFormat(getFormatLocale(), { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+  const hasChosenRole = state.profile.hasChosenRole ?? state.profile.onboarded;
+  const greeting = t(new Date().getHours() < 12 ? 'Good morning, {name}' : 'Good day, {name}', { name: state.profile.firstName ?? state.profile.name.trim().split(/\s+/)[0] });
+  const heading = hasChosenRole
+    ? `<header class="home-heading"><div><p class="eyebrow">${date}</p><h1 tabindex="-1">${esc(greeting)}</h1>${!state.profile.onboarded ? `<a class="link" href="/onboarding/${state.profile.role}">${esc(t('Finish your setup'))} ${icon('arrow-right', 16)}</a>` : ''}</div><a class="button button-secondary desktop-only" href="/farm">${icon('plant-2', 18)} ${esc(t('My land'))}</a></header>`
+    : `<header class="home-heading home-welcome"><div><h1 tabindex="-1">${esc(t('Make yourself at home'))}</h1><p class="muted">${esc(t('Set up your farmer or pilot profile.'))}</p></div><a class="button" href="/onboarding/role">${esc(t('Choose role'))} ${icon('arrow-right', 18)}</a></header>`;
+  return `${heading}<div class="overview-grid">${farmOverview(state)}${weatherCard(state.farms[0]?.id ?? 'farm-1')}</div><div class="quick-actions" aria-label="${esc(t('Quick actions'))}">${QUICK_ACTIONS.map(([href, symbol, label]) => `<a href="${href}" class="quick-action"><span>${icon(symbol, 25)}</span>${esc(t(label))}</a>`).join('')}</div><div class="home-lower">${scheduleSection(state)}${learnSection()}</div><section class="news-strip"><div><p class="eyebrow">${esc(t('The bigger picture'))}</p><h2>${esc(t('What’s growing in your world?'))}</h2></div><a class="button button-secondary" href="/news">${esc(t('Latest stories'))} ${icon('arrow-up-right', 18)}</a></section>`;
+}

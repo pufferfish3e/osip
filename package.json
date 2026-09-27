@@ -1,0 +1,21 @@
+{
+  "name": "aura-farm-companion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node --env-file-if-exists=.env server.mjs",
+    "test:core": "node --test tests/store.test.mjs tests/calculators.test.mjs tests/actions.test.mjs tests/drafts.test.mjs tests/renderers.test.mjs tests/pwa.test.cjs",
+    "test:plant": "node --test tests/plant-guides.test.mjs tests/plant-action.test.mjs tests/plant-photo.test.mjs tests/plant-analysis.test.mjs"
+  },
+  "dependencies": {
+    "gsap": "3.15.0",
+    "leaflet": "^1.9.4"
+  },
+  "devDependencies": {
+    "@tabler/icons": "3.48.0",
+    "@tailwindcss/cli": "4.3.3",
+    "tailwindcss": "4.3.3"
+  }
+}

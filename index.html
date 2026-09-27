@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#eaf0eb">
+  <meta name="description" data-i18n-content="Your farm, knowledge, and services in one place. A mobile field companion from Aura." content="Your farm, knowledge, and services in one place. A mobile field companion from Aura.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/assets/icon-192.png">
+  <link rel="stylesheet" href="/assets/vendor/leaflet.css">
+  <link rel="stylesheet" href="/assets/app.css">
+  <title>Aura — Your field companion</title>
+  <script src="/assets/vendor/gsap.min.js" defer></script>
+  <script src="/assets/vendor/leaflet.js" defer></script>
+  <script type="module">import { initializeStaticLanguage } from "/src/language.mjs"; initializeStaticLanguage(document);</script>
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main" data-i18n="Skip to content">Skip to content</a>
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="app-frame">
+    <header id="topbar" class="topbar"></header>
+    <div id="app-notice" class="app-notice" role="status" hidden></div>
+    <main id="main" class="main-content" tabindex="-1"><p class="loading-state" data-i18n="Opening your farm…">Opening your farm…</p></main>
+    <footer class="app-footer">Aura <span data-i18n="Made for life in the field.">Made for life in the field.</span></footer>
+  </div>
+  <nav id="bottom-nav" class="bottom-nav" aria-label="Main navigation" data-i18n-label="Main navigation"></nav>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="install-dialog" class="install-dialog"><form method="dialog"><button class="icon-button close-dialog" aria-label="Close" data-i18n-label="Close">✕</button><h2 data-i18n="Your farm, one tap away.">Your farm, one tap away.</h2><p data-i18n="On iPhone, open this page in Safari, tap Share, then Add to Home Screen. On Android or desktop, choose Install app from your browser menu.">On iPhone, open this page in Safari, tap Share, then Add to Home Screen. On Android or desktop, choose Install app from your browser menu.</p><button class="button" data-i18n="Got it">Got it</button></form></dialog>
+  <noscript><p class="notice">Enable JavaScript to use the farm companion. Your browser can still show this page offline after installation.</p></noscript>
+</body>
+</html>

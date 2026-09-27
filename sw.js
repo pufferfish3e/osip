@@ -1,0 +1,110 @@
+const CACHE_PREFIX = 'osip-shell-';
+// The build fingerprints shell content so browsers discover asset updates.
+const CACHE_NAME = `${CACHE_PREFIX}v3-d3ce58d39516f094`;
+const SHELL_FILES = [
+  '/', '/index.html', '/offline.html', '/app.js', '/manifest.webmanifest',
+  '/src/extension-articles.mjs', '/src/article-catalogue.mjs', '/src/article-library.mjs', '/src/data.mjs', '/src/store.mjs', '/src/spray-calculator.mjs', '/src/calculators.mjs', '/src/ui.mjs', '/src/shell.mjs',
+  '/src/home.mjs', '/src/workspace.mjs', '/src/discover.mjs', '/src/pilot-matcher.mjs', '/src/keypad-calculator.mjs', '/src/actions.mjs', '/src/pwa.mjs', '/src/drafts.mjs',
+  '/src/land-editor.mjs', '/src/land-records.mjs', '/src/land-grid.mjs', '/src/land-setup.mjs', '/src/field-boundary.mjs', '/src/land-boundary.mjs', '/src/land-map.mjs', '/src/schedule.mjs', '/src/plant-web.mjs', '/src/plant-action.mjs', '/src/plant-guides.mjs', '/src/plant-help.mjs', '/src/plant-photo.mjs',
+  '/src/i18n.mjs', '/src/language.mjs', '/src/locales/core.mjs', '/src/locales/workspace.mjs', '/src/locales/discover.mjs', '/src/locales/plant.mjs',
+  '/assets/vendor/leaflet.js', '/assets/vendor/leaflet.css', '/assets/app.css', '/assets/vendor/gsap.min.js', '/assets/icons.svg', '/assets/mark.svg', '/assets/avatar-default.svg',
+  '/assets/profile-ahmad.jpg', '/assets/farm.jpg', '/assets/crops.jpg', '/assets/drone.jpg', '/assets/course.jpg',
+  '/assets/learn-soil.jpg', '/assets/learn-soil-thumb.jpg', '/assets/learn-water.jpg', '/assets/learn-water-thumb.jpg', '/assets/learn-scouting.jpg', '/assets/learn-scouting-thumb.jpg', '/assets/learn-harvest.jpg', '/assets/learn-harvest-thumb.jpg',
+  '/assets/icon-192.png', '/assets/icon-512.png', '/assets/icon-maskable.png',
+];
+const SHELL_PATHS = new Set(SHELL_FILES);
+const APP_ROUTES = ['/farm', '/learn', '/services', '/tools', '/weather', '/onboarding', '/auth', '/account', '/notifications', '/bookings', '/messages', '/pilot', '/shop', '/checkout', '/orders', '/news', '/plant-help'];
+
+/** @param {string} pathname @returns {boolean} */
+const isAppRoute = (pathname) => pathname === '/' || pathname === '/index.html'
+  || APP_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+
+/** @returns {Promise<void>} */
+const installShell = async () => {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(SHELL_FILES);
+  } catch (error) {
+    console.error('Aura offline installation failed.', error);
+    throw error;
+  }
+};
+
+/** @returns {Promise<void>} */
+const activateShell = async () => {
+  try {
+    const keys = await caches.keys();
+    for (const key of keys) {
+      if (key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME) await caches.delete(key);
+    }
+    await self.clients.claim();
+  } catch (error) {
+    console.error('Aura offline activation failed.', error);
+    throw error;
+  }
+};
+
+/** @returns {Promise<Response>} */
+const offlineResponse = async () => {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    const fallback = await cache.match('/offline.html');
+    if (fallback) return fallback;
+  } catch (error) {
+    console.error('Aura offline fallback is unavailable.', error);
+  }
+  return new Response('You are offline. Open Aura after reconnecting.', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+};
+
+/** @param {Request} request @returns {Promise<Response>} */
+const respondFromShell = async (request) => {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(request, { ignoreSearch: true });
+    return cached ?? await fetch(request);
+  } catch (error) {
+    console.warn('Aura asset is unavailable offline.', error);
+    return new Response('Asset unavailable offline.', { status: 503 });
+  }
+};
+
+/** @param {Request} request @returns {Promise<Response>} */
+const respondToNavigation = async (request) => {
+  try {
+    if (isAppRoute(new URL(request.url).pathname)) {
+      const cache = await caches.open(CACHE_NAME);
+      const shell = await cache.match('/index.html');
+      if (shell) return shell;
+    }
+    return await fetch(request);
+  } catch (error) {
+    console.warn('Aura page is unavailable offline.', error);
+    return await offlineResponse();
+  }
+};
+
+/** @returns {Promise<void>} */
+const applyUpdate = async () => {
+  try {
+    await self.skipWaiting();
+  } catch (error) {
+    console.error('Aura update could not activate.', error);
+    throw error;
+  }
+};
+
+self.addEventListener('install', (event) => { event.waitUntil(installShell()); });
+self.addEventListener('activate', (event) => { event.waitUntil(activateShell()); });
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') event.waitUntil(applyUpdate());
+});
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  const url = new URL(request.url);
+  if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname === '/api' || url.pathname.startsWith('/api/')) return;
+  if (request.mode === 'navigate') {
+    event.respondWith(respondToNavigation(request));
+    return;
+  }
+  if (SHELL_PATHS.has(url.pathname)) event.respondWith(respondFromShell(request));
+});
