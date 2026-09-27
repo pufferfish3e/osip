@@ -78,6 +78,15 @@ const savePlot = (state, fields) => {
   farm.plots.push({ id, name: text(fields, 'name'), crop: text(fields, 'crop'), area, plantedAt });
   return { redirect: `/farm/${farm.id}/plots/${id}`, message: t('Plot saved.') };
 };
+/** @param {Fields} fields @param {import('./store.mjs').Farm} farm @param {string} fallback @returns {string[]} */
+const selectedTaskFields = (fields, farm, fallback) => {
+  if (fields.plotIds === undefined) return [fallback];
+  if (!Array.isArray(fields.plotIds) || !fields.plotIds.length || fields.plotIds.some((id) => typeof id !== 'string')) throw new ActionError('Choose at least one field.');
+  const ids = [...new Set(fields.plotIds)];
+  for (const id of ids) if (id) find(farm.plots, (plot) => plot.id === id, 'Field');
+  if (ids.includes('') && ids.length > 1) throw new ActionError('Choose whole land or individual fields.');
+  return ids;
+};
 /** @param {AppState} state @param {Fields} fields @returns {ActionResult} */
 const saveTask = (state, fields) => {
   const farmId = text(fields, 'farmId');
@@ -91,12 +100,16 @@ const saveTask = (state, fields) => {
   if (prior) return { redirect: `/farm/${farmId}/schedule`, message: t('Event created') };
   const existing = id ? find(state.tasks, (task) => task.id === id && task.farmId === farmId, 'Task') : undefined;
   const plotId = fields.plotId === undefined ? existing?.plotId ?? '' : text(fields, 'plotId', false);
-  if (plotId) find(farm.plots, (plot) => plot.id === plotId, 'Field');
+  const plotIds = selectedTaskFields(fields, farm, plotId);
+  for (const selectedId of plotIds) if (selectedId) find(farm.plots, (plot) => plot.id === selectedId, 'Field');
   const repeat = text(fields, 'repeat', false) || existing?.repeat || 'none';
   if (!['none', 'daily', 'weekly', 'monthly'].includes(repeat)) throw new ActionError('Choose a valid repeat frequency.');
   const repeatAnchorDay = existing?.dueDate === dueDate ? (existing.repeatAnchorDay ?? Number(dueDate.slice(8))) : Number(dueDate.slice(8));
   const next = { ...(creationKey ? { creationKey } : {}), repeat, repeatAnchorDay, id: id || makeId('task'), farmId, plotId, title: text(fields, 'title'), dueDate, time, category: text(fields, 'category'), done: existing?.done ?? false, reminder: Boolean(fields.reminder) };
-  if (existing) Object.assign(existing, next); else state.tasks.push(next);
+  for (const [index, selectedId] of plotIds.entries()) {
+    const assigned = { ...next, plotId: selectedId, id: index === 0 ? next.id : makeId('task') };
+    if (existing && index === 0) Object.assign(existing, assigned); else state.tasks.push(assigned);
+  }
   return { redirect: `/farm/${farmId}/schedule`, message: t('Task saved. Reminders appear while the app is open.') };
 };
 /** @param {AppState} state @param {AppState['tasks'][number]} task @returns {void} */

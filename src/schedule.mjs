@@ -102,11 +102,17 @@ export function initializeSchedule(root) {
 /** @param {HTMLFormElement} form @param {HTMLDialogElement} dialog @returns {void} */
 const renderTaskReview = (form, dialog) => {
   const values = [form.elements.title.value, parseDate(form.elements.dueDate.value).toLocaleDateString(getFormatLocale(), { dateStyle: 'long' }), form.elements.time.value, t(form.elements.category.value), t({ none: 'Never', daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' }[form.elements.repeat.value])];
-  values.push(form.elements.plotId?.selectedOptions[0]?.textContent ?? t('Whole land'));
+  values.push([...form.querySelectorAll('[name="plotIds"]:checked')].map((input) => input.nextElementSibling.textContent).join(', ') || t('Whole land'));
   dialog.querySelectorAll('[data-task-review]').forEach((item, index) => { item.textContent = values[index]; });
 };
 /** @param {HTMLElement} panel @param {HTMLDialogElement} dialog @param {HTMLFormElement} form @param {HTMLElement} picker @param {string[]} marked @param {()=>void} open @param {()=>void} next @param {()=>void} back @returns {void} */
 const bindTaskSheet = (panel, dialog, form, picker, marked, open, next, back) => {
+  form.addEventListener('change', (event) => {
+    if (event.target.name !== 'plotIds') return;
+    const inputs = [...form.querySelectorAll('[name="plotIds"]')];
+    if (event.target.checked) inputs.filter((input) => event.target.value ? !input.value : input !== event.target).forEach((input) => { input.checked = false; });
+    if (!inputs.some((input) => input.checked)) inputs.find((input) => !input.value).checked = true;
+  });
   let pickerMonth = '';
   panel.querySelector('[data-plan-task]').addEventListener('click', () => { open(); pickerMonth = form.elements.dueDate.value.slice(0, 7); dialog.showModal(); });
   dialog.querySelector('[data-task-close]').addEventListener('click', () => dialog.close());

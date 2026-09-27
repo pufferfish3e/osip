@@ -5,7 +5,8 @@
     "roles": [
       "farmer"
     ],
-    "onboarded": false
+    "onboarded": false,
+    "photo": "/assets/profile-ahmad.jpg"
   },
   "farms": [
     {

@@ -1,3 +1,4 @@
+import { initializeProfilePicture } from './profile-photo.mjs';
 import { initializeMixturePlanner } from './mixture-planner.mjs';
 import { initializeArticleReader } from './article-reader.mjs';
 import { initializeFieldCare } from './field-care.mjs';
@@ -98,7 +99,12 @@ const render = (shouldAnimate = false) => {
   if (gridPanel) disposeLandMap = initializeLandSetup(gridPanel, STORE, window.L);
   const recordPanel = MAIN.querySelector('[data-land-editor]');
   if (recordPanel) disposeLandMap = initializeLandEditor(recordPanel, STORE, window.L);
+  initializeProfilePicture(MAIN, STORE);
   initializeSchedule(MAIN);
+  if (new URLSearchParams(window.location.search).get('plan') === '1') {
+    const planner = MAIN.querySelector('[data-plan-task]');
+    if (planner) { planner.click(); history.replaceState({}, '', window.location.pathname); }
+  }
   initializeFieldCare(MAIN, STORE);
   initializePilotMatcher(MAIN);
   initializeArticleLibrary(MAIN, state);
@@ -318,6 +324,7 @@ const onClick = async (event) => {
 const fieldsFrom = (form) => {
   const data = new FormData(form);
   const fields = Object.fromEntries(data);
+  if (form.dataset.form === 'task') fields.plotIds = data.getAll('plotIds').map(String);
   if (form.dataset.form === 'availability') fields.days = data.getAll('days').map(String);
   return fields;
 };
@@ -443,7 +450,7 @@ const checkReminders = () => {
 
 initializeLocalizedValidation(document);
 document.addEventListener('land-record-saved', (event) => { navigate(event.detail.path); });
-document.addEventListener('land-grid-saved', (event) => { navigate(`/farm/${event.detail.id}`); });
+document.addEventListener('land-grid-saved', (event) => { navigate(`/farm/${event.detail.id}/setup-complete`); });
 document.addEventListener('land-field-saved', () => { render(); });
 document.addEventListener('land-field-deleted', (event) => { navigate(`/farm/${encodeURIComponent(event.detail.farmId)}`); toast('Field deleted.'); });
 document.addEventListener('click', onClick);

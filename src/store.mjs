@@ -1,3 +1,4 @@
+import { isProfilePhoto } from './profile-photo.mjs';
 import { INITIAL_STATE } from './data.mjs';
 import { isFieldBoundary } from './field-boundary.mjs';
 import { isLandBoundary } from './land-boundary.mjs';
@@ -15,7 +16,7 @@ import { STORAGE_PROFILE } from './storage-seed.mjs';
 /** @typedef {{id:string,title:string,body:string,date:string,read:boolean}} Notification */
 /**
  * @typedef {object} AppState
- * @property {{name:string,firstName?:string,lastName?:string,role:Role,roles:Role[],onboarded:boolean,hasChosenRole?:boolean}} profile
+ * @property {{name:string,firstName?:string,lastName?:string,photo?:string,role:Role,roles:Role[],onboarded:boolean,hasChosenRole?:boolean}} profile
  * @property {Farm[]} farms
  * @property {Task[]} tasks
  * @property {Booking[]} bookings
@@ -133,6 +134,7 @@ const validateProfileAndSettings = (value) => {
     && isStringList(profile.roles) && profile.roles.every((role) => ROLES.includes(role))
     && (profile.firstName === undefined || typeof profile.firstName === 'string')
     && (profile.lastName === undefined || typeof profile.lastName === 'string')
+    && isProfilePhoto(profile.photo)
     && typeof profile.onboarded === 'boolean'
     && (profile.hasChosenRole === undefined || typeof profile.hasChosenRole === 'boolean'), 'Saved profile is invalid.');
   requireValid(hasStrings(settings, ['unit', 'language', 'currency']), 'Saved preferences are invalid.');

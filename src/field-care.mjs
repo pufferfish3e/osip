@@ -91,7 +91,8 @@ const openCareReminder = (root, sheet, plotId, category, reopen) => {
   try {
     root.querySelector('[data-plan-task]').click();
     const form = root.querySelector('[data-form="task"]');
-    form.elements.plotId.value = plotId; form.elements.category.value = category;
+    for (const input of form.querySelectorAll('[name="plotIds"]')) input.checked = input.value === plotId;
+    form.elements.category.value = category;
     form.elements.title.value = t(category); form.elements.reminder.checked = true;
   } catch (error) {
     console.error('Could not open field reminder.', error);

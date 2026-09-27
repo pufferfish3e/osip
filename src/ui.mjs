@@ -1,3 +1,4 @@
+import { isProfilePhoto } from './profile-photo.mjs';
 import { INITIAL_STATE } from './data.mjs';
 import { getFormatLocale, t } from './i18n.mjs';
 
@@ -55,7 +56,7 @@ export function localizeDemoState(state) {
     return original && task.title === original.title ? { ...task, title: t(task.title) } : task;
   });
   const profile = state.profile.name === 'Farmer'
-    ? { ...state.profile, name: INITIAL_STATE.profile.name } : state.profile;
+    ? { ...state.profile, name: INITIAL_STATE.profile.name || state.profile.name } : state.profile;
   const notifications = state.notifications.map((notification) => {
     const original = INITIAL_STATE.tasks.find((task) => notification.id.startsWith(`reminder-${task.id}-`) && notification.title === task.title);
     return original ? { ...notification, title: t(notification.title) } : notification;
@@ -63,7 +64,8 @@ export function localizeDemoState(state) {
   return { ...state, farms, tasks, profile, notifications };
 }
 
-/** @returns {string} */
-export function profilePhoto() {
-  return '<img class="profile-photo" src="/assets/profile-ahmad.jpg" alt="" width="256" height="256">';
+/** @param {{photo?:string}} profile @returns {string} */
+export function profilePhoto(profile = {}) {
+  const source = profile.photo && isProfilePhoto(profile.photo) ? profile.photo : '/assets/avatar-default.svg';
+  return `<img class="profile-photo" src="${escapeHtml(source)}" alt="" width="256" height="256">`;
 }
