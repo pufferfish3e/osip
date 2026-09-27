@@ -3,13 +3,32 @@ import { escapeHtml as esc, icon } from './ui.mjs';
 
 const DAYS_PER_WEEK = 7;
 const SELECTED_DATES = new Map();
+const CALENDAR_VIEWS = new Map();
+
+/** @param {{selected:string,month:string,isExpanded:boolean}} view @param {{calendarDate?:string,calendarMove?:string,shouldToggle?:boolean}} action @param {string} fallback @returns {{selected:string,month:string,isExpanded:boolean}} */
+export const nextCalendarView = (view, action, fallback = calendarDate(new Date())) => {
+  const next = { ...view };
+  if (action.calendarDate) { next.selected = action.calendarDate; next.month = next.selected.slice(0, 7); }
+  if (action.shouldToggle) {
+    next.isExpanded = !next.isExpanded;
+    next.month = (next.selected || fallback).slice(0, 7);
+  }
+  if (action.calendarMove) {
+    const date = parseDate(next.isExpanded ? `${next.month}-01` : next.selected || fallback);
+    if (next.isExpanded) date.setMonth(date.getMonth() + Number(action.calendarMove));
+    else date.setDate(date.getDate() + DAYS_PER_WEEK * Number(action.calendarMove));
+    next.month = calendarDate(date).slice(0, 7);
+    if (!next.isExpanded) next.selected = calendarDate(date);
+  }
+  return next;
+};
 /** @param {Date} date @returns {string} */
 export const calendarDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 /** @param {string} value @returns {Date} */
 const parseDate = (value) => new Date(`${value}T12:00:00`);
 /** @param {string} selected @param {string} month @param {boolean} isExpanded @returns {string[]} */
 export const calendarDays = (selected, month, isExpanded) => {
-  const start = parseDate(isExpanded ? `${month}-01` : selected);
+  const start = parseDate(isExpanded ? `${month}-01` : selected || calendarDate(new Date()));
   start.setDate(start.getDate() - (start.getDay() + 6) % DAYS_PER_WEEK);
   const count = isExpanded ? Math.ceil(((parseDate(`${month}-01`).getDay() + 6) % DAYS_PER_WEEK + new Date(Number(month.slice(0, 4)), Number(month.slice(5)), 0).getDate()) / DAYS_PER_WEEK) * DAYS_PER_WEEK : DAYS_PER_WEEK;
   return Array.from({ length: count }, (_, index) => {
@@ -36,11 +55,13 @@ export function initializeSchedule(root) {
   const picker = dialog.querySelector('[data-task-picker]');
   const calendar = panel.querySelector('[data-schedule-calendar]');
   let selected = form.elements.dueDate.value || SELECTED_DATES.get(panel.dataset.schedule) || today;
-  let month = selected.slice(0, 7);
-  let isExpanded = false;
+  const previousView = CALENDAR_VIEWS.get(panel.dataset.schedule);
+  let month = previousView?.month ?? selected.slice(0, 7);
+  let isExpanded = previousView?.isExpanded ?? false;
   let step = 0;
   const updateAgenda = () => {
     SELECTED_DATES.set(panel.dataset.schedule, selected);
+    CALENDAR_VIEWS.set(panel.dataset.schedule, { selected, month, isExpanded });
     if (!calendar) return;
     calendar.innerHTML = renderCalendar(selected, month, isExpanded, marked);
     panel.querySelector('[data-agenda-title]').textContent = parseDate(selected).toLocaleDateString(getFormatLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
@@ -64,15 +85,10 @@ export function initializeSchedule(root) {
   const drawPicker = () => { picker.innerHTML = renderCalendar(form.elements.dueDate.value, form.elements.dueDate.value.slice(0, 7), true, marked, false); };
   calendar?.addEventListener('click', (event) => {
     const button = event.target.closest('button'); if (!button) return;
-    if (button.dataset.calendarDate) { selected = button.dataset.calendarDate; month = selected.slice(0, 7); }
-    if (button.hasAttribute('data-calendar-expand')) isExpanded = !isExpanded;
-    if (button.dataset.calendarMove) {
-      const date = parseDate(isExpanded ? `${month}-01` : selected);
-      if (isExpanded) date.setMonth(date.getMonth() + Number(button.dataset.calendarMove));
-      else date.setDate(date.getDate() + DAYS_PER_WEEK * Number(button.dataset.calendarMove));
-      month = calendarDate(date).slice(0, 7); if (!isExpanded) selected = calendarDate(date);
-    }
+    ({ selected, month, isExpanded } = nextCalendarView({ selected, month, isExpanded }, { ...button.dataset, shouldToggle:button.hasAttribute('data-calendar-expand') }));
     updateAgenda();
+    const selector = button.hasAttribute('data-calendar-expand') ? '[data-calendar-expand]' : button.dataset.calendarDate ? `[data-calendar-date="${button.dataset.calendarDate}"]` : `[data-calendar-move="${button.dataset.calendarMove}"]`;
+    calendar.querySelector(selector)?.focus({ preventScroll:true });
   });
   bindTaskSheet(panel, dialog, form, picker, marked, () => { step = 0; form.reset(); form.dataset.creationKey = crypto.randomUUID(); delete form.dataset.submitted; if (!form.elements.id) form.elements.dueDate.value = selected; drawPicker(); updateStep(); }, () => {
     const input = step === 1 ? form.elements.title : step === 2 ? form.elements.time : null;

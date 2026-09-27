@@ -658,6 +658,9 @@ summary {cursor:pointer;min-height:44px;}
 .calendar-weekdays { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
 .calendar-days button { position:relative; display:flex; align-items:center; justify-content:center; min-height:44px; border:0; border-radius:12px; background:transparent; color:var(--ink); padding:8px 0; }
 .calendar-days button[aria-pressed="true"] { color: white; background: var(--blue); }
+.calendar-days button:disabled { opacity:.35; cursor:default; }
+.pilot-match-loading { min-height:280px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:40px 24px; text-align:center; }
+.pilot-match-loading h2,.pilot-match-loading p { margin:0; }
 .calendar-days button i { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: currentColor; bottom: 5px; left: calc(50% - 2px); }
 .calendar-days .calendar-outside:not([aria-pressed="true"]) { color: var(--muted); opacity: .65; }
 [data-agenda] [hidden],.task-sheet [hidden] { display: none !important; }
@@ -917,7 +920,7 @@ body:has(.course-booking-sheet[open]) { overflow: hidden; }
 .pilot-preference-options [aria-pressed="true"] { background: var(--blue); color: #fff; }
 .pilot-preference-sheet [hidden] { display: none !important; }
 .pilot-catalog-shortcut { display: block; padding: 16px; width: 100%; border: 0; background: transparent; color: var(--blue); font: inherit; cursor: pointer; }
-.pilot-match-dialog { position: fixed; inset: 0; margin: auto; padding: 7px; width: min(360px, calc(100% - 32px)); max-height: 88dvh; overflow: auto; border: 1px solid #ffffff30; border-radius: 38px; background: #303432; color: #fff; box-shadow: 0 24px 80px #0005; }
+.pilot-match-dialog { position: fixed; inset: 0; margin: auto; padding: 0; width: min(360px, calc(100% - 32px)); max-height: 88dvh; overflow: auto; border: 0; border-radius: 31px; background: #303432; color: #fff; box-shadow: 0 24px 80px #0005; }
 .pilot-match-dialog::backdrop { background: #101714a6; backdrop-filter: blur(8px); }
 .pilot-portrait-card { position: relative; isolation: isolate; min-height: 510px; overflow: hidden; border-radius: 31px; display: flex; align-items: end; }
 .pilot-match-cover { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: center 25%; }

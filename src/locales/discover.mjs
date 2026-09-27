@@ -1,6 +1,10 @@
 /** @type {Record<string, Record<string, string>>} */
 export const DISCOVER_TRANSLATIONS = {
   "ms": {
+    "Finding your pilot…": "Mencari juruterbang anda…",
+    "Demo matching": "Padanan demo",
+    "Demo match": "Padanan demo",
+    "Illustrative score. Service and area are filtered; this is not confirmed availability.": "Skor ilustrasi. Perkhidmatan dan kawasan ditapis; ketersediaan belum disahkan.",
     "Chilli": "Cili", "Starfruit": "Belimbing", "Durian": "Durian", "Ginger": "Halia", "Guava": "Jambu batu",
     "Malaysia": "Malaysia",
     "In Malaysia": "Di Malaysia",
@@ -402,6 +406,10 @@ export const DISCOVER_TRANSLATIONS = {
     "The sample course catalogue shows how farmers could compare topics, formats, and dates. All courses are free. All instructors, venues, seats, and enrollments in this prototype are illustrative.": "Katalog kursus contoh menunjukkan cara petani membandingkan topik, format dan tarikh. Semua kursus adalah percuma. Semua pengajar, lokasi, tempat dan pendaftaran dalam prototaip ini hanyalah ilustrasi."
   },
   "zh-Hans": {
+    "Finding your pilot…": "正在寻找飞手…",
+    "Demo matching": "演示匹配",
+    "Demo match": "演示匹配",
+    "Illustrative score. Service and area are filtered; this is not confirmed availability.": "示意评分。已筛选服务和地区，但未确认实际可用时间。",
     "Chilli": "辣椒", "Starfruit": "杨桃", "Durian": "榴莲", "Ginger": "姜", "Guava": "番石榴",
     "Malaysia": "马来西亚",
     "In Malaysia": "在马来西亚",

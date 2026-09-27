@@ -1,13 +1,31 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
-import { calendarDate, calendarDays, renderCalendar } from '../src/schedule.mjs';
+import { calendarDate, calendarDays, nextCalendarView, renderCalendar } from '../src/schedule.mjs';
 import { INITIAL_STATE } from '../src/data.mjs';
 import { renderWorkspace } from '../src/workspace.mjs';
 
 test('calendar weeks span month and year boundaries without UTC date shifts', () => {
   assert.deepEqual(calendarDays('2027-01-01', '2027-01', false), ['2026-12-28','2026-12-29','2026-12-30','2026-12-31','2027-01-01','2027-01-02','2027-01-03']);
   assert.equal(calendarDate(new Date(2026, 8, 26, 0, 5)), '2026-09-26');
+});
+
+test('collapse restores the selected month after browsing and expansion preserves its date', () => {
+  const start = { selected:'2026-09-27', month:'2026-09', isExpanded:false };
+  const expanded = nextCalendarView(start, { shouldToggle:true });
+  const browsed = nextCalendarView(expanded, { calendarMove:'1' });
+  assert.equal(browsed.month, '2026-10');
+  assert.equal(browsed.selected, start.selected);
+  const collapsed = nextCalendarView(browsed, { shouldToggle:true });
+  assert.deepEqual(collapsed, start);
+  assert.equal(nextCalendarView(collapsed, { shouldToggle:true }).isExpanded, true);
+});
+
+test('flexible-date calendar can collapse and expand without choosing a date', () => {
+  const collapsed = nextCalendarView({ selected:'', month:'2026-10', isExpanded:true }, { shouldToggle:true }, '2026-09-27');
+  assert.equal(collapsed.selected, '');
+  assert.equal(collapsed.month, '2026-09');
+  assert.equal(collapsed.isExpanded, false);
 });
 
 test('expanded calendar covers every day including leap February and six-week months', () => {

@@ -10,26 +10,24 @@ const QUICK_ACTIONS = [
   ['/shop', 'shopping-bag', 'Shop'],
 ];
 
-/** @param {import('./store.mjs').AppState} state @returns {{farm:import('./store.mjs').Farm,field:import('./store.mjs').Plot,count:number}|undefined} */
-export function selectFeaturedField(state) {
+/** @param {import('./store.mjs').AppState} state @returns {{farm:import('./store.mjs').Farm,count:number}|undefined} */
+export function selectFeaturedLand(state) {
   let selected;
   for (const farm of state.farms) {
-    for (const field of farm.plots) {
-      const count = state.tasks.filter((task) => !task.done && task.farmId === farm.id && (!task.plotId || task.plotId === field.id)).length;
-      if (!selected || count > selected.count) selected = { farm, field, count };
-    }
+    const count = state.tasks.filter((task) => !task.done && task.farmId === farm.id).length;
+    if (!selected || count > selected.count) selected = { farm, count };
   }
   return selected;
 }
 
 /** @param {import('./store.mjs').AppState} state @returns {string} */
 const farmOverview = (state) => {
-  const featured = selectFeaturedField(state);
+  const featured = selectFeaturedLand(state);
   const farm = featured?.farm ?? state.farms[0];
-  const field = featured?.field;
+  const crops = [...new Set(farm?.plots.map((plot) => plot.crop).filter(Boolean) ?? [])].join(', ') || farm?.crop;
   const unit = state.settings.unit === 'acre' ? 'acre' : 'ha';
-  const area = convertArea(field?.area ?? farm?.area ?? 0, 'ha', unit);
-  return `<section class="farm-overview"><img src="/assets/farm.jpg" alt="${esc(t('Aerial view of rice fields'))}" fetchpriority="high"><div class="farm-overview-content"><div class="flex items-center justify-between gap-3"><span class="photo-label">${icon('plant-2', 16)} ${esc(field?.name ?? farm?.name ?? t('My land'))}</span><span class="photo-label">${esc(t(farm?.isDemo || farm?.id === 'farm-1' ? 'Land' : 'My land'))}</span></div><div class="farm-total"><p>${esc(t('Your growing space'))}</p><h2>${area.toLocaleString(getFormatLocale(), { maximumFractionDigits: 2 })}<span>${esc(t(unit))}</span></h2><p>${featured ? `${featured.count} ${esc(t('Tasks'))}` : esc(t('{count} land parcel', { count: farm ? 1 : 0 }))} <span aria-hidden="true">·</span> ${esc(field?.crop ?? farm?.crop ?? t('Ready for a new season'))}</p></div><a class="photo-button" href="${farm ? `/farm/${esc(farm.id)}` : '/farm'}">${esc(t('View my land'))} ${icon('arrow-up-right', 18)}</a></div></section>`;
+  const area = convertArea(farm?.area ?? 0, 'ha', unit);
+  return `<section class="farm-overview"><img src="/assets/farm.jpg" alt="${esc(t('Aerial view of rice fields'))}" fetchpriority="high"><div class="farm-overview-content"><div class="flex items-center justify-between gap-3"><span class="photo-label">${icon('plant-2', 16)} ${esc(farm?.name ?? t('My land'))}</span><span class="photo-label">${esc(t(farm?.isDemo || farm?.id === 'farm-1' ? 'Land' : 'My land'))}</span></div><div class="farm-total"><p>${esc(t('Your growing space'))}</p><h2>${area.toLocaleString(getFormatLocale(), { maximumFractionDigits: 2 })}<span>${esc(t(unit))}</span></h2><p>${featured ? `${featured.count} ${esc(t('Tasks'))}` : esc(t('{count} land parcel', { count: farm ? 1 : 0 }))} <span aria-hidden="true">·</span> ${esc(crops ?? t('Ready for a new season'))}</p></div><a class="photo-button" href="${farm ? `/farm/${esc(farm.id)}` : '/farm'}">${esc(t('View my land'))} ${icon('arrow-up-right', 18)}</a></div></section>`;
 };
 
 /** @param {string} farmId @returns {string} */

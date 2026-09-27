@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import { INITIAL_STATE, NEWS, WEATHER } from '../src/data.mjs';
-import { renderHome, selectFeaturedField } from '../src/home.mjs';
+import { renderHome, selectFeaturedLand } from '../src/home.mjs';
 
 const STYLES = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 
@@ -53,17 +53,23 @@ test('home story keeps section spacing and soil card has mobile padding', () => 
   assert.match(STYLES, /@media \(max-width:759px\) \{ \.knowledge-feature\.learning-photo-card \.knowledge-copy \{ padding:24px;/);
 });
 
-test('featured field uses most unfinished tasks and stable ties', () => {
+test('featured land counts all unfinished tasks across fields and uses stable ties', () => {
   const state = structuredClone(INITIAL_STATE);
-  const farm = state.farms[0];
-  farm.plots = [{ ...farm.plots[0], id: 'first', name: 'First', area: 1 }, { ...farm.plots[0], id: 'second', name: 'Busy field', area: 2 }];
-  state.tasks = [{ ...INITIAL_STATE.tasks[0], id: 'a', farmId: farm.id, plotId: 'second', done: false }, { ...INITIAL_STATE.tasks[0], id: 'b', farmId: farm.id, plotId: 'first', done: true }];
-  assert.equal(selectFeaturedField(state).field.id, 'second');
+  const first = state.farms[0];
+  first.isDemo = false;
+  first.name = 'First land';
+  const second = { ...structuredClone(first), id: 'land-2', name: 'Busy land', area: 8, plots: [{ ...first.plots[0], id: 'rice', crop: 'Rice' }, { ...first.plots[0], id: 'coconut', crop: 'Coconut' }] };
+  state.farms.push(second);
+  const base = INITIAL_STATE.tasks[0];
+  state.tasks = [{ ...base, id: 'a', farmId: first.id, done: false }, { ...base, id: 'b', farmId: second.id, plotId: 'rice', done: false }, { ...base, id: 'c', farmId: second.id, plotId: 'coconut', done: false }, { ...base, id: 'done', farmId: first.id, done: true }];
+  assert.equal(selectFeaturedLand(state).farm.id, second.id);
+  assert.equal(selectFeaturedLand(state).count, 2);
   const html = renderHome(state);
-  assert.match(html, /Busy field/);
-  assert.ok(html.includes(`class="photo-button" href="/farm/${farm.id}"`));
+  assert.match(html, /Busy land/);
+  assert.match(html, /Rice, Coconut/);
+  assert.ok(html.includes(`class="photo-button" href="/farm/${second.id}"`));
   state.tasks = [];
-  assert.equal(selectFeaturedField(state).field.id, 'first');
+  assert.equal(selectFeaturedLand(state).farm.id, first.id);
   state.farms = [];
-  assert.equal(selectFeaturedField(state), undefined);
+  assert.equal(selectFeaturedLand(state), undefined);
 });

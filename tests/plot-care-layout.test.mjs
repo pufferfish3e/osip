@@ -25,3 +25,18 @@ test('field and land tasks retain their separate lists and hide empty copy', () 
   assert.match(html, /Land inspection/);
   assert.match(html, /1 tasks to do/);
 });
+
+test('schedule shows assigned field and distinguishes an empty date from no saved tasks', () => {
+  const state = structuredClone(INITIAL_STATE);
+  const farm = state.farms[0];
+  const plot = farm.plots[0];
+  plot.name = 'North field';
+  plot.crop = 'Coconut';
+  state.tasks = [{ ...state.tasks[0], id: 'assigned', plotId: plot.id, done: false, dueDate: '2099-01-01' }];
+  const html = renderWorkspace('/farm/farm-1/schedule', state);
+  assert.match(html, /North field · Coconut/);
+  assert.match(html, /No tasks on this date/);
+  assert.doesNotMatch(html, /Your schedule is clear/);
+  assert.match(renderWorkspace('/farm/farm-1/tasks/assigned', state), /North field · Coconut/);
+  assert.match(renderWorkspace('/farm/farm-1/plots/plot-1', state), /1 tasks to do|plot-care-count">1/);
+});
