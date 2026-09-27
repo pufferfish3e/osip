@@ -115,10 +115,10 @@ const plotInsights = (farm, plot) => {
   const share = farm.area > 0 ? Math.min(PERCENT_SCALE, Math.max(0, plot.area / farm.area * PERCENT_SCALE)) : 0;
   const percentage = Math.round(share);
   const age = plantingAge(plot.plantedAt);
-  const ageValue = age === null ? t('Not recorded') : String(Math.abs(age));
+  const ageValue = age === null ? '—' : String(Math.abs(age));
   const areaNote = plot.isAreaEstimated ? t('Estimated from mapped boundary') : t('Of {area} ha recorded for this land', { area: farm.area });
   const ageLabel = age !== null && age < 0 ? 'Days until planting' : 'Days since planting';
-  return `<div class="plot-insights"><section class="card card-pad plot-area-insight"><div class="plot-area-ring" style="--plot-share:${share}%" role="img" aria-label="${esc(t('{percent}% of land area', { percent: percentage }))}"><strong>${percentage}<small>%</small></strong></div><div><h2>${esc(t('Land area share'))}</h2><p class="plot-insight-value">${esc(String(plot.area))} <small>${esc(t('ha'))}</small></p><p class="muted">${esc(areaNote)}</p></div></section><section class="card card-pad plot-age-insight"><span class="muted">${esc(t(ageLabel))}</span><strong class="plot-insight-value">${esc(ageValue)}</strong><span class="muted">${esc(t('Planted'))} · ${esc(plot.plantedAt ? dateLabel(plot.plantedAt) : t('Not recorded'))}</span></section></div>`;
+  return `<div class="plot-insights"><section class="card card-pad plot-area-insight"><div class="plot-area-ring" style="--plot-share:${share}%" role="img" aria-label="${esc(t('{percent}% of land area', { percent: percentage }))}"><strong>${percentage}<small>%</small></strong></div><div><h2>${esc(t('Land area share'))}</h2><p class="plot-insight-value">${esc(String(plot.area))} <small>${esc(t('ha'))}</small></p><p class="muted">${esc(areaNote)}</p></div></section><section class="plot-age-insight"><span class="plot-age-icon" aria-hidden="true">${icon('calendar', 22)}</span><div><span class="muted">${esc(t(age === null ? 'Planted' : ageLabel))}</span>${age === null ? `<p class="plot-age-missing">${esc(t('Not recorded'))}</p>` : `<strong class="plot-insight-value">${esc(ageValue)} <small>${esc(t('days'))}</small></strong><span class="muted">${esc(dateLabel(plot.plantedAt))}</span>`}</div></section></div>`;
 };
 
 /** @param {Farm} farm @param {string} plotId @param {AppState} state @returns {string} */
@@ -128,7 +128,14 @@ const renderPlot = (farm, plotId, state) => {
   const tasks = state.tasks.filter((task) => task.farmId === farm.id && !task.done && !task.plotId).sort((first, second) => `${first.dueDate}${first.time}`.localeCompare(`${second.dueDate}${second.time}`));
   const hasMappedPlot = plot.boundary?.length || (farm.plots.length === 1 && plot.area === farm.area);
   const map = hasMappedPlot ? section('Field boundary', renderFarmMap(farm, plot.id)) : '';
-  return `${back(`/farm/${farm.id}`, farm.name)}${pageHeading('', plot.name, `${plot.crop} · ${farm.location}`)}${map}${plotInsights(farm, plot)}<div data-schedule="${esc(farm.id)}">${section('Field care', taskList(farm, state.tasks.filter((task) => task.farmId === farm.id && task.plotId === plot.id && !task.done).sort((first, second) => `${first.dueDate}${first.time}`.localeCompare(`${second.dueDate}${second.time}`))), `<button type="button" class="button" data-plan-task>${icon('plus', 18)} ${esc(t('Plan a task'))}</button>`)}${renderTaskSheet(farm, undefined, plot.id)}</div>${section('Land-wide work', `<div class="plot-work-summary"><span class="muted">${esc(t('Tasks to do'))}</span><strong>${tasks.length}</strong></div>${taskList(farm, tasks.slice(0, 3))}`, link(`/farm/${farm.id}/schedule`, esc(t('Open land schedule')), 'link'))}`;
+  return `${back(`/farm/${farm.id}`, farm.name)}${pageHeading('', plot.name, `${plot.crop} · ${farm.location}`)}${map}${plotInsights(farm, plot)}${renderPlotCare(farm, plot, state, tasks)}`;
+};
+
+/** @param {Farm} farm @param {import('./store.mjs').Plot} plot @param {AppState} state @param {Task[]} landTasks @returns {string} */
+const renderPlotCare = (farm, plot, state, landTasks) => {
+  const fieldTasks = state.tasks.filter((task) => task.farmId === farm.id && task.plotId === plot.id && !task.done).sort((first, second) => `${first.dueDate}${first.time}`.localeCompare(`${second.dueDate}${second.time}`));
+  const content = fieldTasks.length ? taskList(farm, fieldTasks) : `<div class="plot-care-empty"><span aria-hidden="true">${icon('circle-check', 24)}</span><div><strong>${esc(t('Your schedule is clear'))}</strong><p>${esc(t('Plan your next field task.'))}</p></div></div>`;
+  return `<div class="plot-care" data-schedule="${esc(farm.id)}"><section class="plot-care-panel"><header><h2>${esc(t('Field care'))}</h2><span class="plot-care-count">${fieldTasks.length}</span></header>${content}<button type="button" class="button plot-care-plan" data-plan-task>${icon('plus', 18)} ${esc(t('Plan a task'))}</button></section>${renderTaskSheet(farm, undefined, plot.id)}</div><section class="plot-land-work"><a href="/farm/${esc(farm.id)}/schedule" class="plot-land-work-link"><span class="plot-age-icon" aria-hidden="true">${icon('calendar', 22)}</span><span><strong>${esc(t('Land-wide work'))}</strong><span class="muted">${esc(t('{count} tasks to do', { count: landTasks.length }))}</span></span>${icon('chevron-right', 20)}</a>${landTasks.length ? taskList(farm, landTasks.slice(0, 3)) : ''}</section>`;
 };
 
 /** @param {Farm} farm @param {AppState} state @returns {string} */

@@ -14,6 +14,7 @@ const DEFAULT_PORT = 4173;
 const MAX_PORT = 65535;
 const ROUTE_PREFIXES = ['/farm', '/learn', '/services', '/tools', '/weather', '/onboarding', '/auth', '/account', '/notifications', '/bookings', '/messages', '/pilot', '/shop', '/checkout', '/orders', '/news', '/plant-help'];
 const PUBLIC_FILES = new Set([
+  '/data/active.json', '/data/demo.json', '/data/newuser.json', '/src/storage-seed.mjs',
   '/src/real-products.mjs', '/src/land-covers.mjs',
   '/src/mixture-planner.mjs',
   '/assets/shop-power.jpg', '/assets/shop-weather.jpg',
@@ -158,7 +159,8 @@ const startServer = async () => {
   server.on('error', (error) => { console.error('OSIP server error.', error); });
 };
 
-if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
+const IS_DIRECT_ENTRY = Boolean(process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url);
+if (IS_DIRECT_ENTRY || process.env.VERCEL === '1') {
   try {
     await startServer();
   } catch (error) {

@@ -1,5 +1,8 @@
 export const CORE_TRANSLATIONS = {
   ms: {
+    "Plan your next field task.": "Rancang tugas petak anda yang seterusnya.",
+    "{count} tasks to do": "{count} tugas perlu dibuat",
+    "days": "hari",
     "Enter a positive label rate and a tank volume up to 10,000 L.": "Masukkan kadar label positif dan isipadu tangki sehingga 10,000 L.",
     "Select the units stated on the product label.": "Pilih unit yang dinyatakan pada label produk.",
     "A dilution percentage must be below 100%.": "Peratusan pencairan mesti kurang daripada 100%.",
@@ -453,6 +456,9 @@ export const CORE_TRANSLATIONS = {
     'Crop care': 'Penjagaan tanaman',
   },
   'zh-Hans': {
+    "Plan your next field task.": "安排下一项田块任务。",
+    "{count} tasks to do": "{count}项待办任务",
+    "days": "天",
     "Enter a positive label rate and a tank volume up to 10,000 L.": "请输入大于零的标签用量，罐容量不得超过10,000 L。",
     "Select the units stated on the product label.": "选择产品标签注明的单位。",
     "A dilution percentage must be below 100%.": "稀释百分比须低于100%。",
