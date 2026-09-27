@@ -23,7 +23,7 @@ const PUBLIC_FILES = new Set([
   '/assets/article-aphids.jpg', '/assets/article-caterpillars.jpg', '/assets/article-leafminers.jpg', '/assets/article-rice-blast.jpg', '/assets/article-rice-planthoppers.jpg', '/assets/article-snails.jpg', '/assets/article-water-stress.jpg', '/assets/article-waterlogging.jpg', '/assets/article-whiteflies.jpg', '/assets/article-yellow-leaves.jpg',
   '/src/land-editor.mjs', '/src/land-records.mjs', '/src/land-grid.mjs', '/src/land-setup.mjs', '/src/field-boundary.mjs', '/src/land-boundary.mjs', '/src/land-map.mjs', '/src/field-care.mjs', '/src/schedule.mjs',
   '/assets/vendor/leaflet.js', '/assets/vendor/leaflet.css',
-  '/index.html', '/offline.html', '/app.js', '/sw.js', '/manifest.webmanifest',
+  '/index.html', '/offline.html', '/src/browser-app.mjs', '/sw.js', '/manifest.webmanifest',
   '/src/open-articles.mjs', '/src/article-reader.mjs', '/src/extension-articles.mjs', '/src/article-catalogue.mjs', '/src/article-library.mjs', '/src/data.mjs', '/src/store.mjs', '/src/spray-calculator.mjs', '/src/calculators.mjs', '/src/ui.mjs', '/src/shell.mjs',
   '/src/home.mjs', '/src/workspace.mjs', '/src/discover.mjs', '/src/pilot-matcher.mjs', '/src/keypad-calculator.mjs', '/src/actions.mjs', '/src/pwa.mjs', '/src/drafts.mjs',
   '/src/plant-web.mjs', '/src/plant-action.mjs', '/src/plant-guides.mjs', '/src/plant-help.mjs', '/src/plant-photo.mjs',
@@ -160,7 +160,7 @@ const startServer = async () => {
 };
 
 const IS_DIRECT_ENTRY = Boolean(process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url);
-if (IS_DIRECT_ENTRY || process.env.VERCEL === '1') {
+if (IS_DIRECT_ENTRY) {
   try {
     await startServer();
   } catch (error) {

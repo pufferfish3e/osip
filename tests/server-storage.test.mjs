@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { runInNewContext } from 'node:vm';
 
 import { createAppServer } from '../server.mjs';
 
@@ -24,7 +25,21 @@ test('server serves JSON seeds and their browser module with correct content typ
 });
 
 test('Vercel import activates the listener without changing local direct startup', () => {
-  const source = readFileSync(new URL('../server.mjs', import.meta.url), 'utf8');
-  assert.match(source, /if \(IS_DIRECT_ENTRY \|\| process.env.VERCEL === '1'\)/);
-  assert.match(source, /process.env.PORT \?\? DEFAULT_PORT/);
+  const source = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  assert.match(source, /APP_SERVER.listen\(PORT\)/);
+  assert.match(source, /process.env.PORT/);
+  assert.doesNotMatch(source, /document|localStorage|browser-app/);
+});
+
+test('Vercel-selected app entry starts a server without browser globals', () => {
+  const source = readFileSync(new URL('../app.js', import.meta.url), 'utf8').replace(/^import[^\n]+\n/, '');
+  let listenedPort;
+  runInNewContext(source, {
+    process:{ env:{ PORT:'3000' } }, console,
+    createAppServer:() => ({ on:() => {}, listen:(port) => { listenedPort = port; } }),
+  });
+  assert.equal(listenedPort, 3000);
+  const page = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(page, /src="\/src\/browser-app.mjs"/);
+  assert.doesNotMatch(page, /src="\/app.js"/);
 });

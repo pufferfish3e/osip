@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { runInNewContext } from 'node:vm';
 
-const APP_SOURCE = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+const APP_SOURCE = readFileSync(new URL('../src/browser-app.mjs', import.meta.url), 'utf8');
 const RENDER_START = APP_SOURCE.indexOf('const render = (shouldAnimate = false) => {');
 const RENDER_END = APP_SOURCE.indexOf('  initializeSchedule(MAIN);', RENDER_START);
 const RENDER_LIFECYCLE = `${APP_SOURCE.slice(RENDER_START, RENDER_END)} }; globalThis.renderPage = render;`;

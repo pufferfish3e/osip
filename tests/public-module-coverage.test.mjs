@@ -16,5 +16,5 @@ test('app module imports are included in the server allowlist and offline cache'
       await visit(new URL(match[1], `https://app.test${path}`).pathname);
     }
   };
-  await visit('/app.js');
+  await visit('/src/browser-app.mjs');
 });
