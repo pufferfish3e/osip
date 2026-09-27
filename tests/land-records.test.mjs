@@ -58,11 +58,18 @@ test('splitting saved land updates that parcel without creating another or overw
   assert.throws(()=>store.update(state=>saveLandGrid(state,split)));
   assert.throws(()=>store.update(state=>saveLandRecord(state,{...draft,id,boundary:BOX.map(([lat,lng])=>[lat+0.1,lng])})));
 });
-test('deletion removes parcel tasks and their reminders but blocks linked booking records', () => {
+test('deletion removes land tasks and reminders while retaining cancelled booking history', () => {
   const store=createStore(storage()); let id;
   store.update(state=>{id=saveLandRecord(state,draft);state.tasks.push({id:'land-task',farmId:id,title:'Water',dueDate:'2026-10-01',time:'08:00',category:'General',done:false,reminder:true});state.notifications.push({id:'reminder-land-task-2026-10-01-08:00',title:'Water',body:'Water',date:'2026-10-01',read:false});});
-  const state=store.getState(); state.bookings.push({farmId:id}); assert.throws(()=>deleteLandRecord(state,id),/booking/);
+  store.update(state => {
+    state.bookings.push({ id:'linked', type:'pilot', providerId:'azlan', title:'Mapping', date:'2026-10-01', time:'09:00', farmId:id, status:'confirmed', notes:'', price:50, conversation:[], rescheduleRequest:{ date:'2026-10-02', time:'10:00' } });
+    state.bookings.push({ id:'other', type:'pilot', providerId:'azlan', title:'Survey', date:'2026-10-01', time:'09:00', farmId:'another-land', status:'requested', notes:'', price:50, conversation:[] });
+  });
   store.update(state=>deleteLandRecord(state,id));
+  assert.equal(store.getState().farms.some(land => land.id === id), false);
+  assert.equal(store.getState().bookings.find(booking => booking.id === 'linked').status, 'cancelled');
+  assert.equal(store.getState().bookings.find(booking => booking.id === 'linked').rescheduleRequest, undefined);
+  assert.equal(store.getState().bookings.find(booking => booking.id === 'other').status, 'requested');
   assert.equal(store.getState().tasks.some(task=>task.farmId===id),false); assert.equal(store.getState().notifications.some(note=>note.id.startsWith('reminder-land-task-')),false);
 });
 

@@ -1,3 +1,4 @@
+import { canCompleteTask } from './actions.mjs';
 import { NEWS, WEATHER } from './data.mjs';
 import { convertArea } from './calculators.mjs';
 import { getFormatLocale, t } from './i18n.mjs';
@@ -6,6 +7,8 @@ import { escapeHtml as esc, localizeDemoState, icon, friendlyDate } from './ui.m
 const QUICK_ACTIONS = [
   ['/services/pilots', 'drone', 'Book a pilot'],
   ['/learn/courses', 'school', 'Find a course'],
+  ['/services/experts', 'plant-2', 'Find an expert'],
+  ['/bookings', 'calendar', 'View bookings'],
   // ['/tools', 'calculator', 'Pesticide calculator'],
 ];
 
@@ -36,7 +39,7 @@ const weatherCard = () => `<a class="weather-preview card" href="/weather"><div 
 const scheduleSection = (state) => {
   const tasks = [...state.tasks].sort((first, second) => `${first.dueDate}${first.time}`.localeCompare(`${second.dueDate}${second.time}`)).slice(0, 3);
   if (!tasks.length) return `<section class="home-schedule"><div class="section-heading"><h2>${esc(t('On your schedule'))}</h2></div><a class="button" href="${state.farms.length ? `/farm/${esc(state.farms[0].id)}/schedule` : '/farm/new'}">${icon('plus', 19)} ${esc(t('Add a task'))}</a></section>`;
-  return `<section class="home-schedule"><div class="section-heading"><h2>${esc(t('On your schedule'))}</h2><a class="link" href="/farm/${esc(state.farms[0]?.id ?? 'farm-1')}/schedule">${esc(t('See all'))} ${icon('chevron-right', 16)}</a></div><div class="card task-list">${tasks.length ? tasks.map((task) => `<div class="task-row ${task.done ? 'is-done' : ''}"><button class="task-check" data-action="toggle-task" data-id="${esc(task.id)}" aria-label="${esc(t(task.done ? 'Reopen {title}' : 'Complete {title}', { title: task.title }))}" aria-pressed="${task.done}">${task.done ? icon('check', 16) : ''}</button><a class="row-copy" href="/farm/${esc(task.farmId)}/tasks/${esc(task.id)}"><strong class="row-title">${esc(task.title)}</strong><span class="row-subtitle">${esc(t(task.category))} <span aria-hidden="true">·</span> ${friendlyDate(task.dueDate)}</span></a><span class="task-time">${esc(task.time)}</span></div>`).join('') : `<p class="card-pad muted">${esc(t('A clear schedule. Add your next field task.'))}</p>`}<a class="add-task" href="/farm/${esc(state.farms[0]?.id ?? 'farm-1')}/schedule">${icon('plus', 19)} ${esc(t('Add a task'))}</a></div></section>`;
+  return `<section class="home-schedule"><div class="section-heading"><h2>${esc(t('On your schedule'))}</h2><a class="link" href="/farm/${esc(state.farms[0]?.id ?? 'farm-1')}/schedule">${esc(t('See all'))} ${icon('chevron-right', 16)}</a></div><div class="card task-list">${tasks.length ? tasks.map((task) => `<div class="task-row ${canCompleteTask(task) ? '' : 'is-task-unavailable'}"><button class="task-check" data-action="toggle-task" data-id="${esc(task.id)}" ${canCompleteTask(task) ? '' : 'disabled'} aria-label="${esc(t(task.done ? 'Completed {title}' : 'Complete {title}', { title: task.title }))}" aria-pressed="${task.done}">${task.done ? icon('check', 16) : ''}</button><a class="row-copy" href="/farm/${esc(task.farmId)}/tasks/${esc(task.id)}"><strong class="row-title">${esc(task.title)}</strong><span class="row-subtitle">${esc(t(task.category))} <span aria-hidden="true">·</span> ${friendlyDate(task.dueDate)}</span></a><span class="task-time">${esc(task.time)}</span></div>`).join('') : `<p class="card-pad muted">${esc(t('A clear schedule. Add your next field task.'))}</p>`}<a class="add-task" href="/farm/${esc(state.farms[0]?.id ?? 'farm-1')}/schedule">${icon('plus', 19)} ${esc(t('Add a task'))}</a></div></section>`;
 };
 
 /** @returns {string} */

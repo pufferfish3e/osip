@@ -1,6 +1,9 @@
+import { latestCompletedTasks } from './task-history.mjs';
+import { EXPERTS } from './expert-data.mjs';
+import { canCompleteTask } from './actions.mjs';
 import { renderFieldCareSheet } from './field-care.mjs';
 import { landCover } from './land-covers.mjs';
-import { cropEmoji } from './land-map.mjs';
+import { cropEmoji, fieldTaskUrgency } from './land-map.mjs';
 import { isLandBoundary } from './land-boundary.mjs';
 import { renderLandEditor } from './land-editor.mjs';
 import { renderLandSetup } from './land-setup.mjs';
@@ -69,11 +72,14 @@ const stat = (label, value, detail = '') => `<div class="stat"><span class="mute
 /** @param {Farm} farm @param {AppState} state @returns {string} */
 const farmCard = (farm, state) => {
   const remainingTasks = state.tasks.filter((task) => task.farmId === farm.id && !task.done).length;
-  return `<a class="media-card learning-photo-card farm-card" href="/farm/${esc(farm.id)}"><img class="media-image" src="${esc(landCover(farm, state.farms.findIndex((land) => land.id === farm.id)))}" alt="" width="1200" height="800" loading="lazy"><div class="learning-photo-body"><div class="farm-card-heading"><h2>${esc(farm.name)}</h2></div><p class="farm-card-meta learning-photo-meta">${farm.isDemo || farm.id === 'farm-1' ? `${esc(t('Land'))} · ` : ''}${esc(farm.crop)} · ${esc(String(farm.area))} ${esc(t(farm.unit ?? 'ha'))} · ${esc(t(remainingTasks === 1 ? '{count} task' : '{count} tasks', { count: remainingTasks }))}</p><div class="learning-photo-footer"><span class="button">${esc(t('View my land'))}${icon('arrow-up-right', 18)}</span></div></div></a>`;
+  return `<div class="farm-card-wrap"><a class="media-card learning-photo-card farm-card" href="/farm/${esc(farm.id)}"><img class="media-image" src="${esc(landCover(farm, state.farms.findIndex((land) => land.id === farm.id)))}" alt="" width="1200" height="800" loading="lazy"><div class="learning-photo-body"><div class="farm-card-heading"><h2>${esc(farm.name)}</h2></div><p class="farm-card-meta learning-photo-meta">${farm.isDemo || farm.id === 'farm-1' ? `${esc(t('Land'))} · ` : ''}${esc(farm.crop)} · ${esc(String(farm.area))} ${esc(t(farm.unit ?? 'ha'))} · ${esc(t(remainingTasks === 1 ? '{count} task' : '{count} tasks', { count: remainingTasks }))}</p><div class="learning-photo-footer"><span class="button">${esc(t('View my land'))}${icon('arrow-up-right', 18)}</span></div></div></a><button type="button" class="land-card-delete" data-land-card-delete="${esc(farm.id)}" aria-label="${esc(t('Delete {name}', { name: farm.name }))}" title="${esc(t('Delete land'))}">${icon('trash', 22)}</button></div>`;
 };
 
+/** @returns {string} */
+const renderLandCardDeleteSheet = () => `<dialog class="task-sheet land-card-delete-sheet" data-card-delete-sheet aria-labelledby="card-delete-title" aria-describedby="card-delete-description"><div class="land-delete-symbol" aria-hidden="true">${icon('trash', 28)}</div><h2 id="card-delete-title" data-card-delete-title>${esc(t('Delete land'))}</h2><p id="card-delete-description">${esc(t('Delete this land, its fields and scheduled tasks? This cannot be undone.'))}</p><p role="alert" data-card-delete-error></p><div class="land-card-delete-actions"><button type="button" class="button button-secondary" data-card-delete-cancel autofocus>${esc(t('Cancel'))}</button><button type="button" class="button land-card-delete-confirm" data-card-delete-confirm>${esc(t('Delete land'))}</button></div></dialog>`;
+
 /** @param {AppState} state @returns {string} */
-const renderFarms = (state) => `${pageHeading('', t('My land'))}<div class="section-stack"><div class="card-grid">${state.farms.map((farm) => farmCard(farm, state)).join('')}</div><a class="button" href="/farm/new">${icon('plus', 18)} ${esc(t('Add land'))}</a></div>`;
+const renderFarms = (state) => `${pageHeading('', t('My land'))}<div class="section-stack" data-land-list><div class="card-grid">${state.farms.map((farm) => farmCard(farm, state)).join('')}</div><a class="button" href="/farm/new">${icon('plus', 18)} ${esc(t('Add land'))}</a>${renderLandCardDeleteSheet()}</div>`;
 
 /** @param {Farm} farm @param {Task[]} tasks @returns {string} */
 /** @param {Farm} farm @param {Task} task @returns {string} */
@@ -81,7 +87,7 @@ const taskAssignment = (farm, task) => {
   const assigned = farm.plots.find((plot) => plot.id === task.plotId);
   return assigned ? `${assigned.name} · ${assigned.crop}` : t('Whole land');
 };
-const taskList = (farm, tasks) => tasks.length ? `<div class="card list">${tasks.map((task) => `<div class="list-row" data-task-date="${esc(task.dueDate)}" data-task-done="${task.done}"><button class="task-check ${task.done ? 'is-complete' : ''}" type="button" data-action="toggle-task" data-id="${esc(task.id)}" aria-label="${esc(t(task.done ? 'Reopen {title}' : 'Complete {title}', { title: task.title }))}" aria-pressed="${task.done}">${task.done ? icon('check', 16) : ''}</button><a class="row-copy" href="/farm/${esc(farm.id)}/tasks/${esc(task.id)}"><span class="row-title">${esc(task.title)}</span><span class="row-subtitle">${esc(dateLabel(task.dueDate))} · ${esc(task.time)} · ${esc(t(task.category))} · ${esc(taskAssignment(farm, task))}${task.repeat && task.repeat !== 'none' ? ` · ${esc(taskRepeatLabel(task))}` : ''}</span></a>${task.reminder ? `<span class="muted" aria-label="${esc(t('Reminder enabled'))}">${icon('bell', 18)}</span>` : ''}</div>`).join('')}</div>` : `<div class="task-empty">${icon('calendar', 28)}<p>${esc(t('No tasks available right now.'))}</p></div>`;
+const taskList = (farm, tasks) => tasks.length ? `<div class="card list">${tasks.map((task) => `<div class="list-row ${canCompleteTask(task) ? '' : 'is-task-unavailable'}" data-task-date="${esc(task.dueDate)}" data-task-done="${task.done}"><button class="task-check task-status-control ${task.done ? 'is-complete' : ''}" type="button" data-action="toggle-task" data-id="${esc(task.id)}" ${canCompleteTask(task) ? '' : 'disabled'} aria-label="${esc(t(task.done ? 'Completed {title}' : 'Complete {title}', { title: task.title }))}" aria-pressed="${task.done}">${task.done ? icon('check', 16) : ''}</button><a class="row-copy" href="/farm/${esc(farm.id)}/tasks/${esc(task.id)}"><span class="row-title task-status-title"><span class="sr-only">${esc(t(task.done ? 'Completed' : 'Pending'))}: </span><span>${esc(task.title)}</span></span><span class="row-subtitle">${esc(farm.plots.find((plot) => plot.id === task.plotId)?.name ?? t('Whole land'))}</span></a><button type="button" class="icon-button task-delete" data-action="delete-task" data-id="${esc(task.id)}" aria-label="${esc(t('Delete task'))}" title="${esc(t('Delete task'))}">${icon('trash', 18)}</button></div>`).join('')}</div>` : `<div class="task-empty">${icon('calendar', 28)}<p>${esc(t('No tasks available right now.'))}</p></div>`;
 
 /** @param {Task|undefined} task @returns {string} */
 const repeatPicker = (task) => {
@@ -94,17 +100,17 @@ const repeatPicker = (task) => {
 /** @param {Farm} farm @param {Task[]} tasks @returns {string} */
 const plotsList = (farm, tasks) => {
   const plots = farm.plots ?? [];
-  return plots.length ? `<div class="card list">${plots.map((plot) => `<a class="list-row" href="/farm/${esc(farm.id)}/plots/${esc(plot.id)}"><span class="row-icon field-list-emoji" aria-hidden="true">${cropEmoji(plot.crop)}</span><span class="row-copy"><span class="row-title">${esc(plot.name)}</span><span class="row-subtitle">${esc(plot.crop)} · ${esc(String(plot.area))} ${esc(t('ha'))}</span>${fieldReminder(plot.id, tasks)}</span>${icon('chevron-right', 18)}</a>`).join('')}</div>` : emptyState('No fields recorded yet', 'Your land’s crop and area are saved above.');
+  return plots.length ? `<div class="field-card-scroll" aria-label="${esc(t('Your fields'))}">${plots.map((plot) => `<a class="field-summary-card" href="/farm/${esc(farm.id)}/plots/${esc(plot.id)}"><span class="field-card-crop" aria-hidden="true">${cropEmoji(plot.crop)}</span><span class="row-copy"><span class="row-title">${esc(plot.name)}</span><span class="row-subtitle">${esc(plot.crop)} · ${esc(String(plot.area))} ${esc(t('ha'))}</span>${fieldReminder(plot.id, tasks)}</span></a>`).join('')}</div>` : emptyState('No fields recorded yet', 'Your land’s crop and area are saved above.');
 };
 
 /** @param {Farm} farm @param {AppState} state @returns {string} */
 const renderFarm = (farm, state) => {
   const tasks = state.tasks.filter((task) => task.farmId === farm.id);
-  const remainingTasks = tasks.filter((task) => !task.done);
-  const completedTasks = tasks.filter((task) => task.done);
+  const remainingTasks = tasks.filter((task) => !task.done).sort((first, second) => `${first.dueDate}${first.time}`.localeCompare(`${second.dueDate}${second.time}`));
+  const completedTasks = latestCompletedTasks(tasks);
   const isSetupComplete = farm.plots.length > 0 && farm.plots.every((plot) => isLandBoundary(plot.boundary) && plot.crop?.trim());
   const landView = isSetupComplete ? renderLandOverview(farm) : renderLandEditor(farm, true);
-  return `${back('/farm', t('All land'))}${pageHeading(farm.location, farm.name, `${farm.crop}${farm.isDemo || farm.id === 'farm-1' ? ` · ${t('Land')}` : ''}`)}<div data-schedule="${esc(farm.id)}"><div class="toolbar land-task-actions"><button type="button" class="button" data-plan-task>${icon('plus', 18)} ${esc(t('Schedule task'))}</button>${link(`/farm/${farm.id}/schedule`, esc(t('Open schedule')), 'button button-secondary')}</div>${renderTaskSheet(farm)}${renderFieldCareSheet()}</div>${landView}<div class="card card-pad land-summary"><div class="stat-grid">${stat('Total area', `${farm.area} ${t(farm.unit ?? 'ha')}`)}${stat('Fields', String(farm.plots.length))}${stat('Crop types', String(new Set(farm.plots.map((plot) => plot.crop.trim().toLowerCase()).filter(Boolean)).size))}</div><div class="toolbar">${link(`/weather`, `${icon('cloud', 18)} ${esc(t('Local weather'))}`)}</div></div>${section('Your fields', `<div class="section-stack">${plotsList(farm, tasks)}</div>`)}${section('Next on your land', taskList(farm, remainingTasks.slice(0, 4)), link(`/farm/${farm.id}/schedule`, esc(t('View all')), 'link'))}${completedTasks.length ? section('Completed', taskList(farm, completedTasks.slice(-4).reverse()), link(`/farm/${farm.id}/schedule`, esc(t('View all')), 'link')) : ''}`;
+  return `${back('/farm', t('All land'))}${pageHeading(farm.location, farm.name, `${farm.crop}${farm.isDemo || farm.id === 'farm-1' ? ` · ${t('Land')}` : ''}`)}<div data-schedule="${esc(farm.id)}"><div class="toolbar land-task-actions"><button type="button" class="button" data-plan-task>${icon('plus', 18)} ${esc(t('Schedule task'))}</button>${link(`/farm/${farm.id}/schedule`, esc(t('Open schedule')), 'button button-secondary')}</div>${renderTaskSheet(farm)}${renderFieldCareSheet()}</div>${landView}<div class="card card-pad land-summary"><div class="stat-grid">${stat('Total area', `${farm.area} ${t(farm.unit ?? 'ha')}`)}${stat('Fields', String(farm.plots.length))}${stat('Crop types', String(new Set(farm.plots.map((plot) => plot.crop.trim().toLowerCase()).filter(Boolean)).size))}</div><div class="toolbar">${link(`/weather`, `${icon('cloud', 18)} ${esc(t('Local weather'))}`)}</div></div>${section('Your fields', `<div class="section-stack">${plotsList(farm, tasks)}</div>`)}${section('Next on your land', taskList(farm, remainingTasks), link(`/farm/${farm.id}/schedule`, esc(t('View all')), 'link'))}${completedTasks.length ? section('Completed', taskList(farm, completedTasks.slice(0, 4)), link(`/farm/${farm.id}/schedule`, esc(t('View all')), 'link')) : ''}`;
 };
 
 const MILLISECONDS_PER_DAY = 86400000;
@@ -159,7 +165,7 @@ const renderSchedule = (farm, state) => {
 /** @param {string} plotId @param {Task[]} tasks @returns {string} */
 const fieldReminder = (plotId, tasks) => {
   const next = tasks.filter((task) => task.plotId === plotId && !task.done).sort((first, second) => `${first.dueDate}${first.time}`.localeCompare(`${second.dueDate}${second.time}`))[0];
-  return `<span class="row-subtitle">${next ? `${esc(next.title)} · ${esc(dateLabel(next.dueDate))} · ${esc(next.time)}` : esc(t('No field tasks scheduled'))}</span>`;
+  return `<span class="row-subtitle">${next ? `${esc(next.title)}` : esc(t('No field tasks scheduled'))}</span>`;
 };
 
 /** @param {Farm} farm @param {string} plotId @returns {string} */
@@ -169,7 +175,7 @@ const fieldSelection = (farm, plotId) => `<fieldset class="task-field-selection"
 const renderTaskSheet = (farm, task, plotId = task?.plotId ?? '') => `<dialog class="task-sheet" aria-labelledby="task-sheet-title"><form data-form="task">${hidden('farmId', farm.id)}${hidden('dueDate', task?.dueDate ?? '')}${task ? hidden('id', task.id) : ''}<div class="task-sheet-heading"><span class="muted" data-task-progress></span><button type="button" class="icon-button" data-task-close aria-label="${esc(t('Cancel'))}">${icon('x', 20)}</button></div><div data-task-step><h2 id="task-sheet-title">${esc(t('Choose a date'))}</h2><div data-task-picker></div></div><div data-task-step hidden><h2>${esc(t('What needs doing?'))}</h2>${field({ label: 'Task name', name: 'title', value: task?.title ?? '', placeholder: 'e.g. Check irrigation channels' })}${select('category', 'Category', TASK_CATEGORIES, task?.category ?? 'General')}${fieldSelection(farm, plotId)}</div><div data-task-step hidden><h2>${esc(t('Choose a time'))}</h2>${field({ label: 'Time', name: 'time', type: 'time', value: task?.time ?? '08:00' })}${checkbox('reminder', 'Show a reminder in my notifications', task?.reminder ?? true)}</div><div data-task-step hidden><h2>${esc(t('Does this repeat?'))}</h2>${repeatPicker(task)}</div><div data-task-step hidden><h2>${esc(t('Review your task'))}</h2><dl class="field-review">${['Task name', 'Date', 'Time', 'Category', 'Repeat', 'Field'].map((label) => `<div><dt>${esc(t(label))}</dt><dd data-task-review></dd></div>`).join('')}</dl><p class="muted">${esc(t('In-app reminders only. Background alerts are not connected.'))}</p></div><div class="task-sheet-actions"><button type="button" class="button button-secondary" data-task-back hidden>${esc(t('Back'))}</button><button type="button" class="button" data-task-next>${esc(t('Continue'))}</button><button type="submit" class="button" hidden>${esc(t(task ? 'Save changes' : 'Add to schedule'))}</button></div></form></dialog>`;
 
 /** @param {Farm} farm @param {Task} task @returns {string} */
-const renderTask = (farm, task) => `${back(`/farm/${farm.id}/schedule`, t('Land schedule'))}${pageHeading(t(task.category), task.title, farm.name)}<div data-schedule="${esc(farm.id)}"><div class="card card-pad"><div class="stat-grid">${stat('Date', task.dueDate)}${stat('Time', task.time)}${stat('Field', taskAssignment(farm, task))}</div></div><div class="toolbar"><button class="button" data-plan-task>${icon('pencil', 18)} ${esc(t('Edit task'))}</button><button class="button button-secondary" data-action="toggle-task" data-id="${esc(task.id)}">${esc(t(task.done ? 'Reopen task' : 'Mark complete'))}</button><button class="button button-secondary land-delete-button" data-action="delete-task" data-id="${esc(task.id)}">${icon('trash', 18)} ${esc(t('Delete task'))}</button></div>${renderTaskSheet(farm, task)}</div>`;
+const renderTask = (farm, task) => `${back(`/farm/${farm.id}/schedule`, t('Land schedule'))}${pageHeading(t(task.category), task.title, farm.name)}<div data-schedule="${esc(farm.id)}"><div class="card card-pad"><div class="stat-grid">${stat('Date', task.dueDate)}${stat('Time', task.time)}${stat('Field', taskAssignment(farm, task))}</div></div><div class="toolbar"><button class="button" data-plan-task>${icon('pencil', 18)} ${esc(t('Edit task'))}</button><button class="button button-secondary" data-action="toggle-task" data-id="${esc(task.id)}" ${canCompleteTask(task) ? '' : 'disabled'}>${esc(t(task.done ? 'Completed' : 'Mark complete'))}</button><button class="button button-secondary land-delete-button" data-action="delete-task" data-id="${esc(task.id)}">${icon('trash', 18)} ${esc(t('Delete task'))}</button></div>${renderTaskSheet(farm, task)}</div>`;
 
 /** @param {number[]} values @returns {string} */
 const weatherTrend = (values) => {
@@ -217,39 +223,46 @@ const notificationCopy = (notification, state) => {
 };
 
 /** @param {Booking} booking @returns {string} */
-const bookingRow = (booking) => `<a class="list-row" href="/bookings/${esc(booking.id)}"><span class="row-icon">${icon(booking.type === 'course' ? 'school' : 'drone')}</span><span class="row-copy"><span class="row-title">${esc(bookingTitle(booking))}</span><span class="row-subtitle">${esc(dateLabel(booking.date))} · ${esc(booking.time)}</span></span><span class="row-end">${badge(booking.status)}${icon('chevron-right', 16)}</span></a>`;
+const bookingRow = (booking) => `<section class="booking-list-item"><a class="list-row" href="/bookings/${esc(booking.id)}"><span class="row-icon">${icon(booking.type === 'course' ? 'school' : 'drone')}</span><span class="row-copy"><span class="row-title">${esc(bookingTitle(booking))}</span><span class="row-subtitle">${esc(dateLabel(booking.date))} · ${esc(booking.time)}</span></span><span class="row-end">${badge(booking.status)}${icon('chevron-right', 16)}</span></a>${OPEN_BOOKING_STATUSES.includes(booking.status) ? `<div class="booking-list-actions"><details class="booking-reschedule"><summary>${icon('calendar', 18)} ${esc(t('Reschedule'))}${icon('chevron-down', 18)}</summary>${rescheduleForm(booking)}</details><button type="button" class="booking-cancel" data-action="cancel-booking" data-id="${esc(booking.id)}">${esc(t('Cancel booking'))}</button></div>` : ''}</section>`;
 
 /** @param {AppState} state @returns {string} */
 const renderBookings = (state) => `${pageHeading(t('Your plans, together'), t('Bookings'), '')}<div class="toolbar">${link('/services/pilots', `${icon('drone', 18)} ${esc(t('Find a pilot'))}`, 'button')}${link('/learn/courses', `${icon('school', 18)} ${esc(t('Browse courses'))}`)}</div>${state.bookings.length ? `<div class="card list">${state.bookings.map(bookingRow).join('')}</div>` : emptyState('Nothing booked yet', 'Find a pilot for your next job or make time to learn a new technique.', '/services/pilots', 'Explore drone pilots')}`;
 
 /** @param {Booking} booking @returns {string} */
-const rescheduleForm = (booking) => `<form class="card card-pad form-stack" data-form="reschedule">${hidden('bookingId', booking.id)}<h3>${esc(t('Propose another time'))}</h3><div class="form-grid">${field({ label: 'Preferred date', name: 'date', type: 'date', value: booking.date })}${field({ label: 'Preferred time', name: 'time', type: 'time', value: booking.time })}</div><p class="muted">${esc(t('The agreed time changes only after the provider confirms.'))}</p><button type="submit" class="button button-secondary">${esc(t('Request schedule change'))}</button></form>`;
+const rescheduleForm = (booking) => `<form class="form-stack booking-reschedule-form" data-form="reschedule">${hidden('bookingId', booking.id)}<div class="form-grid">${field({ label: 'Preferred date', name: 'date', type: 'date', value: booking.date })}${field({ label: 'Preferred time', name: 'time', type: 'time', value: booking.time })}</div><p class="muted">${esc(t('The agreed time changes only after the provider confirms.'))}</p><button type="submit" class="button button-secondary">${esc(t('Request schedule change'))}</button></form>`;
 
 /** @param {Booking} booking @param {AppState} state @returns {string} */
 const renderBooking = (booking, state) => {
   const farm = state.farms.find((item) => item.id === booking.farmId);
   const pilot = PILOTS.find((item) => item.id === booking.providerId);
   const isActive = OPEN_BOOKING_STATUSES.includes(booking.status);
-  return `${back('/bookings', t('All bookings'))}${pageHeading(t(booking.type === 'course' ? 'Course booking' : 'Drone booking'), bookingTitle(booking), t('Reference {id}', { id: booking.id }))}<div class="card card-pad form-stack"><div class="toolbar">${badge(booking.status)}<span class="muted">${esc(t('Booking'))}</span></div><div class="stat-grid">${stat('Date', dateLabel(booking.date))}${stat('Time', booking.time)}${stat(booking.type === 'course' ? 'Course fee' : 'Estimate', booking.type === 'course' ? t('Free') : money(booking.price))}</div>${farm ? `<p>${icon('map-pin', 18)} ${esc(farm.name)} · ${esc(farm.location)}</p>` : ''}${pilot ? `<p>${esc(t('With {name}', { name: pilot.name }))}</p>` : ''}${booking.notes ? `<p>${esc(booking.notes)}</p>` : ''}${booking.rescheduleRequest ? notice(t('Schedule change requested: {date} at {time}. Awaiting provider confirmation.', { date: dateLabel(booking.rescheduleRequest.date), time: booking.rescheduleRequest.time })) : ''}<div class="toolbar">${link(`/bookings/${booking.id}/chat`, `${icon('message-circle', 18)} ${esc(t('Open conversation'))}`, 'button')}${isActive ? `<button class="button button-secondary" data-action="cancel-booking" data-id="${esc(booking.id)}">${esc(t('Cancel booking'))}</button>` : ''}</div></div>${notice('No provider contacted or reservation made.')}${isActive ? rescheduleForm(booking) : ''}`;
+  const amount = booking.type === 'course' ? t('Free') : money(booking.price);
+  /** @param {string} label @param {string} value @returns {string} */
+  const detail = (label, value) => `<div class="booking-receipt-row"><dt>${esc(t(label))}</dt><dd>${esc(value)}</dd></div>`;
+  return `${back('/bookings', t('All bookings'))}<article class="booking-receipt"><header class="booking-receipt-hero"><span class="booking-receipt-icon" aria-hidden="true">${icon(booking.type === 'course' ? 'school' : 'drone', 28)}</span><h1 class="page-title" tabindex="-1">${esc(bookingTitle(booking))}</h1><p class="booking-receipt-amount">${esc(amount)}</p><p class="muted">${esc(t(booking.type === 'course' ? 'Course fee' : 'Estimate'))}</p>${badge(booking.status)}</header><dl class="booking-receipt-details">${detail('Date', dateLabel(booking.date))}${detail('Time', booking.time)}${pilot ? detail('Provider', pilot.name) : ''}${farm ? detail('Land', farm.name) : ''}</dl>${booking.notes ? `<p class="booking-receipt-note">${esc(booking.notes)}</p>` : ''}${booking.rescheduleRequest ? `<p class="booking-receipt-note muted">${esc(t('Schedule change requested: {date} at {time}. Awaiting provider confirmation.', { date: dateLabel(booking.rescheduleRequest.date), time: booking.rescheduleRequest.time }))}</p>` : ''}<div class="booking-receipt-actions">${isActive ? `<details class="booking-reschedule"><summary>${icon('calendar', 18)} ${esc(t('Reschedule'))}${icon('chevron-down', 18)}</summary>${rescheduleForm(booking)}</details><button class="booking-cancel" data-action="cancel-booking" data-id="${esc(booking.id)}">${esc(t('Cancel booking'))}</button>` : `<div class="booking-inactive-actions"><button class="button button-secondary" disabled>${icon('calendar', 18)} ${esc(t('Reschedule'))}</button><button class="button button-secondary" disabled>${esc(t('Cancel booking'))}</button></div>`}</div><footer class="booking-receipt-footer"><p>${esc(t('Reference {id}', { id: booking.id }))}</p><p>${esc(t('No provider contacted or reservation made.'))}</p></footer></article>`;
 };
 
 /** @param {Booking} booking @returns {string} */
-const conversationName = (booking) => PILOTS.find((pilot) => pilot.id === booking.providerId)?.name ?? bookingTitle(booking);
-/** @returns {string} */
-const conversationAvatar = () => '<img class="chat-avatar" src="/assets/avatar-default.svg" alt="" width="50" height="50">';
+const conversationName = (booking) => booking.name ?? (booking.type === 'course' ? COURSES.find((course) => course.id === booking.providerId)?.instructor : PILOTS.find((pilot) => pilot.id === booking.providerId)?.name) ?? bookingTitle(booking);
+/** @param {Booking} booking @returns {string} */
+const conversationAvatar = (booking) => {
+  const expert = EXPERTS.find((item) => item.id === booking.expertId);
+  const pilot = booking.type === 'pilot' ? PILOTS.find((item) => item.id === booking.providerId) : undefined;
+  return `<img class="chat-avatar" src="${esc(expert?.portrait ?? pilot?.portrait ?? '/assets/avatar-default.svg')}" alt="" width="50" height="50">`;
+};
 /** @param {Booking} booking @returns {string} */
 const renderChat = (booking) => {
   const name = conversationName(booking);
   const messages = booking.conversation ?? [];
-  return `<section class="chat-screen"><header class="chat-header"><a class="icon-button" href="/messages" aria-label="${esc(t('Messages'))}">${icon('arrow-left',22)}</a>${conversationAvatar()}<div class="row-copy"><h1>${esc(name)}</h1></div><a class="icon-button" href="/bookings/${esc(booking.id)}" aria-label="${esc(t('Booking details'))}">${icon('calendar',22)}</a></header><div class="message-list chat-history" role="log" aria-label="${esc(t('Booking conversation'))}" aria-live="polite">${messages.length ? messages.map((message) => `<article class="message-bubble ${message.sender === 'you' ? 'message-own' : 'message-received'}"><span class="sr-only">${esc(message.sender === 'you' ? t('You') : message.sender)}</span><p>${esc(message.text)}</p><time datetime="${esc(message.date)}">${esc(dateLabel(message.date))}</time></article>`).join('') : `<div class="empty-state">${icon('message-circle',40)}<h2>${esc(t('Start a conversation'))}</h2></div>`}</div><form class="chat-composer" data-form="message">${hidden('bookingId', booking.id)}<label class="sr-only" for="chat-message">${esc(t('Your message'))}</label><textarea id="chat-message" name="message" rows="1" maxlength="2000" required placeholder="${esc(t('Your message'))}"></textarea><button class="icon-button" type="submit" aria-label="${esc(t('Save message'))}">${icon('arrow-up',22)}</button></form></section>`;
+  return `<section class="chat-screen" data-chat-id="${esc(booking.id)}"><header class="chat-header"><a class="icon-button" href="/messages" aria-label="${esc(t('Messages'))}">${icon('arrow-left',22)}</a>${conversationAvatar(booking)}<div class="row-copy"><h1>${esc(name)}</h1></div>${booking.name ? '' : `<a class="icon-button" href="/bookings/${esc(booking.id)}" aria-label="${esc(t('Booking details'))}">${icon('calendar',22)}</a>`}</header>${booking.expertId ? `<p class="muted">${esc(t('Demo chat · Messages stay on this device.'))}</p>` : ''}<div class="message-list chat-history" role="log" aria-label="${esc(t('Conversation'))}" aria-live="polite">${messages.length ? messages.map((message) => `<article class="message-bubble ${message.sender === 'you' ? 'message-own' : 'message-received'}"><span class="sr-only">${esc(message.sender === 'you' ? t('You') : message.sender)}</span><p>${esc(message.text)}</p><time datetime="${esc(message.date)}">${esc(dateLabel(message.date))}</time></article>`).join('') : `<div class="empty-state">${icon('message-circle',40)}<h2>${esc(t('Start a conversation'))}</h2></div>`}<div class="chat-typing message-bubble message-received" data-chat-typing role="status" hidden><span class="chat-typing-dots" aria-hidden="true"><span></span><span></span><span></span></span><span class="sr-only">${esc(name)} ${esc(t('is typing'))}</span></div></div><form class="chat-composer" data-form="message">${hidden(booking.name ? 'chatId' : 'bookingId', booking.id)}<label class="sr-only" for="chat-message">${esc(t('Your message'))}</label><textarea id="chat-message" name="message" rows="1" maxlength="2000" required placeholder="${esc(t('Your message'))}"></textarea><button class="icon-button" type="submit" aria-label="${esc(t('Save message'))}">${icon('arrow-up',22)}</button></form></section>`;
 };
 /** @param {AppState} state @returns {string} */
 const renderMessages = (state) => {
-  const bookings = [...state.bookings].sort((a,b) => (b.conversation?.at(-1)?.date ?? b.date).localeCompare(a.conversation?.at(-1)?.date ?? a.date));
-  return `${pageHeading('', t('Messages'))}<section class="inbox"><label class="search-field">${icon('search',20)}<input type="search" data-search="conversations" aria-label="${esc(t('Search conversations'))}" placeholder="${esc(t('Search conversations'))}"></label><div class="section-heading"><a class="link" href="/services/pilots">${icon('plus',18)} ${esc(t('Find a drone pilot'))}</a></div>${bookings.length ? `<div class="inbox-list">${bookings.map((booking) => {
+  const bookings = [...state.bookings, ...(state.chats ?? []).map((chat) => ({ ...chat, title:chat.name, date:new Date().toISOString() }))].sort((a,b) => (b.conversation?.at(-1)?.date ?? b.date).localeCompare(a.conversation?.at(-1)?.date ?? a.date));
+  return `${pageHeading('', t('Messages'))}<section class="inbox"><label class="search-field">${icon('search',20)}<input type="search" data-search="conversations" aria-label="${esc(t('Search conversations'))}" placeholder="${esc(t('Search conversations'))}"></label><div class="section-heading"><a class="link" href="/messages/new">${icon('plus',18)} ${esc(t('New chat'))}</a></div>${bookings.length ? `<div class="inbox-list">${bookings.map((booking) => {
     const name = conversationName(booking); const latest = booking.conversation?.at(-1);
-    return `<a class="inbox-row" data-search-item data-topic="all" data-search-text="${esc(`${name} ${bookingTitle(booking)} ${latest?.text ?? ''}`.toLowerCase())}" href="/bookings/${esc(booking.id)}/chat">${conversationAvatar()}<span class="row-copy"><span class="inbox-row-heading"><strong>${esc(name)}</strong><time>${esc(dateLabel(latest?.date ?? booking.date))}</time></span><span class="inbox-preview">${latest?.sender === 'you' ? `${esc(t('You'))}: ` : ''}${esc(latest?.text ?? t('Start a conversation about this booking'))}</span></span></a>`;
-  }).join('')}</div><p class="muted" data-search-empty hidden>${esc(t('No conversations found.'))}</p>` : emptyState('Your conversations will appear here', 'Create a booking request to open its conversation.', '/services/pilots', 'Find a drone pilot')}</section>`;
+    return `<a class="inbox-row" data-search-item data-topic="all" data-search-text="${esc(`${name} ${bookingTitle(booking)} ${latest?.text ?? ''}`.toLowerCase())}" href="${booking.name ? `/messages/${esc(booking.id)}` : `/bookings/${esc(booking.id)}/chat`}">${conversationAvatar(booking)}<span class="row-copy"><span class="inbox-row-heading"><strong>${esc(name)}</strong><time>${esc(dateLabel(latest?.date ?? booking.date))}</time></span><span class="inbox-preview">${latest?.sender === 'you' ? `${esc(t('You'))}: ` : ''}${esc(latest?.text ?? t(booking.name ? 'Start a conversation' : 'Start a conversation about this booking'))}</span></span></a>`;
+  }).join('')}</div><p class="muted" data-search-empty hidden>${esc(t('No conversations found.'))}</p>` : emptyState('Your conversations will appear here', '', '/messages/new', 'New chat')}</section>`;
 };
 
 /** @param {AppState} state @returns {string} */
@@ -311,7 +324,37 @@ const accountRow = (href, iconName, title, description) => `<a class="list-row" 
 const renderSettings = (state) => `${back('/account', t('My account'))}${pageHeading(t('Make it yours'), t('Preferences'), '')}<form class="card card-pad form-stack" data-form="settings">${profileNameFields(state)}<label class="field"><span>${esc(t('Preferred area unit'))}</span><select class="input" name="units"><option value="ha" ${state.settings.unit === 'ha' ? 'selected' : ''}>${esc(t('Hectares'))}</option><option value="acre" ${state.settings.unit === 'acre' ? 'selected' : ''}>${esc(t('Acres'))}</option></select></label><label class="field"><span>${esc(t('Language'))}</span><select class="input" name="language">${SUPPORTED_LOCALES.map(({ code, label }) => `<option value="${code}" ${getLocale() === code ? 'selected' : ''}>${label}</option>`).join('')}</select></label><button class="button" type="submit">${esc(t('Save preferences'))}</button></form>`;
 
 /** @param {AppState} state @returns {string} */
-const renderNotifications = (state) => `${pageHeading(t('Stay one step ahead'), t('Notifications'), '')}<div class="toolbar"><button class="button button-secondary" data-action="mark-notifications-read" ${state.notifications.every((item) => item.read) ? 'disabled' : ''}>${esc(t('Mark all as read'))}</button></div>${state.notifications.length ? `<div class="card list">${state.notifications.map((notification) => `<article class="list-row"><span class="row-icon">${icon('bell')}</span><div class="row-copy"><h2 class="row-title">${esc(notificationCopy(notification, state).title)}</h2><p class="row-subtitle">${esc(notificationCopy(notification, state).body)}</p><time class="muted" datetime="${esc(notification.date)}">${esc(dateLabel(notification.date))}</time></div>${notification.read ? '' : `<span class="badge badge-blue">${esc(t('New'))}</span>`}</article>`).join('')}</div>` : emptyState('You’re all caught up', 'Reminders and saved booking updates will appear here.')}`;
+/** @param {AppState} state @returns {string} */
+const renderPendingNotifications = (state, tasks = state.tasks.filter((task) => !task.done)) => state.farms.map((farm) => {
+  const groups = new Map();
+  for (const task of tasks.filter((item) => item.farmId === farm.id)) {
+    const key = JSON.stringify([task.title.trim().toLowerCase(),task.category]);
+    if (!groups.has(key)) groups.set(key,[]);
+    groups.get(key).push(task);
+  }
+  const stacks = [...groups.values()].map((tasks) => renderTaskNotificationStack(farm,tasks)).join('');
+  return stacks ? `<section><div class="section-heading"><h2>${esc(farm.name)}</h2></div>${stacks}</section>` : '';
+}).join('');
+
+/** @param {Farm} farm @param {Task[]} tasks @returns {string} */
+const renderTaskNotificationStack = (farm,tasks) => {
+  const rows = [...tasks].sort((a,b)=>`${a.dueDate}${a.time}`.localeCompare(`${b.dueDate}${b.time}`)).flatMap((task)=>{
+    const fields = task.plotId ? farm.plots.filter((plot)=>plot.id === task.plotId) : farm.plots;
+    return (fields.length ? fields : [{id:'',name:farm.name,crop:farm.crop}]).map((field)=>({task,field}));
+  });
+  const completed = rows.filter(({task})=>task.done).length;
+  return `<details class="notification-task-stack" data-notification-stack="${esc(JSON.stringify([farm.id,tasks[0].title.trim().toLowerCase(),tasks[0].category]))}"><summary><span class="row-icon">${icon('calendar',20)}</span><span class="row-copy"><strong>${esc(tasks[0].title)}</strong><span class="row-subtitle">${esc(t('{done} of {total} completed',{done:completed,total:rows.length}))}</span></span>${icon('chevron-down',18)}</summary><div class="notification-task-fields">${rows.map(({task,field})=>`<div class="notification-field-row" title="${esc(dateLabel(task.dueDate))} · ${esc(task.time)}"><span class="notification-status-badge is-${notificationTaskStatus(task)}" role="img" aria-label="${esc(t(notificationTaskStatusLabel(task)))}" title="${esc(t(notificationTaskStatusLabel(task)))}">${icon(task.done ? 'check' : 'clock',14)}</span><span class="notification-field-name">${esc(field.name)}</span><button type="button" class="notification-complete" data-action="complete-task-field" data-id="${esc(task.id)}" data-plot-id="${esc(field.id)}" ${task.done || !canCompleteTask(task) ? 'disabled' : ''} aria-label="${esc(t(task.done ? 'Completed {title}' : 'Complete {title}',{title:`${task.title} · ${field.name}`}))}">${esc(t(task.done ? 'Completed' : canCompleteTask(task) ? 'Complete' : 'Scheduled later'))}</button></div>`).join('')}</div></details>`;
+};
+
+const renderNotifications = (state) => {
+  const pending = renderPendingNotifications(state);
+  const completed = renderPendingNotifications(state, latestCompletedTasks(state.tasks));
+  const pendingReminderIds = new Set(state.tasks.map((task) => `reminder-${task.id}-${task.dueDate}-${task.time}`));
+  const notifications = state.notifications.filter((item) => !pendingReminderIds.has(item.id));
+  const sortedNotifications = [...notifications].sort((first, second) => second.date.localeCompare(first.date));
+  const updates = sortedNotifications.length ? `<section class="notification-updates"><header class="notification-section-header"><h2>${esc(t('Updates'))}</h2><button class="notification-read-action" data-action="mark-notifications-read" ${notifications.every((item) => item.read) ? 'disabled' : ''}>${esc(t('Mark all as read'))}</button></header><div class="notification-list">${sortedNotifications.map((notification) => `<article class="notification-item ${notification.read ? '' : 'is-unread'}"><span class="notification-icon" aria-hidden="true">${icon(notification.id.startsWith('reminder-') ? 'calendar' : 'bell', 20)}</span><div class="notification-copy"><h3>${esc(notificationCopy(notification, state).title)}</h3><p>${esc(notificationCopy(notification, state).body)}</p><time datetime="${esc(notification.date)}">${esc(dateLabel(notification.date))}</time></div>${notification.read ? '' : `<button type="button" class="icon-button notification-mark-read" data-action="mark-notification-read" data-id="${esc(notification.id)}" aria-label="${esc(t('Mark as read'))}" title="${esc(t('Mark as read'))}">${icon('check',20)}</button>`}</article>`).join('')}</div></section>` : '';
+  return `<div class="notifications-page">${pageHeading('', t('Notifications'), '')}${pending ? `<section class="notification-pending"><header class="notification-section-header"><h2>${esc(t('Pending'))}</h2><button class="notification-read-action" data-action="mark-notifications-read" ${state.notifications.every((item)=>item.read) ? 'disabled' : ''}>${esc(t('Mark all as read'))}</button></header>${pending}</section>` : ''}${completed ? `<section class="notification-completed"><header class="notification-section-header"><h2>${esc(t('Completed'))}</h2></header>${completed}</section>` : ''}${updates}${!pending && !completed && !updates ? emptyState('You’re all caught up', 'Reminders and saved booking updates will appear here.') : ''}</div>`;
+};
 
 /** @param {Order['items']} items @returns {string} */
 const orderItems = (items) => `<div class="card list">${items.map((item) => {
@@ -341,11 +384,17 @@ const renderCheckout = (order, isPayment) => {
 /** @param {Farm} farm @returns {string} */
 const renderLandSetupComplete = (farm) => `${pageHeading('', t('You’re all set.'), t('Your land and fields are saved on this device.'))}<section class="card card-pad form-stack land-setup-confirmation"><h2>${esc(farm.name)}</h2><p class="muted">${esc(t(farm.plots.length === 1 ? '{count} field ready' : '{count} fields ready', { count: farm.plots.length }))}</p><h2>${esc(t('Want to plan your first task?'))}</h2><div class="onboarding-role-actions"><a class="button" href="/farm/${esc(farm.id)}/schedule?plan=1">${esc(t('Plan a task'))}</a><a class="button button-secondary" href="/farm/${esc(farm.id)}">${esc(t('Skip for now'))}</a></div></section>`;
 
+/** @param {Farm} farm @param {Task[]} tasks @returns {string} */
+const schedulerLand = (farm, tasks) => {
+  const assignedTasks = tasks.filter((task) => task.farmId === farm.id);
+  return `<section class="scheduler-land"><a class="list-row" href="/farm/${esc(farm.id)}/schedule"><span class="row-icon">${icon('calendar')}</span><span class="row-copy"><strong class="row-title">${esc(farm.name)}</strong><span class="row-subtitle">${esc(t(assignedTasks.length === 1 ? '{count} task' : '{count} tasks', { count: assignedTasks.length }))}</span></span>${icon('chevron-right', 18)}</a>${assignedTasks.length ? taskList(farm, assignedTasks) : ''}</section>`;
+};
+
 /** @param {AppState} state @returns {string} */
 const renderScheduler = (state) => {
   if (state.farms.length === 1) return renderSchedule(state.farms[0], state);
   if (!state.farms.length) return `${pageHeading('', t('Scheduler'))}${emptyState('Add your land first', 'Create a land record to start scheduling tasks.', '/farm/new', 'Add land')}`;
-  return `${pageHeading('', t('Scheduler'))}<div class="card list">${state.farms.map((farm) => `<a class="list-row" href="/farm/${esc(farm.id)}/schedule"><span class="row-icon">${icon('calendar')}</span><span class="row-copy"><strong class="row-title">${esc(farm.name)}</strong><span class="row-subtitle">${esc(t('{count} tasks to do', { count:state.tasks.filter((task) => task.farmId === farm.id && !task.done).length }))}</span></span>${icon('chevron-right',18)}</a>`).join('')}</div>`;
+  return `${pageHeading('', t('Scheduler'))}<div class="section-stack">${state.farms.map((farm) => schedulerLand(farm, state.tasks)).join('')}</div>`;
 };
 
 /** @param {string[]} parts @param {AppState} state @returns {string|null} */
@@ -373,6 +422,11 @@ const farmRoute = (parts, state) => {
 
 /** @param {string[]} parts @param {AppState} state @returns {string|null} */
 const bookingRoute = (parts, state) => {
+  if (parts[0] === 'messages' && parts.length === 2) {
+    if (parts[1] === 'new') return `${back('/messages', t('Messages'))}${pageHeading('', t('New chat'))}<form class="form-stack" data-form="conversation"><label class="field">${esc(t('Name'))}<input name="name" maxlength="100" required autocomplete="off"></label><button class="button" type="submit">${esc(t('Start a conversation'))}${icon('arrow-up-right',18)}</button></form>`;
+    const chat = state.chats?.find((item) => item.id === parts[1]);
+    return chat ? renderChat(chat) : missing('Conversation not found', '/messages');
+  }
   if (parts[0] !== 'bookings') return null;
   if (parts.length === 1) return renderBookings(state);
   const booking = state.bookings.find((item) => item.id === parts[1]);
@@ -431,3 +485,70 @@ const renderFieldSheet = () => `<div class="field-sheet" data-field-details hidd
 
 /** @param {Farm} farm @returns {string} */
 const renderLandOverview = (farm) => `<section class="farm-map" data-farm-map="${esc(farm.id)}" data-land-overview="true" aria-label="${esc(t('Land map'))}"><div class="land-map-canvas" data-land-canvas aria-label="${esc(t('Interactive land map'))}"></div><div class="land-map-toolbar land-overview-controls" role="toolbar" aria-label="${esc(t('Land map'))}"><label class="map-type-control"><span class="sr-only">${esc(t('Map type'))}</span><select data-map-type aria-label="${esc(t('Map type'))}"><option value="street">${esc(t('Street'))}</option><option value="satellite">${esc(t('Satellite'))}</option></select></label><a class="icon-button land-overview-edit" href="/farm/${esc(farm.id)}/edit" aria-label="${esc(t('Edit land'))}" title="${esc(t('Edit land'))}">${icon('pencil', 20)}</a><button type="button" class="icon-button land-map-expand" data-map-expand aria-expanded="false" aria-label="${esc(t('Expand map'))}" title="${esc(t('Expand map'))}">${icon('arrows-maximize', 20)}</button></div><p class="sr-only" role="status" data-land-status></p></section><p class="field-task-legend">${[['#075bea', 'Scheduled later'], ['#d99119', 'Due within 2 hours'], ['#d64747', 'Overdue'], ['#25875c', 'All done today!'], ['#87948e', 'No tasks today']].map(([color, label]) => `<span><i class="task-state-dot" style="--task-state-color:${color}" aria-hidden="true"></i>${esc(t(label))}</span>`).join('')}<span>${esc(t('Tap a crop to see its tasks'))}</span></p>`;
+
+/** @param {ParentNode} root @returns {void} */
+export function initializeChatComposer(root) {
+  const textarea = root.querySelector('.chat-composer textarea');
+  if (!textarea) return;
+  textarea.addEventListener('keydown', (event) => {
+    const keyboard = /** @type {KeyboardEvent} */ (event);
+    if (keyboard.key !== 'Enter' || keyboard.shiftKey || keyboard.isComposing || keyboard.keyCode === 229 || keyboard.repeat) return;
+    keyboard.preventDefault();
+    if (!textarea.value.trim()) return;
+    textarea.form?.requestSubmit();
+  });
+}
+
+/** @param {Booking} booking @param {typeof fetch} [fetchImpl] @returns {Promise<string[]>} */
+export async function requestChatReply(booking, fetchImpl = fetch) {
+  if (booking.expertId) return [];
+  const response = await fetchImpl('/api/mock-chat', {
+    method:'POST', headers:{ 'Content-Type':'application/json' }, signal:AbortSignal.timeout(25000),
+    body:JSON.stringify({ providerId:booking.providerId, name:conversationName(booking), messages:booking.conversation.slice(-12).map(({ sender, text }) => ({ sender, text })) }),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload?.error?.message ?? 'Could not get a reply.');
+  if (!Array.isArray(payload.messages) || !payload.messages.length || payload.messages.length > 3 || payload.messages.some((text) => typeof text !== 'string' || !text.trim() || text.length > 2000)) throw new Error('The reply could not be read.');
+  return payload.messages;
+}
+
+/** @param {Booking} booking @param {string} messageId @param {string[]} messages @returns {boolean} */
+export function appendChatReply(booking, messageId, messages) {
+  if (booking.conversation.at(-1)?.id !== messageId) return false;
+  booking.conversation.push(...messages.map((text) => ({ id:crypto.randomUUID(), sender:conversationName(booking), text, date:new Date().toISOString() })));
+  return true;
+}
+
+/** @param {HTMLElement} indicator @param {typeof import('gsap').gsap|undefined} gsap @returns {()=>void} */
+export function animateChatTyping(indicator, gsap) {
+  if (!indicator || indicator.hidden || !gsap) return () => {};
+  const dots = indicator.querySelectorAll('.chat-typing-dots > span');
+  const media = gsap.matchMedia();
+  media.add('(prefers-reduced-motion: no-preference)', () => {
+    gsap.fromTo(dots, {y:0,opacity:0.45}, {
+      y:-4,opacity:1,duration:0.32,ease:'sine.inOut',
+      stagger:{each:0.14,repeat:-1,yoyo:true,repeatDelay:0.12},
+    });
+  });
+  return () => media.revert();
+}
+
+/** @param {HTMLElement} root @returns {void} */
+export function initializeNotificationStacks(root) {
+  root.querySelectorAll('.notification-task-stack').forEach((stack) => {
+    stack.addEventListener('toggle', () => {
+      const content = stack.querySelector('.notification-task-fields');
+      window.gsap?.killTweensOf(content);
+      if (stack.open && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        window.gsap?.fromTo(content,{opacity:0,y:-4},{opacity:1,y:0,duration:0.18,ease:'power2.out',clearProps:'opacity,transform'});
+      }
+    });
+  });
+}
+
+/** @param {Task} task @param {Date} [now] @returns {string} */
+export function notificationTaskStatus(task, now = new Date()) {
+  return task.done ? 'completed' : fieldTaskUrgency([task],task.farmId,task.plotId,now).urgency;
+}
+/** @param {Task} task @returns {string} */
+const notificationTaskStatusLabel = (task) => ({completed:'Completed',overdue:'Overdue',soon:'Due within 2 hours',upcoming:'Scheduled later',idle:'Pending'}[notificationTaskStatus(task)]);

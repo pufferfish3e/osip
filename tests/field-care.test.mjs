@@ -29,6 +29,9 @@ test('recording care persists without enabling reminders and rejects invalid fie
   const records = new Map();
   const storage = { getItem: (key) => records.get(key) ?? null, setItem: (key, value) => records.set(key, value) };
   const store = createStore(storage);
+  store.update((state) => {
+    state.farms = [{ id:'farm-1', name:'Land 1', crop:'Rice', area:1, unit:'ha', location:'Perak', plantedAt:'', plots:[{ id:'plot-1', name:'Field 1', crop:'Rice', area:1, plantedAt:'' }] }];
+  });
   store.update((state) => recordFieldCare(state, 'farm-1', 'plot-1', 'Pesticide'));
   const task = createStore(storage).getState().tasks.at(-1);
   assert.equal(task.done, true);

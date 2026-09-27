@@ -53,6 +53,7 @@ export function renderPilotMatcher() {
 }
 /** @param {(typeof PILOTS)[number]} pilot @returns {string} */
 export function renderPilotReviews(pilot) {
+  if (!pilot.reviewCount) return `<span class="muted">${esc(t('No reviews yet.'))}</span>`;
   return `<details class="pilot-review-preview"><summary aria-label="${esc(t('Reviews'))}"><span aria-hidden="true">★</span> ${pilot.rating} <span>(${pilot.reviewCount})</span></summary><div><strong>${esc(t('Sample reviews'))}</strong>${pilot.reviews.map((review) => `<blockquote><span aria-hidden="true">★★★★★</span><p>${esc(t(review))}</p></blockquote>`).join('')}</div></details>`;
 }
 /** @param {ReturnType<typeof matchPilots>[number]|undefined} match @returns {string} */
@@ -63,7 +64,7 @@ export function renderPilotMatch(match) {
   return `${close}<article class="pilot-portrait-card"><img class="pilot-match-cover" src="${esc(pilot.portrait)}" alt=""><div class="pilot-match-body">
     <h2>${esc(pilot.name)}</h2><p class="pilot-match-specialty">${esc(t(pilot.serviceArea))}</p>
     <div class="pilot-match-footer"><div class="pilot-match-stats">${renderPilotReviews(pilot)}<span class="pilot-match-percent">${score}% ${esc(t(match.isDemoScore ? 'Demo match' : 'Match'))}</span></div><a class="button" href="/services/pilots/${esc(pilot.id)}">${esc(t('View pilot'))}${icon('arrow-up-right', 18)}</a></div>
-    <details class="pilot-match-details"><summary>${esc(t('Match details'))}</summary><p>RM ${pilot.rate} / ${esc(t(pilot.rateUnit))}</p><p>${esc(t(match.isDemoScore ? 'Illustrative score. Service and area are filtered; this is not confirmed availability.' : 'Service and area match. Date and budget refine the score.'))}</p>${!dateMatches ? `<p>${esc(t('Available after your preferred date.'))}</p>` : ''}${!budgetMatches ? `<p>${esc(t('Starting rate exceeds your budget.'))}</p>` : ''}<p>${esc(t('A preference score, not confirmed availability.'))}</p><p>${esc(t('Sample pilot · AI-generated portrait'))}</p></details>
+    <details class="pilot-match-details"><summary>${esc(t('Match details'))}</summary><p>RM ${pilot.rate} / ${esc(t(pilot.rateUnit))}</p><p>${esc(t(match.isDemoScore ? 'Illustrative score. Service and area are filtered; this is not confirmed availability.' : 'Service and area match. Date and budget refine the score.'))}</p>${!dateMatches ? `<p>${esc(t('Available after your preferred date.'))}</p>` : ''}${!budgetMatches ? `<p>${esc(t('Starting rate exceeds your budget.'))}</p>` : ''}<p>${esc(t('A preference score, not confirmed availability.'))}</p><p>${esc(t(pilot.portrait.endsWith('.svg') ? 'Sample pilot · Placeholder portrait' : 'Sample pilot · AI-generated portrait'))}</p></details>
     <button class="pilot-catalog-shortcut" data-match-retry>${esc(t('Change preferences'))}</button></div></article>`;
 };
 /** @param {HTMLElement} wizard @param {HTMLInputElement} input @param {string} today @returns {void} */

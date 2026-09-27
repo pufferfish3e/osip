@@ -13,18 +13,18 @@ test('shop is hidden from home, services and service search', () => {
   const state = stateWith([LAND]);
   const html = renderHome(state) + renderDiscover('/services', state);
   assert.doesNotMatch(html, /href="\/shop|href="\/orders|Services &amp; shop/);
-  assert.match(html, /href="\/schedule"/);
+  assert.doesNotMatch(html, /href="\/schedule"/);
   assert.equal(searchServices('drone').some((item) => item.kind === 'shop'), false);
 });
 
 test('scheduler opens one land directly, offers a land choice, and handles no land', () => {
   assert.match(renderWorkspace('/schedule',stateWith([LAND])), /data-schedule="land-a"/);
   const state = stateWith([LAND,{...LAND,id:'land-b',name:'South land'}]);
-  state.tasks = [{id:'task',farmId:'land-b',done:false}];
+  state.tasks = [{id:'task',farmId:'land-b',title:'Water crops',category:'Water',dueDate:'2030-01-01',time:'08:00',done:false}];
   const html = renderWorkspace('/schedule', state);
   assert.match(html, /href="\/farm\/land-a\/schedule"/);
   assert.match(html, /href="\/farm\/land-b\/schedule"/);
-  assert.match(html, /1 tasks to do/);
+  assert.match(html, /1 task/);
   assert.match(renderWorkspace('/schedule',stateWith([])), /href="\/farm\/new"/);
 });
 

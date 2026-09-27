@@ -41,12 +41,12 @@ export const calendarDays = (selected, month, isExpanded) => {
     const day = new Date(start); day.setDate(day.getDate() + index); return calendarDate(day);
   });
 };
-/** @param {string} selected @param {string} month @param {boolean} isExpanded @param {string[]} marked @param {boolean} [canExpand] @returns {string} */
-export const renderCalendar = (selected, month, isExpanded, marked = [], canExpand = true) => {
+/** @param {string} selected @param {string} month @param {boolean} isExpanded @param {string[]} marked @param {boolean} [canExpand] @param {string} [minimumDate] @returns {string} */
+export const renderCalendar = (selected, month, isExpanded, marked = [], canExpand = true, minimumDate = '') => {
   const heading = parseDate(`${month}-01`).toLocaleDateString(getFormatLocale(), { month: 'long', year: 'numeric' });
   const weekdays = calendarDays('2026-09-21', '2026-09', false).map((date) => `<span>${esc(parseDate(date).toLocaleDateString(getFormatLocale(), { weekday: 'short' }))}</span>`).join('');
   const monthHeading = canExpand ? `<button type="button" data-calendar-expand aria-expanded="${isExpanded}">${esc(heading)} ${icon('chevron-down', 16)}</button>` : `<span>${esc(heading)}</span>`;
-  return `<div class="calendar-heading"><button type="button" data-calendar-move="-1" aria-label="${esc(t('Previous'))}">${icon('chevron-left', 20)}</button>${monthHeading}<button type="button" data-calendar-move="1" aria-label="${esc(t('Next'))}">${icon('chevron-right', 20)}</button></div><div class="calendar-weekdays" aria-hidden="true">${weekdays}</div><div class="calendar-days">${calendarDays(selected, month, isExpanded).map((date) => `<button type="button" data-calendar-date="${date}" aria-pressed="${date === selected}" aria-label="${esc(parseDate(date).toLocaleDateString(getFormatLocale(), { dateStyle: 'full' }))}${marked.includes(date) ? `, ${esc(t('Tasks to do'))}` : ''}" class="${date.slice(0, 7) !== month ? 'calendar-outside' : ''}"><span>${parseDate(date).getDate()}</span>${marked.includes(date) ? '<i aria-hidden="true"></i>' : ''}</button>`).join('')}</div>`;
+  return `<div class="calendar-heading"><button type="button" data-calendar-move="-1" aria-label="${esc(t('Previous'))}">${icon('chevron-left', 20)}</button>${monthHeading}<button type="button" data-calendar-move="1" aria-label="${esc(t('Next'))}">${icon('chevron-right', 20)}</button></div><div class="calendar-weekdays" aria-hidden="true">${weekdays}</div><div class="calendar-days">${calendarDays(selected, month, isExpanded).map((date) => `<button type="button" data-calendar-date="${date}" ${minimumDate && date < minimumDate ? 'disabled' : ''} aria-pressed="${date === selected}" aria-label="${esc(parseDate(date).toLocaleDateString(getFormatLocale(), { dateStyle: 'full' }))}${marked.includes(date) ? `, ${esc(t('Tasks to do'))}` : ''}" class="${date.slice(0, 7) !== month ? 'calendar-outside' : ''}"><span>${parseDate(date).getDate()}</span>${marked.includes(date) ? '<i aria-hidden="true"></i>' : ''}</button>`).join('')}</div>`;
 };
 
 /** @param {HTMLElement} root @returns {void} */
@@ -142,3 +142,23 @@ const bindTaskSheet = (panel, dialog, form, picker, marked, open, next, back) =>
     picker.innerHTML = renderCalendar(form.elements.dueDate.value, pickerMonth, true, marked, false);
   });
 };
+
+/** @param {HTMLElement} root @returns {void} */
+export function initializeBookingCalendar(root) {
+  const panel = root.querySelector('[data-booking-date]');
+  if (!panel) return;
+  const input = panel.querySelector('input[name="date"]');
+  const calendar = panel.querySelector('[data-booking-calendar]');
+  const minimumDate = calendarDate(new Date());
+  let view = {selected:input.value || minimumDate,month:(input.value || minimumDate).slice(0,7),isExpanded:true};
+  const draw = () => { calendar.innerHTML = renderCalendar(view.selected,view.month,true,[],false,minimumDate); input.value=view.selected; };
+  calendar.addEventListener('click', (event) => {
+    const button = event.target instanceof Element ? event.target.closest('button') : null;
+    if (!button || button.disabled) return;
+    view = nextCalendarView(view,button.dataset);
+    draw();
+    const selector = button.dataset.calendarDate ? `[data-calendar-date="${button.dataset.calendarDate}"]` : `[data-calendar-move="${button.dataset.calendarMove}"]`;
+    calendar.querySelector(selector)?.focus({preventScroll:true});
+  });
+  draw();
+}

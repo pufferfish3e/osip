@@ -438,24 +438,51 @@ const showFieldDeletion = (editor) => {
 /** @param {import('./store.mjs').Task[]} tasks @param {string} farmId @param {string} plotId @param {Date} [now] @returns {{urgency:string,color:string,pending:number,done:number,total:number,progress:number}} */
 export function fieldTaskUrgency(tasks, farmId, plotId, now = new Date()) {
   const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
-  const assigned = tasks.filter((task) => task.farmId === farmId && task.plotId === plotId);
+  const assigned = tasks.filter((task) => task.farmId === farmId && (!task.plotId || task.plotId === plotId));
   const outstanding = assigned.filter((task) => !task.done);
   const pending = outstanding.filter((task) => task.dueDate <= today).length;
-  const done = assigned.filter((task) => task.done && task.dueDate === today).length;
+  const done = assigned.filter((task) => task.done && taskCompletionDate(task) === today).length;
   const total = done + pending;
   const nextDue = Math.min(...outstanding.map((task) => new Date(`${task.dueDate}T${task.time}`).getTime()));
   const remaining = nextDue - now.getTime();
   const urgency = remaining < 0 ? 'overdue' : remaining <= DUE_SOON_MILLISECONDS ? 'soon' : outstanding.length ? 'upcoming' : total > 0 && pending === 0 ? 'complete' : 'idle';
   return { urgency, color: FIELD_URGENCY_COLORS[urgency], pending, done, total, progress: total ? Math.round(done / total * 100) : 0 };
 }
+/** @param {import('./store.mjs').Task[]} tasks @param {string} farmId @param {string} plotId @param {Date} [now] @returns {{state:string,count:number,percentage:number,color:string}[]} */
+export function fieldTaskSegments(tasks, farmId, plotId, now = new Date()) {
+  const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+  const counts = { overdue:0, soon:0, upcoming:0, complete:0 };
+  for (const task of tasks) {
+    if (task.farmId !== farmId || (task.plotId && task.plotId !== plotId) || (task.done && taskCompletionDate(task) !== today)) continue;
+    const remaining = new Date(`${task.dueDate}T${task.time}`).getTime() - now.getTime();
+    const state = task.done ? 'complete' : remaining < 0 ? 'overdue' : remaining <= DUE_SOON_MILLISECONDS ? 'soon' : 'upcoming';
+    counts[state]++;
+  }
+  const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+  if (!total) return [{ state:'idle', count:0, percentage:100, color:FIELD_URGENCY_COLORS.idle }];
+  return Object.entries(counts).filter(([, count]) => count > 0).map(([state, count]) => ({ state, count, percentage:count / total * 100, color:FIELD_URGENCY_COLORS[state] }));
+}
+/** @param {{percentage:number,color:string}[]} segments @returns {string} */
+const taskRingGradient = (segments) => {
+  let position = 0;
+  const stops = segments.map((segment, index) => {
+    const start = position;
+    position = index === segments.length - 1 ? 100 : position + segment.percentage;
+    return `${segment.color} ${start}% ${position}%`;
+  });
+  return `conic-gradient(${stops.join(',')})`;
+};
 /** @param {import('./store.mjs').Plot} field @param {import('./store.mjs').Task[]} tasks @param {string} farmId @param {Date} [now] @returns {string} */
 export function renderFieldTaskMarker(field, tasks, farmId, now = new Date()) {
   const state = fieldTaskUrgency(tasks, farmId, field.id, now);
   const urgencyLabel = t({ idle: 'No tasks today', upcoming: 'Scheduled later', soon: 'Due within 2 hours', overdue: 'Overdue', complete: 'All done today!' }[state.urgency]);
   const status = state.total ? t('{done} of {total} done today', { done: state.done, total: state.total }) : '';
   const symbol = state.urgency === 'complete' ? 'check' : state.urgency === 'overdue' ? 'alert-circle' : state.urgency === 'idle' ? 'plus' : 'clock';
-  const label = `${field.name} · ${urgencyLabel}${status ? ` · ${status}` : ''}`;
-  return `<button type="button" class="field-care-map-button field-task-marker is-task-${state.urgency}" style="--task-progress:${state.progress}%;--task-state-color:${state.color}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}"><span class="field-task-crop" aria-hidden="true">${cropEmoji(field.crop)}</span><span class="field-task-badge" aria-hidden="true">${icon(symbol, 13)}${state.pending ? `<span>${state.pending > 99 ? '99+' : state.pending}</span>` : ''}</span></button>`;
+  const segments = fieldTaskSegments(tasks, farmId, field.id, now);
+  const segmentLabels = { overdue:'Overdue', soon:'Due within 2 hours', upcoming:'Scheduled later', complete:'Completed', idle:'No tasks today' };
+  const distribution = segments.map((segment) => `${Math.round(segment.percentage)}% ${t(segmentLabels[segment.state])}`).join(' · ');
+  const label = `${field.name} · ${urgencyLabel}${status ? ` · ${status}` : ''} · ${distribution}`;
+  return `<button type="button" class="field-care-map-button field-task-marker is-task-${state.urgency}" style="--task-progress:${state.progress}%;--task-state-color:${state.color};--task-ring:${taskRingGradient(segments)}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}"><span class="field-task-crop" aria-hidden="true">${cropEmoji(field.crop)}</span><span class="field-task-badge" aria-hidden="true">${icon(symbol, 13)}${state.pending ? `<span>${state.pending > 99 ? '99+' : state.pending}</span>` : ''}</span></button>`;
 }
 
 /** @param {Array<{field:import('./store.mjs').Plot,polygon:Layer,content:string}>} taskLayers @param {import('./store.mjs').AppStore} store @param {string} farmId @returns {()=>void} */
@@ -598,3 +625,10 @@ export function initializeExpandedMap(panel, map) {
     panel.classList?.toggle('is-map-expanded', false);
   };
 }
+
+/** @param {import('./store.mjs').Task} task @returns {string} */
+const taskCompletionDate = (task) => {
+  if (!task.completedAt) return task.dueDate;
+  const date = new Date(task.completedAt);
+  return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
+};

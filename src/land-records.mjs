@@ -65,7 +65,10 @@ export function saveLandRecord(state, draft) {
 /** @param {import('./store.mjs').AppState} state @param {string} id @returns {void} */
 export function deleteLandRecord(state, id) {
   if (!state.farms.some((land) => land.id === id)) throw new LandRecordError('Land not found.');
-  if (state.bookings.some((booking) => booking.farmId === id)) throw new LandRecordError('This land has booking records. Keep it to preserve those records.');
+  for (const booking of state.bookings.filter((item) => item.farmId === id)) {
+    booking.status = 'cancelled';
+    delete booking.rescheduleRequest;
+  }
   const taskIds = state.tasks.filter((task) => task.farmId === id).map((task) => task.id);
   state.farms = state.farms.filter((land) => land.id !== id);
   state.tasks = state.tasks.filter((task) => task.farmId !== id);

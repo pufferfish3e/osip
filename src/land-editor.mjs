@@ -1,3 +1,4 @@
+import { createFieldCareMotion } from './field-care.mjs';
 import { normalizeFieldBoundary } from './field-boundary.mjs';
 import { displayedLandBoundary } from './land-boundary.mjs';
 import { createMapLayer, savedMapType, saveMapType } from './land-map.mjs';
@@ -15,7 +16,7 @@ const SELECTED_POINT_RADIUS = 7;
 const input = (name, label, value) => `<label class="field">${esc(t(label))}<input class="input" name="${name}" value="${esc(value)}" ${name === 'name' ? '' : 'required'} maxlength="120"></label>`;
 /** @param {Land} [land] @param {boolean} [isInline] @returns {string} */
 export function renderLandEditor(land, isInline = false) {
-  return `${isInline ? '' : pageHeading('', t(land ? 'Edit land' : 'Add land'))}<section class="land-record-editor" data-land-editor="${esc(land?.id ?? '')}"><p class="muted" data-land-progress aria-live="polite">1 / 2</p><div data-land-step="0"><div class="land-record-map-wrap"><div class="land-setup-map" data-record-map></div><div class="land-record-point-toolbar" role="toolbar" aria-label="${esc(t('Land map'))}">${[['locate', 'Use my location', 'map-pin'], ['add', 'Create point', 'plus'], ['move', 'Update point', 'pencil'], ['remove', 'Delete point', 'trash']].map(([action, label, symbol]) => `<button type="button" class="land-map-button" data-point-action="${action}" aria-label="${esc(t(label))}" title="${esc(t(label))}">${icon(symbol, 20)}</button>`).join('')}<label class="land-record-map-type"><span class="sr-only">${esc(t('Map type'))}</span><select data-record-map-type><option value="street">${esc(t('Street'))}</option><option value="satellite">${esc(t('Satellite'))}</option></select></label></div></div><p role="status" data-point-status></p></div><form class="form-stack" data-land-record-form novalidate><div data-land-step="1" hidden>${input('name', 'Land name', land?.name ?? '')}</div><p role="alert" data-record-error></p><div class="form-stack"><button type="button" class="button button-secondary" data-point-action="previous" hidden>${esc(t('Back'))}</button><button type="button" class="button" data-point-action="next">${esc(t('Continue'))}</button><button hidden type="submit" class="button" name="next" value="split">${esc(t('Save and choose field dimensions'))}</button><a class="button button-secondary" href="/farm${land ? `/${esc(land.id)}` : ''}">${esc(t('Cancel'))}</a>${land ? `<button type="button" class="button button-secondary land-delete-button" data-point-action="delete-land">${esc(t('Delete land'))}</button>` : ''}</div></form><dialog class="install-dialog" data-land-delete-dialog aria-labelledby="land-delete-heading"><h2 id="land-delete-heading">${esc(t('Delete land'))}</h2><p>${esc(t('Delete this land, its fields and scheduled tasks? This cannot be undone.'))}</p><div class="toolbar"><button class="button button-secondary" data-point-action="cancel-delete" autofocus>${esc(t('Cancel'))}</button><button class="button" data-point-action="confirm-delete">${esc(t('Delete land'))}</button></div></dialog></section>`;
+  return `${isInline ? '' : pageHeading('', t(land ? 'Edit land' : 'Add land'))}<section class="land-record-editor" data-land-editor="${esc(land?.id ?? '')}"><p class="muted" data-land-progress aria-live="polite">1 / 2</p><div data-land-step="0"><div class="land-record-map-wrap"><div class="land-setup-map" data-record-map></div><div class="land-record-point-toolbar" role="toolbar" aria-label="${esc(t('Land map'))}">${[['locate', 'Use my location', 'map-pin'], ['add', 'Create point', 'plus'], ['move', 'Update point', 'pencil'], ['remove', 'Delete point', 'trash']].map(([action, label, symbol]) => `<button type="button" class="land-map-button" data-point-action="${action}" aria-label="${esc(t(label))}" title="${esc(t(label))}">${icon(symbol, 20)}</button>`).join('')}<label class="land-record-map-type"><span class="sr-only">${esc(t('Map type'))}</span><select data-record-map-type><option value="street">${esc(t('Street'))}</option><option value="satellite">${esc(t('Satellite'))}</option></select></label></div></div><p role="status" data-point-status></p></div><form class="form-stack" data-land-record-form novalidate><div data-land-step="1" hidden>${input('name', 'Land name', land?.name ?? '')}</div><p role="alert" data-record-error></p><div class="form-stack"><button type="button" class="button button-secondary" data-point-action="previous" hidden>${esc(t('Back'))}</button><button type="button" class="button" data-point-action="next">${esc(t('Continue'))}</button><button hidden type="submit" class="button" name="next" value="split">${esc(t('Save and choose field dimensions'))}</button><a class="button button-secondary" href="/farm${land ? `/${esc(land.id)}` : ''}">${esc(t('Cancel'))}</a>${land ? `<button type="button" class="button button-secondary land-delete-button" data-point-action="delete-land">${esc(t('Delete land'))}</button>` : ''}</div></form><dialog class="install-dialog" data-land-delete-dialog aria-labelledby="land-delete-heading"><h2 id="land-delete-heading">${esc(t('Delete land'))}</h2><p>${esc(t('Delete this land, its fields and scheduled tasks? Linked bookings will be cancelled. This cannot be undone.'))}</p><div class="toolbar"><button class="button button-secondary" data-point-action="cancel-delete" autofocus>${esc(t('Cancel'))}</button><button class="button" data-point-action="confirm-delete">${esc(t('Delete land'))}</button></div></dialog></section>`;
 }
 /** @typedef {{getLatLng:()=>{lat:number,lng:number},getRadius:()=>number,setLatLng:(point:number[])=>void,setRadius:(radius:number)=>void,setStyle:(style:object)=>void}} PointMarker */
 /** @typedef {{isDisposed:boolean,step:number,stepMotion:{kill:()=>void}|null,markers:PointMarker[],polygon:{setLatLngs:(points:number[][])=>void}|null,motion:{kill:()=>void}|null,panel:HTMLElement,store:import('./store.mjs').AppStore,id:string,points:import('./land-boundary.mjs').LandPoint[],selected:number,isAdding:boolean,map:import('./land-map.mjs').LandMap,leaflet:import('./land-map.mjs').Leaflet,layers:import('./land-map.mjs').LayerGroup,base:import('./land-map.mjs').Layer}} Editor */
@@ -142,4 +143,36 @@ export function initializeLandEditor(panel, store, leaflet) {
   const mapTypeSelect = panel.querySelector('[data-record-map-type]');
   if (mapTypeSelect) mapTypeSelect.value = savedMapType(store);
   redraw(editor); return bind(editor);
+}
+
+/** @param {HTMLElement} root @param {import('./store.mjs').AppStore} store @returns {void} */
+export function initializeLandCardDeletion(root, store) {
+  const list = root.querySelector('[data-land-list]');
+  if (!list) return;
+  const sheet = list.querySelector('[data-card-delete-sheet]');
+  const motion = createFieldCareMotion(sheet, window.gsap, () => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  let selectedId = '';
+  sheet.addEventListener('cancel', (event) => { event.preventDefault(); motion.close(); });
+  list.addEventListener('click', (event) => {
+    const button = event.target instanceof Element ? event.target.closest('button') : null;
+    if (!button || motion.isClosing()) return;
+    if (button.dataset.landCardDelete) {
+      event.preventDefault(); event.stopPropagation();
+      const land = store.getState().farms.find((item) => item.id === button.dataset.landCardDelete);
+      if (!land) return;
+      selectedId = land.id;
+      sheet.querySelector('[data-card-delete-title]').textContent = t('Delete {name}?', { name: land.name });
+      sheet.querySelector('[data-card-delete-error]').textContent = '';
+      motion.open(); return;
+    }
+    if (button.hasAttribute('data-card-delete-cancel')) { motion.close(); return; }
+    if (!button.hasAttribute('data-card-delete-confirm') || !sheet.open || !selectedId) return;
+    try {
+      store.update((state) => deleteLandRecord(state, selectedId));
+      selectedId = '';
+      motion.close(() => root.dispatchEvent(new CustomEvent('land-record-saved', { bubbles: true, detail: { path: '/farm' } })));
+    } catch (error) {
+      sheet.querySelector('[data-card-delete-error]').textContent = t(error instanceof Error ? error.message : 'Could not save land.');
+    }
+  });
 }

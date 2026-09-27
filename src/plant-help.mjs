@@ -19,7 +19,7 @@ export function renderPlantResults(query, category = 'all') {
 }
 
 /** @param {string} query @param {string} category @returns {string} */
-const searchPage = (query, category) => `${pageHeading('', t('What’s happening?'))}<form class="plant-search" data-form="plant-search" role="search"><label class="search-field">${icon('search', 22)}<span class="sr-only">${esc(t('Search plant problems'))}</span><input type="search" data-plant-search value="${esc(query)}" placeholder="${esc(t('Pests, yellow leaves, wilting…'))}" maxlength="160" autocomplete="off" enterkeyhint="search"></label><button class="icon-button" type="submit" aria-label="${esc(t('Search guides'))}">${icon('arrow-right', 22)}</button></form><div class="chips plant-categories" aria-label="${esc(t('Filter guides'))}">${CATEGORIES.map((item) => `<button class="chip ${item === category ? 'chip-active' : ''}" data-plant-category="${esc(item)}" aria-pressed="${item === category}">${esc(t(item === 'all' ? 'All problems' : item))}</button>`).join('')}</div><section data-plant-results>${renderPlantResults(query, category)}</section><a class="back-link" href="/learn">${icon('book', 18)} ${esc(t('Browse all learning'))}</a>`;
+const searchPage = (query, category) => `${pageHeading('', t('What’s happening?'))}<form class="plant-search" data-form="plant-search" role="search"><label class="search-field">${icon('search', 22)}<span class="sr-only">${esc(t('Search plant problems'))}</span><input type="search" data-plant-search value="${esc(query)}" placeholder="${esc(t('Pests, yellow leaves, wilting…'))}" maxlength="160" autocomplete="off" enterkeyhint="search"></label><button class="icon-button" type="submit" aria-label="${esc(t('Search guides'))}">${icon('arrow-right', 22)}</button></form><div class="chips plant-categories" aria-label="${esc(t('Filter guides'))}">${CATEGORIES.map((item) => `<button class="chip ${item === category ? 'chip-active' : ''}" data-plant-category="${esc(item)}" aria-pressed="${item === category}">${esc(t(item === 'all' ? 'All problems' : item))}</button>`).join('')}</div><section data-plant-results>${renderPlantResults(query, category)}</section>`;
 
 /** @param {string} slug @returns {string} */
 const guidePage = (slug) => {
@@ -32,7 +32,7 @@ const guidePage = (slug) => {
 /** @param {string} path @param {string} query @param {string} category @returns {string|null} */
 export function renderPlantHelp(path, query = '', category = 'all') {
   if (path === '/plant-help') return searchPage(query, category);
-  if (path === '/plant-help/camera') return `${pageHeading('', t('Check your plant'))}<div data-plant-camera></div><a class="back-link" href="/learn">${icon('book', 18)} ${esc(t('Browse all learning'))}</a>`;
+  if (path === '/plant-help/camera') return `${pageHeading('', t('Check your plant'))}<div data-plant-camera></div>`;
   const route = path.match(/^\/plant-help\/guides\/([^/]+)$/);
   return route ? guidePage(route[1]) : null;
 }

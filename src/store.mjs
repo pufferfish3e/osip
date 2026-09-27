@@ -9,7 +9,7 @@ import { STORAGE_PROFILE } from './storage-seed.mjs';
 /** @typedef {{id:string,name:string,location:string,crop:string,area:number,unit:string,plantedAt:string,plots:Plot[],isDemo?:boolean,coverImage?:string,boundary?:import('./land-boundary.mjs').LandPoint[]}} Farm */
 /** @typedef {{id:string,farmId:string,plotId?:string,title:string,dueDate:string,time:string,category:string,done:boolean,reminder:boolean,repeat?:'none'|'daily'|'weekly'|'monthly'|'custom',repeatInterval?:number,repeatUnit?:'minutes'|'hours'|'days',repeatAnchorDay?:number,repeatFromId?:string,completedAt?:string}} Task */
 /** @typedef {{id:string,sender:string,text:string,date:string}} Message */
-/** @typedef {{id:string,type:'pilot'|'course',providerId:string,title:string,date:string,time:string,farmId:string,status:string,notes:string,price:number,conversation:Message[],service?:string,direction?:string,rescheduleRequest?:{date:string,time:string}}} Booking */
+/** @typedef {{id:string,type:'pilot'|'course',providerId:string,title:string,date:string,time:string,farmId:string,status:string,notes:string,price:number,conversation:Message[],service?:string,services?:string[],direction?:string,rescheduleRequest?:{date:string,time:string}}} Booking */
 /** @typedef {{productId:string,quantity:number}} CartItem */
 /** @typedef {{id:string,items:CartItem[],total:number,status:string,date:string}} Order */
 /** @typedef {{id?:string,type:string,title:string,inputs?:Record<string,unknown>,result:number,unit:string,date:string}} SavedCalculation */
@@ -19,6 +19,7 @@ import { STORAGE_PROFILE } from './storage-seed.mjs';
  * @property {{name:string,firstName?:string,lastName?:string,photo?:string,role:Role,roles:Role[],onboarded:boolean,hasChosenRole?:boolean}} profile
  * @property {Farm[]} farms
  * @property {Task[]} tasks
+ * @property {{id:string,name:string,expertId?:string,conversation:Message[]}[]} [chats]
  * @property {Booking[]} bookings
  * @property {CartItem[]} cart
  * @property {Order[]} orders
@@ -162,6 +163,7 @@ const validateState = (value) => {
   requireValid(isListOf(value.farms, isFarm), 'Saved farm records are invalid.');
   requireValid(isListOf(value.tasks, isTask), 'Saved tasks are invalid.');
   requireValid(isListOf(value.bookings, isBooking), 'Saved bookings are invalid.');
+  requireValid(value.chats === undefined || isListOf(value.chats, (chat) => hasStrings(chat, ['id', 'name']) && isListOf(chat.conversation, isMessage)), 'Saved chats are invalid.');
   requireValid(isListOf(value.cart, isCartItem), 'Saved cart is invalid.');
   requireValid(isListOf(value.orders, isOrder), 'Saved orders are invalid.');
   requireValid(isStringList(value.savedArticles), 'Saved guide selections are invalid.');

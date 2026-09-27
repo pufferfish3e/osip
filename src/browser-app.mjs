@@ -1,14 +1,15 @@
+import { initializeExpertMatcher } from './expert-ui.mjs';
 import { initializeShopDeals } from './shop-deals.mjs';
 import { initializeProfilePicture } from './profile-photo.mjs';
 // import { initializeMixturePlanner } from './mixture-planner.mjs';
 import { initializeArticleReader } from './article-reader.mjs';
-import { initializeFieldCare } from './field-care.mjs';
+import { createFieldCareMotion, initializeFieldCare, renderFieldSchedules } from './field-care.mjs';
 import { initializePilotMatcher } from './pilot-matcher.mjs';
 import { initializeArticleLibrary } from './article-library.mjs';
 import { initializeKeypadCalculator } from './keypad-calculator.mjs';
-import { initializeLandEditor } from './land-editor.mjs';
+import { initializeLandCardDeletion, initializeLandEditor } from './land-editor.mjs';
 import { initializeLandSetup } from './land-setup.mjs';
-import { applyAction, collectReminders, submitForm } from './actions.mjs';
+import { applyAction, canCompleteTask, completeTaskField, collectReminders, submitForm } from './actions.mjs';
 import { calculateCost, calculateMargin, convertArea } from './calculators.mjs';
 import { renderDiscover, renderServiceResults } from './discover.mjs';
 import { clearDraft, readDraft, saveDraft } from './drafts.mjs';
@@ -22,11 +23,11 @@ import { renderPlantWebResult, searchPlantWeb } from './plant-web.mjs';
 import { renderPlantHelp, renderPlantResults } from './plant-help.mjs';
 import { createPlantPhotoController, renderPhotoState } from './plant-photo.mjs';
 import { applyUpdate, initializePwa, installApp } from './pwa.mjs';
-import { initializeSchedule } from './schedule.mjs';
-import { renderShell } from './shell.mjs';
+import { initializeBookingCalendar, initializeSchedule } from './schedule.mjs';
+import { renderNotificationBell, renderShell } from './shell.mjs';
 import { createStore } from './store.mjs';
 import { emptyState, escapeHtml as esc, icon } from './ui.mjs';
-import { renderWorkspace } from './workspace.mjs';
+import { animateChatTyping, appendChatReply, initializeChatComposer, initializeNotificationStacks, renderWorkspace, requestChatReply } from './workspace.mjs';
 
 const STORE = createStore();
 try { loadLocale(localStorage); }
@@ -42,8 +43,10 @@ const PHOTO = createPlantPhotoController({ onChange: (state) => {
 const TOAST_DURATION = 4200;
 const REMINDER_INTERVAL = 60000;
 const DRAFT_FORMS = ['farmer-onboarding', 'pilot-onboarding', 'verification'];
+const PENDING_CHATS = new Set();
 let toastTimer = 0;
 let animationContext = null;
+let disposeChatTyping = () => {};
 let disposeLandMap = () => {};
 let lastCalculation = null;
 let activeFilter = 'all';
@@ -78,8 +81,40 @@ const initializeCourseBookingSheet = () => {
   sheet.showModal();
   sheet.querySelector('[data-course-booking-close]').focus({ preventScroll: true });
 };
+/** @returns {void} */
+const initializePilotBookingSheet = () => {
+  const sheet = MAIN.querySelector('[data-pilot-booking-sheet]');
+  if (!(sheet instanceof HTMLDialogElement)) return;
+  const form = sheet.querySelector('form');
+  const fields = [...form.querySelectorAll('label.field, [data-booking-services], [data-booking-date]')];
+  const motion = createFieldCareMotion(sheet, window.gsap, () => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  let step = 0;
+  const showStep = () => {
+    fields.forEach((field, index) => { field.hidden = index !== step; });
+    form.querySelector('[data-booking-progress]').textContent = `${step + 1} / ${fields.length}`;
+    form.querySelector('[data-booking-back]').hidden = step === 0;
+    form.querySelector('[data-booking-next]').hidden = step === fields.length - 1;
+    form.querySelector('[type="submit"]').hidden = step !== fields.length - 1;
+    fields[step].querySelector('input:not([type="hidden"]),select,textarea,button[aria-pressed="true"]')?.focus({ preventScroll:true });
+  };
+  const close = () => motion.close(() => navigate(`/services/pilots/${encodeURIComponent(sheet.dataset.pilotId)}`));
+  form.querySelector('[data-booking-close]').addEventListener('click', close);
+  sheet.addEventListener('cancel', (event) => { event.preventDefault(); close(); });
+  form.querySelector('[data-booking-next]').addEventListener('click', () => {
+    const input = fields[step].querySelector('input,select,textarea');
+    if (fields[step].hasAttribute('data-booking-services')) input.setCustomValidity(fields[step].querySelector(':checked') ? '' : t('Choose at least one service.'));
+    if (!input.reportValidity()) return;
+    step += 1; showStep();
+  });
+  form.querySelector('[data-booking-back]').addEventListener('click', () => { step -= 1; showStep(); });
+  form.querySelector('[data-booking-services]').addEventListener('change', (event) => { form.querySelector('[data-booking-services] input').setCustomValidity(''); });
+  initializeBookingCalendar(sheet);
+  motion.open(); showStep();
+};
 /** @param {boolean} shouldAnimate @returns {void} */
 const render = (shouldAnimate = false) => {
+  const openNotificationStacks = new Set([...MAIN.querySelectorAll('[data-notification-stack][open]')].map((item)=>item.dataset.notificationStack));
+  disposeChatTyping();
   plantWebRequest?.abort();
   const disposePreviousLandMap = disposeLandMap;
   disposeLandMap = () => {};
@@ -100,6 +135,7 @@ const render = (shouldAnimate = false) => {
   if (gridPanel) disposeLandMap = initializeLandSetup(gridPanel, STORE, window.L);
   const recordPanel = MAIN.querySelector('[data-land-editor]');
   if (recordPanel) disposeLandMap = initializeLandEditor(recordPanel, STORE, window.L);
+  initializeLandCardDeletion(MAIN, STORE);
   initializeProfilePicture(MAIN, STORE);
   initializeSchedule(MAIN);
   if (new URLSearchParams(window.location.search).get('plan') === '1') {
@@ -109,11 +145,24 @@ const render = (shouldAnimate = false) => {
   initializeFieldCare(MAIN, STORE);
   initializeShopDeals(MAIN);
   initializePilotMatcher(MAIN);
+  initializeExpertMatcher(MAIN);
   initializeArticleLibrary(MAIN, state);
   void initializeArticleReader(MAIN).catch((error) => console.error('Article reader failed.', error));
   initializeKeypadCalculator(MAIN, STORE);
 //   disposeSprayCalculator = initializeMixturePlanner(MAIN, STORE);
   initializeCourseBookingSheet();
+  initializePilotBookingSheet();
+  initializeChatComposer(MAIN);
+  MAIN.querySelectorAll('[data-notification-stack]').forEach((item)=>{ item.open = openNotificationStacks.has(item.dataset.notificationStack); });
+  initializeNotificationStacks(MAIN);
+  const chat = MAIN.querySelector('[data-chat-id]');
+  if (chat) {
+    const isTyping = PENDING_CHATS.has(chat.dataset.chatId);
+    chat.querySelector('[data-chat-typing]').hidden = !isTyping;
+    disposeChatTyping = animateChatTyping(chat.querySelector('[data-chat-typing]'), window.gsap);
+    chat.querySelector('.chat-composer button').disabled = isTyping;
+    if (isTyping) chat.querySelector('[data-chat-typing]').scrollIntoView({ block:'nearest' });
+  }
   restoreFormDraft();
   initializeMobileOnboarding(path);
   document.title = `${MAIN.querySelector('h1,h2')?.textContent ?? t('Your field companion')} — Aura`;
@@ -304,7 +353,7 @@ const handleAction = async (button) => {
     return toast('Calculation saved.');
   }
   let result;
-  STORE.update((state) => { result = applyAction(state, action, id, role); });
+  STORE.update((state) => { result = action === 'complete-task-field' ? completeTaskField(state,id,button.dataset.plotId ?? '') : applyAction(state, action, id, role); });
   finishAction(result);
   if (action === 'save-article') {
     const input = MAIN.querySelector('[data-search]');
@@ -341,6 +390,7 @@ const onClick = async (event) => {
 const fieldsFrom = (form) => {
   const data = new FormData(form);
   const fields = Object.fromEntries(data);
+  if (form.dataset.form === 'pilot-booking') fields.service = data.getAll('service').map(String);
   if (form.dataset.form === 'task') fields.plotIds = data.getAll('plotIds').map(String);
   if (form.dataset.form === 'availability') fields.days = data.getAll('days').map(String);
   return fields;
@@ -430,6 +480,7 @@ const onSubmit = async (event) => {
       return;
     }
     const fields = fieldsFrom(form);
+    if (form.dataset.form === 'message' && PENDING_CHATS.has(fields.chatId ?? fields.bookingId)) return;
     if (form.dataset.form === 'task') fields.creationKey = form.dataset.creationKey ?? (form.dataset.creationKey = crypto.randomUUID());
     if (form.dataset.form === 'calculator') return showCalculation(form, fields);
     let result;
@@ -443,6 +494,11 @@ const onSubmit = async (event) => {
       catch (error) { console.error('Could not clear completed onboarding draft', error); }
     }
     finishAction(result);
+    if (form.dataset.form === 'message') {
+      const state = STORE.getState();
+      const conversation = fields.chatId ? state.chats?.find((item) => item.id === fields.chatId) : state.bookings.find((item) => item.id === fields.bookingId);
+      if (conversation && !conversation.expertId) await replyToConversation(conversation);
+    }
     checkReminders();
     if (form.dataset.form === 'task' && !fields.id) showEventCreated(String(fields.title));
   } catch (error) {
@@ -460,6 +516,10 @@ const checkReminders = () => {
   try {
     STORE.update((state) => { state.notifications = draft.notifications; });
     if (location.pathname === '/notifications') render();
+    else {
+      const bell = document.querySelector('.notification-bell');
+      if (bell) bell.outerHTML = renderNotificationBell(STORE.getState());
+    }
     toast('A farm task is due. Check notifications.');
   }
   catch (error) { reportError(error); }
@@ -522,5 +582,45 @@ if (STORE.lastError) {
   notice.hidden = false;
 }
 checkReminders();
-window.setInterval(checkReminders, REMINDER_INTERVAL);
+window.setInterval(() => {
+  checkReminders();
+  const tasks = STORE.getState().tasks;
+  MAIN.querySelectorAll('[data-action="toggle-task"], [data-care-complete]').forEach((button) => {
+    const task = tasks.find((item) => item.id === (button.dataset.id ?? button.dataset.careComplete));
+    if (!task) return;
+    button.disabled = !canCompleteTask(task);
+    button.closest('.list-row, .task-row')?.classList.toggle('is-task-unavailable', button.disabled);
+  });
+  const careSheet = MAIN.querySelector('[data-field-care-sheet][open]');
+  const fieldTask = careSheet?.querySelector('[data-care-task]');
+  const task = tasks.find((item) => item.id === fieldTask?.dataset.careTask);
+  if (task) careSheet.querySelector('[data-care-content]').innerHTML = renderFieldSchedules(tasks, task.farmId, task.plotId);
+}, REMINDER_INTERVAL);
 await initializePwa(toast);
+
+/** @param {import('./store.mjs').Booking | {id:string,name:string,conversation:import('./store.mjs').Message[]}} conversation @returns {Promise<void>} */
+async function replyToConversation(conversation) {
+  const messageId = conversation.conversation.at(-1)?.id;
+  PENDING_CHATS.add(conversation.id);
+  render();
+  try {
+    const replies = await requestChatReply(conversation);
+    STORE.update((state) => {
+      const current = [...state.bookings, ...(state.chats ?? [])].find((item) => item.id === conversation.id);
+      if (current) appendChatReply(current, messageId, replies);
+    });
+  } finally {
+    PENDING_CHATS.delete(conversation.id);
+    if ([`/bookings/${conversation.id}/chat`, `/messages/${conversation.id}`, '/messages'].includes(location.pathname)) {
+      const composer = MAIN.querySelector('.chat-composer textarea');
+      const draft = composer?.value ?? '';
+      const hasFocus = document.activeElement === composer;
+      render();
+      const nextComposer = MAIN.querySelector('.chat-composer textarea');
+      if (nextComposer) {
+        nextComposer.value = draft;
+        if (hasFocus) nextComposer.focus({ preventScroll:true });
+      }
+    }
+  }
+}

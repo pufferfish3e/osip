@@ -1,4 +1,5 @@
-import { applyAction } from './actions.mjs';
+import { latestCompletedTasks } from './task-history.mjs';
+import { applyAction, canCompleteTask, completeTaskField } from './actions.mjs';
 import { getFormatLocale, t } from './i18n.mjs';
 import { fieldTaskUrgency } from './land-map.mjs';
 import { calendarDate, taskRepeatLabel } from './schedule.mjs';
@@ -61,26 +62,26 @@ export function renderFieldScheduleChoice() {
 }
 /** @param {import('./store.mjs').Task[]} tasks @param {string} farmId @param {string} plotId @param {Date} [now] @returns {string} */
 export function renderFieldSchedules(tasks, farmId, plotId, now = new Date()) {
-  const assigned = tasks.filter((task) => task.farmId === farmId && task.plotId === plotId);
+  const assigned = tasks.filter((task) => task.farmId === farmId && (!task.plotId || task.plotId === plotId));
   const pending = assigned.filter((task) => !task.done).sort((first, second) => `${first.dueDate}${first.time}`.localeCompare(`${second.dueDate}${second.time}`));
-  const last = assigned.filter((task) => task.done).sort((first, second) => (second.completedAt ?? `${second.dueDate}T${second.time}`).localeCompare(first.completedAt ?? `${first.dueDate}T${first.time}`))[0];
-  const completed = last ? `<section class="field-care-section field-care-completed"><h3>${icon('circle-check', 18)} ${esc(t('Latest completion'))}</h3><p>${esc(last.title)} · ${esc(t('Completed'))}</p></section>` : '';
+  const history = latestCompletedTasks(assigned);
+  const completed = history.length ? `<section class="field-care-section field-care-completed"><h3>${icon('circle-check', 18)} ${esc(t('Completed'))}</h3>${history.map((task) => `<p>${esc(task.title)} · ${esc(task.dueDate)} · ${esc(task.time)}</p>`).join('')}</section>` : '';
   if (!pending.length) return completed || renderFieldScheduleChoice();
-  return pending.map((task) => renderFieldTaskOccurrence(task, farmId, plotId, now)).join('') + completed;
+  return `<h3>${esc(t('Pending'))}</h3>` + pending.map((task) => renderFieldTaskOccurrence(task, farmId, plotId, now)).join('') + completed;
 }
 /** @param {import('./store.mjs').Task} task @param {string} farmId @param {string} plotId @param {Date} now @returns {string} */
 const renderFieldTaskOccurrence = (task, farmId, plotId, now) => {
   const state = fieldTaskUrgency([task], farmId, plotId, now);
   const status = t({ upcoming: 'Scheduled later', soon: 'Due within 2 hours', overdue: 'Overdue' }[state.urgency]);
-  const canComplete = new Date(`${task.dueDate}T${task.time}`) <= now;
-  const action = canComplete ? `<button type="button" class="button" data-care-complete="${esc(task.id)}">${esc(t('Complete'))}</button>` : `<a class="button button-secondary" href="/farm/${esc(farmId)}/tasks/${esc(task.id)}">${esc(t('View task'))}</a>`;
-  return `<section class="field-care-section" data-care-task="${esc(task.id)}"><h3>${esc(task.title)}</h3><p class="field-care-occurrence">${esc(task.repeatFromId ? t('Next occurrence') : status)}${task.repeatFromId ? ` · ${esc(status)}` : ''}</p><p>${esc(t(task.category))} · ${esc(task.dueDate)} · ${esc(task.time)}</p>${task.repeat && task.repeat !== 'none' ? `<p>${esc(taskRepeatLabel(task))}</p>` : ''}<div class="field-care-actions">${action}<button type="button" class="button button-secondary" data-care-skip="${esc(task.id)}">${esc(t('Not now'))}</button></div></section>`;
+  const canComplete = canCompleteTask(task, now);
+  const action = canComplete ? `<button type="button" class="button" data-care-complete="${esc(task.id)}">${esc(t('Complete'))}</button>` : `<button type="button" class="button button-secondary" disabled>${esc(t('Scheduled later'))}</button>`;
+  return `<section class="field-care-section ${canComplete ? '' : 'is-task-unavailable'}" data-care-task="${esc(task.id)}"><h3>${esc(task.title)}</h3><p class="field-care-occurrence">${esc(task.repeatFromId ? t('Next occurrence') : status)}${task.repeatFromId ? ` · ${esc(status)}` : ''}</p><p>${esc(t(task.category))} · ${esc(task.dueDate)} · ${esc(task.time)}</p>${task.repeat && task.repeat !== 'none' ? `<p>${esc(taskRepeatLabel(task))}</p>` : ''}<div class="field-care-actions">${action}<button type="button" class="button button-secondary" data-care-skip="${esc(task.id)}" ${canComplete ? '' : 'disabled'}>${esc(t('Not now'))}</button></div></section>`;
 };
 /** @param {import('./store.mjs').AppState} state @param {string} farmId @param {string} plotId @param {string} taskId @returns {void} */
 export function completeFieldSchedule(state, farmId, plotId, taskId) {
-  const task = state.tasks.find((item) => item.id === taskId && item.farmId === farmId && item.plotId === plotId);
+  const task = state.tasks.find((item) => item.id === taskId && item.farmId === farmId);
   if (!task) throw new Error('Field schedule not found');
-  if (!task.done) applyAction(state, 'toggle-task', taskId);
+  completeTaskField(state,taskId,plotId);
 }
 /** @param {import('./store.mjs').AppState} state @param {string} farmId @param {string} plotId @param {string} category @returns {void} */
 export function recordFieldCare(state, farmId, plotId, category) {

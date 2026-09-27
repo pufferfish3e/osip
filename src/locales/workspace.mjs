@@ -1,6 +1,13 @@
 /** Authored UI copy only; user-entered records keep their original language. */
 export const WORKSPACE_TRANSLATIONS = {
   "ms": {
+    "Mark as read": "Tandakan sebagai dibaca",
+    "Notification marked as read.": "Pemberitahuan ditandakan sebagai dibaca.",
+    "{done} of {total} completed": "{done} daripada {total} selesai",
+    "{count} unread": "{count} belum dibaca",
+    "Delete {name}": "Padam {name}",
+    "Delete {name}?": "Padam {name}?",
+
     "Latest completion": "Penyelesaian terkini",
     "Completed": "Selesai",
     "Next occurrence": "Kejadian seterusnya",
@@ -572,6 +579,13 @@ export const WORKSPACE_TRANSLATIONS = {
     "{service} with {name}": "{service} bersama {name}"
   },
   "zh-Hans": {
+    "Mark as read": "标为已读",
+    "Notification marked as read.": "通知已标为已读。",
+    "{done} of {total} completed": "已完成 {done}/{total}",
+    "{count} unread": "{count} 条未读",
+    "Delete {name}": "删除 {name}",
+    "Delete {name}?": "删除 {name}？",
+
     "Latest completion": "最近完成",
     "Completed": "已完成",
     "Next occurrence": "下一次任务",

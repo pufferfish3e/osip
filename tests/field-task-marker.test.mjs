@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { renderFieldTaskMarker, fieldTaskUrgency } from '../src/land-map.mjs';
+import { renderFieldTaskMarker, fieldTaskUrgency, fieldTaskSegments } from '../src/land-map.mjs';
 
 const FIELD = { id: 'field-1', name: 'Field <1>', crop: 'Rice', area: 1 };
 const NOW = new Date('2030-06-20T12:00:00');
@@ -55,4 +55,24 @@ test('a more urgent unfinished task overrides a completed or later task', () => 
     return fieldTaskUrgency(task, 'farm-1', FIELD.id, NOW).color;
   });
   assert.equal(new Set(colors).size, 5);
+});
+
+test('circle proportions represent each task state while fence keeps highest urgency', () => {
+  const tasks = [{ ...BASE, time:'11:00' }, { ...BASE, time:'13:00' }, { ...BASE, time:'16:00' }, { ...BASE, done:true }];
+  const segments = fieldTaskSegments(tasks, 'farm-1', FIELD.id, NOW);
+  assert.deepEqual(segments.map(({ state, percentage }) => [state, percentage]), [['overdue',25], ['soon',25], ['upcoming',25], ['complete',25]]);
+  assert.equal(fieldTaskUrgency(tasks, 'farm-1', FIELD.id, NOW).color, segments[0].color);
+  const html = renderFieldTaskMarker(FIELD, tasks, 'farm-1', NOW);
+  assert.match(html, /--task-ring:conic-gradient\(#d64747 0% 25%,#d99119 25% 50%,#075bea 50% 75%,#25875c 75% 100%\)/);
+});
+
+test('state shares count only this field, include future work and omit old completions', () => {
+  const tasks = [{ ...BASE, time:'11:00' }, { ...BASE, time:'10:00' }, { ...BASE, dueDate:'2030-06-21' }, { ...BASE, done:true, dueDate:'2030-06-19' }, { ...BASE, plotId:'other' }, { ...BASE, farmId:'other' }];
+  const segments = fieldTaskSegments(tasks, 'farm-1', FIELD.id, NOW);
+  assert.equal(segments.length, 2);
+  assert.equal(segments[0].count, 2);
+  assert.equal(segments[0].percentage, 2 / 3 * 100);
+  assert.equal(segments[1].count, 1);
+  assert.equal(fieldTaskSegments([], 'farm-1', FIELD.id, NOW)[0].state, 'idle');
+  assert.equal(fieldTaskSegments([{ ...BASE, done:true }], 'farm-1', FIELD.id, NOW)[0].percentage, 100);
 });

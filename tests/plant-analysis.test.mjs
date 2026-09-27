@@ -362,3 +362,19 @@ test('photo analysis fails closed when online recommendations have no citations'
     : providerResponse() });
   assert.equal((await requestAnalysis(handler)).status, 502);
 });
+
+
+test('production photo analysis accepts only the approved HTTPS origin', async () => {
+  const host = 'aurafarming-eight.vercel.app';
+  const handler = makeHandler({ fetchImpl: async () => providerResponse({ ...VALID_ANALYSIS, isPlant: false, guideSlugs: [] }) });
+  const allowed = await requestAnalysis(handler, { headers: { host, origin: `https://${host}` } });
+  assert.equal(allowed.status, 200);
+  for (const headers of [
+    { host, origin: 'https://attacker.example' },
+    { host, origin: `http://${host}` },
+    { host, origin: undefined },
+    { host: `${host}.attacker.example`, origin: `https://${host}.attacker.example` },
+  ]) {
+    assert.equal((await requestAnalysis(makeHandler(), { body: '{}', headers })).status, 403);
+  }
+});

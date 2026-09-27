@@ -1,3 +1,4 @@
+import { createMockChatHandler } from './server/mock-chat.mjs';
 import { createSprayConfigHandler } from './server/spray-config.mjs';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
@@ -14,6 +15,7 @@ const DEFAULT_PORT = 4173;
 const MAX_PORT = 65535;
 const ROUTE_PREFIXES = ['/schedule', '/farm', '/learn', '/services', '/tools', '/weather', '/onboarding', '/auth', '/account', '/notifications', '/bookings', '/messages', '/pilot', '/shop', '/checkout', '/orders', '/news', '/plant-help'];
 const PUBLIC_FILES = new Set([
+  '/src/task-history.mjs',
   '/src/shop-deals.mjs',
   '/data/active.json', '/data/demo.json', '/data/newuser.json', '/src/storage-seed.mjs',
   '/src/real-products.mjs', '/src/land-covers.mjs',
@@ -26,10 +28,43 @@ const PUBLIC_FILES = new Set([
   '/assets/vendor/leaflet.js', '/assets/vendor/leaflet.css',
   '/index.html', '/offline.html', '/src/browser-app.mjs', '/sw.js', '/manifest.webmanifest',
   '/src/open-articles.mjs', '/src/article-reader.mjs', '/src/extension-articles.mjs', '/src/article-catalogue.mjs', '/src/article-library.mjs', '/src/data.mjs', '/src/store.mjs', '/src/spray-calculator.mjs', '/src/calculators.mjs', '/src/profile-photo.mjs', '/src/ui.mjs', '/src/shell.mjs',
-  '/src/home.mjs', '/src/workspace.mjs', '/src/discover.mjs', '/src/pilot-matcher.mjs', '/src/keypad-calculator.mjs', '/src/actions.mjs', '/src/pwa.mjs', '/src/drafts.mjs',
+  '/src/home.mjs', '/src/workspace.mjs', '/src/discover.mjs', '/src/pilot-matcher.mjs', '/src/expert-data.mjs', '/src/expert-ui.mjs', '/src/keypad-calculator.mjs', '/src/actions.mjs', '/src/pwa.mjs', '/src/drafts.mjs',
   '/src/plant-web.mjs', '/src/plant-action.mjs', '/src/plant-guides.mjs', '/src/plant-help.mjs', '/src/plant-photo.mjs',
   '/src/i18n.mjs', '/src/language.mjs', '/src/locales/core.mjs', '/src/locales/workspace.mjs', '/src/locales/discover.mjs', '/src/locales/plant.mjs',
   '/assets/app.css', '/assets/vendor/gsap.min.js', '/assets/icons.svg', '/assets/mark.svg', '/assets/avatar-default.svg',
+  '/assets/expert-farid.jpg',
+  '/assets/expert-aisyah.jpg',
+  '/assets/expert-hafiz.jpg',
+  '/assets/expert-weiling.jpg',
+  '/assets/expert-meiyin.jpg',
+  '/assets/expert-suresh.jpg',
+  '/assets/expert-nirmala.jpg',
+  '/assets/expert-liang.jpg',
+  '/assets/expert-nurul.jpg',
+  '/assets/expert-zulkifli.jpg',
+  '/assets/expert-salmah.jpg',
+  '/assets/expert-roshani.jpg',
+  '/assets/expert-arun.jpg',
+  '/assets/expert-chong.jpg',
+  '/assets/expert-nadia.jpg',
+  '/assets/expert-azhar.jpg',
+  '/assets/expert-shanti.jpg',
+  '/assets/expert-siew.jpg',
+  '/assets/expert-lina.jpg',
+  '/assets/expert-ying.jpg',
+  '/assets/expert-faizal.jpg',
+  '/assets/expert-rizal.jpg',
+  '/assets/expert-kavitha.jpg',
+  '/assets/expert-kamal.jpg',
+  '/assets/expert-diana.jpg',
+  '/assets/pilot-kelvin.jpg',
+  '/assets/pilot-siti.jpg',
+  '/assets/pilot-hakim.jpg',
+  '/assets/pilot-ravi.jpg',
+  '/assets/pilot-amir.jpg',
+  '/assets/pilot-joanne.jpg',
+  '/assets/pilot-nabil.jpg',
+  '/assets/pilot-izzat.jpg',
   '/assets/pilot-azlan.png', '/assets/pilot-maya.png', '/assets/pilot-daniel.png', '/assets/profile-ahmad.jpg', '/assets/farm.jpg', '/assets/crops.jpg', '/assets/drone.jpg', '/assets/course.jpg',
   '/assets/learn-soil.jpg', '/assets/learn-soil-thumb.jpg', '/assets/learn-water.jpg', '/assets/learn-water-thumb.jpg', '/assets/learn-scouting.jpg', '/assets/learn-scouting-thumb.jpg', '/assets/learn-harvest.jpg', '/assets/learn-harvest-thumb.jpg',
   '/assets/icon-192.png', '/assets/icon-512.png', '/assets/icon-maskable.png',
@@ -121,11 +156,13 @@ const serveRequest = async (request, response, root) => {
 
 /** @param {string} root @param {import('./server/plant-analysis.mjs').AnalysisOptions} analysisOptions @returns {import('node:http').Server} */
 export function createAppServer(root = ROOT, analysisOptions = {}) {
+  const handleMockChat = createMockChatHandler(analysisOptions);
   const handlePlantAnalysis = createPlantAnalysisHandler(analysisOptions);
   const handleSprayConfig = createSprayConfigHandler(analysisOptions);
   const handlePlantSearch = createPlantSearchHandler(analysisOptions);
   return createServer(async (request, response) => {
     try {
+      if (request.url?.split('?')[0] === '/api/mock-chat') { await handleMockChat(request, response); return; }
       if (request.url?.split('?')[0] === '/api/spray-config') { await handleSprayConfig(request, response); return; }
       if (request.url?.split('?')[0] === '/api/plant-search') {
         await handlePlantSearch(request, response);

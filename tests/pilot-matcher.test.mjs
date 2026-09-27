@@ -13,7 +13,9 @@ test('demo matching rotates eligible pilots and gives an explicitly illustrative
     assert.match(renderPilotMatch(match), /Demo match/);
   }
   assert.equal(demoPilotMatch({ ...PREFERENCES, area:'Other' }), undefined);
-  assert.equal(demoPilotMatch({ ...PREFERENCES, service:'Spraying' }, 'maya').pilot.id, 'maya');
+  const spraying = demoPilotMatch({ ...PREFERENCES, service:'Spraying' }, 'maya', () => 0);
+  assert.notEqual(spraying.pilot.id, 'maya');
+  assert.ok(spraying.pilot.services.includes('Spraying'));
 });
 
 test('matching shows a loading state before reveal and never reopens a cancelled dialog', async () => {
@@ -32,9 +34,10 @@ test('matching shows a loading state before reveal and never reopens a cancelled
 });
 test('matching requires service and area; budget and date affect score deterministically', () => {
   const results = matchPilots(PREFERENCES);
-  assert.deepEqual(results.map((result)=>result.pilot.id), ['azlan','maya']);
+  assert.deepEqual(new Set(results.map((result)=>result.pilot.id)), new Set(['azlan','maya','kelvin','siti','amir','joanne']));
   assert.equal(results[0].score,100);
-  assert.deepEqual(matchPilots({...PREFERENCES,service:'Spraying'}).map((result)=>result.pilot.id), ['maya']);
+  const spraying = matchPilots({...PREFERENCES,service:'Spraying'});
+  assert.deepEqual(new Set(spraying.map((result)=>result.pilot.id)), new Set(['maya','hakim','amir','nabil']));
   assert.deepEqual(matchPilots({...PREFERENCES,area:'Other'}), []);
   assert.ok(matchPilots({...PREFERENCES,budget:60})[0].score < 100);
   const early=matchPilots({...PREFERENCES,date:'2000-01-01'});
@@ -87,11 +90,13 @@ test('matched card uses each pilot portrait, shows rating and explains demo revi
  for (const pilot of PILOTS) {
   const html = renderPilotMatch({pilot,score:100,dateMatches:true,budgetMatches:true});
   assert.ok(html.includes(pilot.portrait));
-  assert.ok(html.includes(String(pilot.rating)));
-  assert.ok(html.includes(`(${pilot.reviewCount})`));
-  assert.match(html, /Sample reviews/);
+  if (pilot.reviewCount) {
+    assert.ok(html.includes(String(pilot.rating)));
+    assert.ok(html.includes(`(${pilot.reviewCount})`));
+    assert.match(html, /Sample reviews/);
+  } else assert.match(html, /No reviews yet/);
   for (const review of pilot.reviews) assert.ok(html.includes(review));
-  assert.match(html, /AI-generated portrait/);
+  assert.match(html, pilot.portrait.endsWith('.svg') ? /Placeholder portrait/ : /AI-generated portrait/);
   assert.ok(html.includes(`/services/pilots/${pilot.id}`));
  }
  assert.match(renderPilotMatch(undefined), /No pilot fits/);

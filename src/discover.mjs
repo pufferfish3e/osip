@@ -1,3 +1,5 @@
+import { renderExperts } from './expert-ui.mjs';
+import { renderCalendar } from './schedule.mjs';
 import { renderDealSearch, renderShopOffers } from './shop-deals.mjs';
 // Pesticide calculator disabled at user request; retain integration for restoration.
 // import { renderMixturePlanner, renderPesticideOptions, renderProductMatchPage, renderTankPreparation } from './mixture-planner.mjs';
@@ -191,14 +193,13 @@ const pilotBooking = (id, state) => {
   if (!pilot) return missingPage('Pilot not found', '/services/pilots', 'Find a pilot');
   if (!state.farms.length) return emptyState('Start with your farm.', 'Add a farm so your pilot knows where the work is needed.', '/onboarding/farmer', 'Add your farm');
   const farms = [...state.farms].sort((first, second) => Number(Boolean(first.isDemo || first.id === 'farm-1')) - Number(Boolean(second.isDemo || second.id === 'farm-1'))).map((farm) => `<option value="${esc(farm.id)}">${esc(farm.name)} · ${esc(farm.area.toString())} ${esc(t(farm.unit ?? 'ha'))}</option>`).join('');
-  return `${backLink(`/services/pilots/${pilot.id}`, 'Pilot profile')}${pageHeading(t('Booking request'), t('Plan the job'), t('With {name}', { name: pilot.name }))}
-    <form class="card card-pad form-stack detail-content" data-form="pilot-booking">
+  return `${pilotDetail(id)}<dialog class="task-sheet pilot-booking-sheet" data-pilot-booking-sheet data-pilot-id="${esc(pilot.id)}" aria-labelledby="pilot-booking-title"><form class="form-stack" data-form="pilot-booking"><div class="task-sheet-heading"><span class="muted" data-booking-progress></span><button class="icon-button" type="button" data-booking-close aria-label="${esc(t('Cancel'))}">${icon('x',20)}</button></div><h2 id="pilot-booking-title">${esc(t('Booking details'))}</h2>
       ${hiddenInput('providerId', pilot.id)}${hiddenInput('type', 'pilot')}${hiddenInput('title', `Drone service with ${pilot.name}`)}${hiddenInput('price', pilot.rate)}
-      <label class="field">${esc(t('Your farm'))}<select class="input" name="farmId" required>${farms}</select></label>
-      <label class="field">${esc(t('Service'))}<select class="input" name="service" required>${pilot.services.map((service) => `<option value="${esc(service)}">${esc(t(service))}</option>`).join('')}</select></label>
-      <div class="form-grid"><label class="field">${esc(t('Preferred date'))}<input class="input" type="date" name="date" min="${today()}" required></label><label class="field">${esc(t('Preferred time'))}<input class="input" type="time" name="time" value="09:00" required></label></div>
-      <label class="field">${esc(t('Job details'))}<textarea class="input" name="notes" rows="4" maxlength="1000" placeholder="${esc(t('Plot size, crop, access and anything the pilot should know'))}" required></textarea></label>
-      <button class="button" type="submit">${esc(t('Save booking request'))}${icon('arrow-up-right', 18)}</button></form>`;
+      <label class="field">${esc(t('Your land'))}<select class="input" name="farmId" required>${farms}</select></label>
+      <fieldset class="booking-services" data-booking-services><legend>${esc(t('Services'))}</legend>${pilot.services.map((service) => `<label class="booking-service-option"><input type="checkbox" name="service" value="${esc(service)}"><span>${esc(t(service))}</span></label>`).join('')}</fieldset>
+      <div class="form-grid"><section class="field" data-booking-date><span>${esc(t('Preferred date'))}</span><input type="hidden" name="date" value="${today()}"><div data-booking-calendar>${renderCalendar(today(),today().slice(0,7),true,[],false,today())}</div></section><label class="field">${esc(t('Preferred time'))}<input class="input" type="time" name="time" value="09:00" required></label></div>
+      <label class="field">${esc(t('Job details'))}<textarea class="input" name="notes" rows="3" maxlength="1000" placeholder="${esc(t('Plot size, crop, access and anything the pilot should know'))}" required></textarea></label>
+      <div class="task-sheet-actions"><button class="button button-secondary" type="button" data-booking-back>${esc(t('Back'))}</button><button class="button" type="button" data-booking-next>${esc(t('Continue'))}</button><button class="button" type="submit">${esc(t('Save request'))}${icon('arrow-up-right', 18)}</button></div></form></dialog>`;
 };
 
 /** @param {Product} product @returns {string} */
@@ -292,6 +293,7 @@ const renderLearning = (segments, state) => {
 const renderServices = (segments, state) => {
   const [, section, id, action] = segments;
   if (!section) return servicesHome();
+  if (section === 'experts' && !action) return renderExperts(id);
   if (section === 'pilots' && !id) return pilotList();
   if (section === 'pilots' && id && !action) return pilotDetail(id);
   if (section === 'pilots' && id && action === 'book') return pilotBooking(id, state);

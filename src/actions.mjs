@@ -1,3 +1,4 @@
+import { startExpertChat } from './expert-data.mjs';
 import { ARTICLES, COURSES, PILOTS, PRODUCTS } from './data.mjs';
 import { getLocale, SUPPORTED_LOCALES, t } from './i18n.mjs';
 
@@ -144,12 +145,15 @@ const saveBooking = (state, fields, isCourse) => {
   const farm = isCourse ? null : find(state.farms, (item) => item.id === farmId, 'Farm');
   if (state.bookings.some((item) => item.providerId === providerId && item.farmId === farmId && item.date === date && item.time === time && ACTIVE_BOOKING_STATUSES.includes(item.status))) throw new ActionError('You already have a request for this session.');
   const id = makeId('booking');
-  const service = isCourse ? '' : text(fields, 'service', false) || provider.services[0];
-  if (!isCourse && !provider.services.includes(service)) throw new ActionError('Choose one of this pilot’s services.');
+  const services = isCourse ? [] : [...new Set(Array.isArray(fields.service) ? fields.service : [text(fields, 'service', false) || provider.services[0]])];
+  if (!isCourse && (!services.length || services.some((item) => !provider.services.includes(item)))) throw new ActionError('Choose at least one of this pilot’s services.');
+  const service = services.join(', ');
   const title = isCourse ? provider.title : `${service} with ${provider.name}`;
-  state.bookings.push({ id, type: isCourse ? 'course' : 'pilot', service, providerId, title, date, time, farmId, status: 'requested', notes: text(fields, 'notes', false), price: isCourse ? provider.price : provider.rate * farm.area, conversation: [] });
+  const notes = text(fields, 'notes', false);
+  const conversation = isCourse ? [] : [{ id:makeId('message'), sender:'you', text:`${title}\n${farm.name} · ${farm.area} ha\n${date} · ${time}${notes ? `\n${notes}` : ''}`, date:timestamp() }];
+  state.bookings.push({ id, type: isCourse ? 'course' : 'pilot', service, services, providerId, title, date, time, farmId, status: 'requested', notes, price: isCourse ? provider.price : provider.rate * farm.area, conversation });
   notify(state, 'Booking request saved', `${title}. Saved on this device.`);
-  return { redirect: `/bookings/${id}`, message: t('Request saved locally. No provider contacted.') };
+  return { redirect: isCourse ? `/bookings/${id}` : `/bookings/${id}/chat`, message: t('Request saved locally. No provider contacted.') };
 };
 /** @param {AppState} state @param {Fields} fields @returns {ActionResult} */
 const savePilot = (state, fields) => {
@@ -163,9 +167,9 @@ const savePilot = (state, fields) => {
 };
 /** @param {AppState} state @param {Fields} fields @returns {ActionResult} */
 const saveMessage = (state, fields) => {
-  const booking = find(state.bookings, (item) => item.id === text(fields, 'bookingId'), 'Booking');
+  const booking = fields.chatId ? find(state.chats ?? [], (item) => item.id === text(fields, 'chatId'), 'Conversation') : find(state.bookings, (item) => item.id === text(fields, 'bookingId'), 'Booking');
   booking.conversation.push({ id: makeId('message'), sender: 'you', text: text(fields, 'message'), date: timestamp() });
-  return { message: t('Message saved locally. Delivery is not connected.') };
+  return {};
 };
 /** @param {AppState} state @param {Fields} fields @returns {ActionResult} */
 const requestReschedule = (state, fields) => {
@@ -202,6 +206,15 @@ const saveProfileName = (state, fields) => {
 };
 /** @param {AppState} state @param {string} form @param {Fields} fields @returns {ActionResult} */
 export function submitForm(state, form, fields) {
+  if (form === 'expert-chat') return {redirect:`/messages/${startExpertChat(state,text(fields,'expertId'))}`,message:''};
+  if (form === 'conversation') {
+    const name = text(fields, 'name');
+    if (name.length > 100) throw new ActionError('Use a name up to 100 characters.');
+    const id = makeId('chat');
+    state.chats ??= [];
+    state.chats.push({ id, name, conversation:[] });
+    return { redirect:`/messages/${id}`, message:'' };
+  }
   if (form === 'land-onboarding') {
     saveProfileName(state, fields);
     state.profile.onboarded = true;
@@ -295,6 +308,10 @@ export function applyAction(state, action, id = '', role = '') {
     find(state.orders, (item) => item.id === id, 'Order').status = 'demo-paid';
     return { redirect: `/orders/${id}`, message: t('Payment simulated. No money moved.') };
   }
+  if (action === 'mark-notification-read') {
+    find(state.notifications, (item) => item.id === id, 'Notification').read = true;
+    return { message: t('Notification marked as read.') };
+  }
   if (action === 'mark-notifications-read') {
     state.notifications.forEach((item) => { item.read = true; });
     return { message: t('Notifications marked as read.') };
@@ -312,4 +329,35 @@ export function collectReminders(state, now = new Date()) {
     hasChanged = true;
   }
   return hasChanged;
+}
+
+const TASK_READY_WINDOW_MS = 2 * 60 * 60 * 1000;
+/** @param {import('./store.mjs').Task} task @param {Date} [now] @returns {boolean} */
+export function canCompleteTask(task, now = new Date()) {
+  const due = new Date(`${task.dueDate}T${task.time}`).getTime();
+  return !task.done && Number.isFinite(due) && now.getTime() >= due - TASK_READY_WINDOW_MS;
+}
+
+/** @param {AppState} state @param {string} taskId @param {string} plotId @returns {ActionResult} */
+export function completeTaskField(state, taskId, plotId) {
+  let task = find(state.tasks, (item) => item.id === taskId, 'Task');
+  const farm = find(state.farms, (item) => item.id === task.farmId, 'Farm');
+  if (!plotId && !farm.plots.length) {
+    if (!task.done && canCompleteTask(task)) return applyAction(state,'toggle-task',task.id);
+    return {message:t('Task complete.')};
+  }
+  find(farm.plots, (item) => item.id === plotId, 'Field');
+  if (task.plotId && task.plotId !== plotId) {
+    task = find(state.tasks,(item)=>item.id === `${taskId}:field:${plotId}` && item.farmId === farm.id && item.plotId === plotId,'Task');
+  }
+  if (task.done) return {message:t('Task complete.')};
+  if (!canCompleteTask(task)) throw new ActionError('Scheduled later');
+  if (!task.plotId) {
+    const original = {...task};
+    task.plotId = plotId;
+    for (const field of farm.plots) {
+      if (field.id !== plotId) state.tasks.push({...original,id:`${taskId}:field:${field.id}`,plotId:field.id});
+    }
+  }
+  return applyAction(state,'toggle-task',task.id);
 }

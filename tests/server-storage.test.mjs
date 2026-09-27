@@ -8,7 +8,7 @@ import { createAppServer } from '../server.mjs';
 test('server serves JSON seeds and their browser module with correct content types', async () => {
   const server = createAppServer();
   const handler = server.listeners('request')[0];
-  for (const path of ['/data/active.json','/data/demo.json','/data/newuser.json','/src/storage-seed.mjs']) {
+  for (const path of ['/data/active.json','/data/demo.json','/data/newuser.json','/src/storage-seed.mjs','/src/task-history.mjs']) {
     let status;
     let headers;
     let content;
@@ -22,6 +22,11 @@ test('server serves JSON seeds and their browser module with correct content typ
     assert.ok(content.length);
     if (path.endsWith('.json')) assert.doesNotThrow(() => JSON.parse(content.toString()));
   }
+});
+
+test('task history is included in the offline shell', () => {
+  const source = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+  assert.match(source, /const SHELL_FILES = \[[\s\S]*?'\/src\/task-history\.mjs'/);
 });
 
 test('Vercel import activates the listener without changing local direct startup', () => {

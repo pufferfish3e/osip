@@ -8,6 +8,7 @@ import { PLANT_GUIDES } from '../src/plant-guides.mjs';
 /** @typedef {{apiKey?:string,model?:string,trustedOrigin?:string,fetchImpl?:typeof fetch,now?:()=>number,timeoutMs?:number,bodyTimeoutMs?:number}} AnalysisOptions */
 /** @typedef {(request:import('node:http').IncomingMessage,response:import('node:http').ServerResponse)=>Promise<void>} AnalysisHandler */
 
+const PRODUCTION_ORIGINS = ['https://aurafarming-eight.vercel.app'];
 const OPENAI_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = 'gpt-4.1-mini';
 const ANALYSIS_LANGUAGES = { en: 'English', ms: 'Bahasa Melayu', 'zh-Hans': 'Simplified Chinese' };
@@ -296,7 +297,7 @@ export function createPlantAnalysisHandler(options = {}) {
     /** @type {(()=>void)|undefined} */
     let release;
     try {
-      validateRequest(request, lanOrigin);
+      validateRequest(request, lanOrigin, PRODUCTION_ORIGINS);
       if (!apiKey || hasInvalidOrigin || !/^[a-zA-Z0-9._:-]{1,120}$/.test(model)) {
         throw new PlantAnalysisError(STATUS.unavailable, 'analysis_not_configured', 'Photo analysis is not available yet. You can search the guides instead.');
       }
