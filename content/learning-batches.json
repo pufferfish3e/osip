@@ -1,0 +1,65 @@
+{
+  "target": 100,
+  "published": 20,
+  "scope": "Malaysian farming; one searchable library with topic categories",
+  "completedBatches": [
+    {
+      "count": 10,
+      "name": "Common pests, rice problems and plant stress"
+    },
+    {
+      "count": 10,
+      "name": "Malaysian chilli, orchard, ginger, soil and water guides"
+    }
+  ],
+  "remainingBatches": [
+    {
+      "count": 10,
+      "name": "Vegetable pests and beneficial insects",
+      "status": "planned"
+    },
+    {
+      "count": 10,
+      "name": "Paddy pests, diseases and field care",
+      "status": "planned"
+    },
+    {
+      "count": 10,
+      "name": "Tropical fruit pests and diseases",
+      "status": "planned"
+    },
+    {
+      "count": 10,
+      "name": "Soil, compost and nutrient decisions",
+      "status": "planned"
+    },
+    {
+      "count": 10,
+      "name": "Irrigation, drainage and Malaysian weather",
+      "status": "planned"
+    },
+    {
+      "count": 10,
+      "name": "Nursery, propagation and crop establishment",
+      "status": "planned"
+    },
+    {
+      "count": 10,
+      "name": "Harvest, handling and crop hygiene",
+      "status": "planned"
+    },
+    {
+      "count": 10,
+      "name": "Field records, scouting and practical farm operations",
+      "status": "planned"
+    }
+  ],
+  "editorialRules": [
+    "Use Malaysian crop and growing-condition relevance, not merely a Malaysian author affiliation.",
+    "Give common pests and problems their own articles.",
+    "Use original practical writing grounded in Malaysian primary sources; retain source links.",
+    "Translate each completed guide into English, Bahasa Melayu and Simplified Chinese.",
+    "Do not copy old pesticide recipes or claim agricultural review that has not occurred.",
+    "Use licensed local images; label illustrative pictures appropriately."
+  ]
+}

@@ -1,3 +1,4 @@
+import { renderPlantWebResult } from './plant-web.mjs';
 import { getLocale, t } from './i18n.mjs';
 import { localizePlantGuide, findPlantGuide, searchPlantGuides } from './plant-guides.mjs';
 import { emptyState, escapeHtml as esc, icon, pageHeading } from './ui.mjs';
@@ -43,7 +44,8 @@ export function renderPlantAnalysis(result) {
     <header class="plant-summary-card card"><div class="plant-summary-label">${icon('leaf', 20)}<span>${esc(t('Photo summary'))}</span></div><h2 id="plant-summary-title" tabindex="-1">${esc(result.title)}</h2><p class="plant-summary-copy">${esc(result.summary)}</p>
       ${result.observations.length ? `<div class="plant-observation-group"><h3>${esc(t('What’s visible'))}</h3><ul class="plant-observations" role="list">${result.observations.map((item) => `<li>${esc(item)}</li>`).join('')}</ul></div>` : ''}
     </header>
-    ${result.nextSteps.length ? `<section class="plant-next-steps" aria-labelledby="plant-steps-title"><h3 id="plant-steps-title">${esc(t('Next steps'))}</h3><ol class="plant-action-cards" role="list">${result.nextSteps.map((item, index) => `<li><span class="plant-step-number" aria-hidden="true">${index + 1}</span><p>${esc(item)}</p></li>`).join('')}</ol></section>` : ''}
+    ${result.research ? renderPlantWebResult(result.research) : ''}
+    ${!result.research && result.nextSteps.length ? `<section class="plant-next-steps" aria-labelledby="plant-steps-title"><h3 id="plant-steps-title">${esc(t('Next steps'))}</h3><ol class="plant-action-cards" role="list">${result.nextSteps.map((item, index) => `<li><span class="plant-step-number" aria-hidden="true">${index + 1}</span><p>${esc(item)}</p></li>`).join('')}</ol></section>` : ''}
     <p class="plant-analysis-note">${icon('info-circle', 18)}<span>${esc(t('AI-generated observations, not a confirmed diagnosis.'))}</span></p>
     ${guides.length ? `<div class="section-heading"><h2>${esc(t('Guides to compare'))}</h2></div><div class="plant-guide-list card">${guides.map(guideCard).join('')}</div>` : `<p class="muted">${esc(t(result.isPlant ? 'No close guide match. Search the symptoms you can see.' : 'Try a clear photo of a plant, leaf or pest.'))}</p>`}
     <a class="button button-secondary" href="/plant-help">${icon('search', 19)} ${esc(t('Search all problems'))}</a>

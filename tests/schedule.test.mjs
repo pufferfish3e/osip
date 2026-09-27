@@ -1,5 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
 import { calendarDate, calendarDays, renderCalendar } from '../src/schedule.mjs';
 import { INITIAL_STATE } from '../src/data.mjs';
 import { renderWorkspace } from '../src/workspace.mjs';
@@ -45,4 +46,29 @@ test('task detail offers guided editing with saved values and explicit deletion'
   assert.ok(html.includes(`value="${task.dueDate}"`));
   assert.ok(html.includes(`value="${task.time}"`));
   assert.match(html, /Save changes/);
+});
+
+test('schedule offers Other as a category and preserves it when editing', () => {
+  const state = structuredClone(INITIAL_STATE);
+  const schedule = renderWorkspace('/farm/farm-1/schedule', state);
+  assert.match(schedule, /<option value="Other"[^>]*>Other<\/option>/);
+  const task = state.tasks[0];
+  task.category = 'Other';
+  const detail = renderWorkspace(`/farm/${task.farmId}/tasks/${task.id}`, state);
+  assert.match(detail, /<option value="Other" selected>Other<\/option>/);
+});
+
+test('form dropdown arrows have a consistent inset and space for selected text', () => {
+  const styles = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  assert.match(styles, /\.field select \{[^}]*padding-right:48px;[^}]*background-position:right 16px center;/);
+  assert.match(styles, /forced-colors:active[^}]*\.field select \{[^}]*appearance:auto/);
+});
+
+test('calendar navigation shares the weekday columns and dates are vertically centered', () => {
+  const styles = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  assert.match(styles, /\.calendar-heading \{[^}]*grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
+  assert.match(styles, /\.calendar-heading > :nth-child\(2\) \{[^}]*grid-column:2 \/ 7/);
+  assert.match(styles, /\.calendar-days button \{[^}]*align-items:center;[^}]*padding:8px 0;/);
+  const html = renderCalendar('2026-09-27', '2026-09', false);
+  assert.doesNotMatch(html, />[‹›⌄]</);
 });

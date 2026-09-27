@@ -1,14 +1,20 @@
 const CACHE_PREFIX = 'osip-shell-';
 // The build fingerprints shell content so browsers discover asset updates.
-const CACHE_NAME = `${CACHE_PREFIX}v3-d3ce58d39516f094`;
+const CACHE_NAME = `${CACHE_PREFIX}v3-a0422da6cb2f1eac`;
 const SHELL_FILES = [
+  '/data/active.json', '/data/demo.json', '/data/newuser.json', '/src/storage-seed.mjs',
+  '/src/real-products.mjs', '/src/land-covers.mjs',
+  '/src/malaysia-articles.mjs',
+  '/src/mixture-planner.mjs',
+  '/assets/shop-power.jpg', '/assets/shop-weather.jpg',
+  '/assets/article-aphids.jpg', '/assets/article-caterpillars.jpg', '/assets/article-leafminers.jpg', '/assets/article-rice-blast.jpg', '/assets/article-rice-planthoppers.jpg', '/assets/article-snails.jpg', '/assets/article-water-stress.jpg', '/assets/article-waterlogging.jpg', '/assets/article-whiteflies.jpg', '/assets/article-yellow-leaves.jpg',
   '/', '/index.html', '/offline.html', '/app.js', '/manifest.webmanifest',
-  '/src/extension-articles.mjs', '/src/article-catalogue.mjs', '/src/article-library.mjs', '/src/data.mjs', '/src/store.mjs', '/src/spray-calculator.mjs', '/src/calculators.mjs', '/src/ui.mjs', '/src/shell.mjs',
+  '/src/open-articles.mjs', '/src/article-reader.mjs', '/src/extension-articles.mjs', '/src/article-catalogue.mjs', '/src/article-library.mjs', '/src/data.mjs', '/src/store.mjs', '/src/spray-calculator.mjs', '/src/calculators.mjs', '/src/ui.mjs', '/src/shell.mjs',
   '/src/home.mjs', '/src/workspace.mjs', '/src/discover.mjs', '/src/pilot-matcher.mjs', '/src/keypad-calculator.mjs', '/src/actions.mjs', '/src/pwa.mjs', '/src/drafts.mjs',
-  '/src/land-editor.mjs', '/src/land-records.mjs', '/src/land-grid.mjs', '/src/land-setup.mjs', '/src/field-boundary.mjs', '/src/land-boundary.mjs', '/src/land-map.mjs', '/src/schedule.mjs', '/src/plant-web.mjs', '/src/plant-action.mjs', '/src/plant-guides.mjs', '/src/plant-help.mjs', '/src/plant-photo.mjs',
+  '/src/land-editor.mjs', '/src/land-records.mjs', '/src/land-grid.mjs', '/src/land-setup.mjs', '/src/field-boundary.mjs', '/src/land-boundary.mjs', '/src/land-map.mjs', '/src/field-care.mjs', '/src/schedule.mjs', '/src/plant-web.mjs', '/src/plant-action.mjs', '/src/plant-guides.mjs', '/src/plant-help.mjs', '/src/plant-photo.mjs',
   '/src/i18n.mjs', '/src/language.mjs', '/src/locales/core.mjs', '/src/locales/workspace.mjs', '/src/locales/discover.mjs', '/src/locales/plant.mjs',
   '/assets/vendor/leaflet.js', '/assets/vendor/leaflet.css', '/assets/app.css', '/assets/vendor/gsap.min.js', '/assets/icons.svg', '/assets/mark.svg', '/assets/avatar-default.svg',
-  '/assets/profile-ahmad.jpg', '/assets/farm.jpg', '/assets/crops.jpg', '/assets/drone.jpg', '/assets/course.jpg',
+  '/assets/pilot-azlan.png', '/assets/pilot-maya.png', '/assets/pilot-daniel.png', '/assets/profile-ahmad.jpg', '/assets/farm.jpg', '/assets/crops.jpg', '/assets/drone.jpg', '/assets/course.jpg',
   '/assets/learn-soil.jpg', '/assets/learn-soil-thumb.jpg', '/assets/learn-water.jpg', '/assets/learn-water-thumb.jpg', '/assets/learn-scouting.jpg', '/assets/learn-scouting-thumb.jpg', '/assets/learn-harvest.jpg', '/assets/learn-harvest-thumb.jpg',
   '/assets/icon-192.png', '/assets/icon-512.png', '/assets/icon-maskable.png',
 ];
@@ -93,6 +99,24 @@ const applyUpdate = async () => {
   }
 };
 
+/** @param {Request} request @returns {Promise<Response>} */
+const respondToArticle = async (request) => {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    const response = await fetch(request);
+    if (response.ok) {
+      try { await cache.put(request, response.clone()); }
+      catch (error) { console.warn('Article could not be cached.', error); }
+    }
+    return response;
+  } catch (error) {
+    console.warn('Article unavailable offline.', error);
+    return new Response('Article unavailable offline.', {status: 503});
+  }
+};
+
 self.addEventListener('install', (event) => { event.waitUntil(installShell()); });
 self.addEventListener('activate', (event) => { event.waitUntil(activateShell()); });
 self.addEventListener('message', (event) => {
@@ -102,6 +126,10 @@ self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname === '/api' || url.pathname.startsWith('/api/')) return;
+  if (/^\/content\/articles\/PMC\d+(?:-figure-\d+)?\.(json|jpg|png)$/.test(url.pathname)) {
+    event.respondWith(respondToArticle(request));
+    return;
+  }
   if (request.mode === 'navigate') {
     event.respondWith(respondToNavigation(request));
     return;

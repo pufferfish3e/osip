@@ -1,0 +1,87 @@
+{
+  "profile": {
+    "name": "Ambitious Ahmad",
+    "role": "farmer",
+    "roles": [
+      "farmer"
+    ],
+    "onboarded": false
+  },
+  "farms": [
+    {
+      "id": "farm-1",
+      "name": "Sungai Dua Farm",
+      "location": "Perak, Malaysia",
+      "crop": "Rice",
+      "area": 4.2,
+      "unit": "ha",
+      "plantedAt": "2026-09-27",
+      "isDemo": true,
+      "plots": [
+        {
+          "id": "plot-1",
+          "name": "Main plot",
+          "crop": "Rice",
+          "area": 4.2,
+          "plantedAt": "2026-09-27"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "soil",
+      "farmId": "farm-1",
+      "title": "Record soil observations",
+      "dueDate": "2026-09-27",
+      "time": "08:00",
+      "category": "Soil",
+      "done": false,
+      "reminder": true
+    },
+    {
+      "id": "crops",
+      "farmId": "farm-1",
+      "title": "Walk the north plot",
+      "dueDate": "2026-09-27",
+      "time": "10:30",
+      "category": "Crop care",
+      "done": false,
+      "reminder": true
+    },
+    {
+      "id": "water",
+      "farmId": "farm-1",
+      "title": "Update the irrigation log",
+      "dueDate": "2026-09-27",
+      "time": "16:00",
+      "category": "Water",
+      "done": false,
+      "reminder": false
+    }
+  ],
+  "bookings": [],
+  "cart": [],
+  "orders": [],
+  "savedArticles": [],
+  "savedCalculations": [],
+  "pilot": {
+    "services": [],
+    "area": "",
+    "equipment": "",
+    "rate": 0,
+    "credentialReference": "",
+    "availability": {
+      "days": [],
+      "timeStart": "08:00",
+      "timeEnd": "17:00"
+    },
+    "verification": "not-submitted"
+  },
+  "settings": {
+    "unit": "ha",
+    "language": "en",
+    "currency": "MYR"
+  },
+  "notifications": []
+}

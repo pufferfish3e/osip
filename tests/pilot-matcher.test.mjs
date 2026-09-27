@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { matchPilots, renderPilotMatcher } from '../src/pilot-matcher.mjs';
+import { matchPilots, renderPilotMatcher, renderPilotMatch } from '../src/pilot-matcher.mjs';
 import { PILOTS } from '../src/data.mjs';
 const PREFERENCES = {service:'Mapping',area:'Perak',date:'',budget:75};
 test('matching requires service and area; budget and date affect score deterministically', () => {
@@ -21,4 +21,18 @@ test('wizard offers catalogue bypass and four steps with a separate centered res
  assert.match(html,/Browse all pilots/);
  assert.match(html,/data-pilot-match/);
  assert.match(html,/data-match-back/);
+});
+
+test('matched card uses each pilot portrait, shows rating and explains demo reviews', () => {
+ for (const pilot of PILOTS) {
+  const html = renderPilotMatch({pilot,score:100,dateMatches:true,budgetMatches:true});
+  assert.ok(html.includes(pilot.portrait));
+  assert.ok(html.includes(String(pilot.rating)));
+  assert.ok(html.includes(`(${pilot.reviewCount})`));
+  assert.match(html, /Sample reviews/);
+  for (const review of pilot.reviews) assert.ok(html.includes(review));
+  assert.match(html, /AI-generated portrait/);
+  assert.ok(html.includes(`/services/pilots/${pilot.id}`));
+ }
+ assert.match(renderPilotMatch(undefined), /No pilot fits/);
 });

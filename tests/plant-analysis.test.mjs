@@ -282,7 +282,7 @@ test('at most two provider calls run concurrently and permits are released', asy
   assert.deepEqual((await Promise.all([first, second])).map((result) => result.status), [200, 200]);
 });
 
-test('environment examples are blank and npm dev loads the private env file', async () => {
+test('environment examples are blank and npm dev watches backend changes and loads the private env file', async () => {
   const example = await readFile(new URL('../.env.example', import.meta.url), 'utf8');
   const ignore = await readFile(new URL('../.gitignore', import.meta.url), 'utf8');
   const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
@@ -290,6 +290,7 @@ test('environment examples are blank and npm dev loads the private env file', as
   assert.match(ignore, /^\.env$/m);
   assert.match(ignore, /^!\.env\.example$/m);
   assert.match(pkg.scripts.dev, /--env-file-if-exists=\.env/);
+  assert.match(pkg.scripts.dev, /\s--watch\s/);
 });
 
 test('the static server routes plant help and analysis while blocking server code and env files', async (context) => {
@@ -302,6 +303,11 @@ test('the static server routes plant help and analysis while blocking server cod
   const response = await fetch(`${origin}/api/plant-analysis`, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ image: IMAGE_URL }) });
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), VALID_ANALYSIS);
+  for (const path of ['/api/plant-search', '/api/spray-config']) {
+    const invalidRequest = await fetch(`${origin}${path}`, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: '{}' });
+    assert.equal(invalidRequest.status, 400, `${path} must reach its API handler instead of the static server.`);
+    assert.match(invalidRequest.headers.get('content-type'), /application\/json/);
+  }
   assert.equal((await fetch(`${origin}/plant-help/aphids`)).status, 200);
   assert.equal((await fetch(`${origin}/src/plant-guides.mjs`)).status, 200);
   for (const path of ['/.env', '/.env.example', '/server/plant-analysis.mjs', '/server.mjs']) {
@@ -329,4 +335,30 @@ test('unsupported language instructions are rejected before contacting the provi
     assert.equal(response.status, 400);
     assert.equal(response.body.error.code, 'invalid_language');
   }
+});
+
+test('photo recommendations come from a completed search with retrieved citations', async () => {
+  const research = { text: 'Check moisture. [source]', citations: [{ url: 'https://extension.example.org/rice', title: 'Rice guidance', start: 16, end: 24 }] };
+  research.text = 'Check moisture. [source]';
+  research.citations[0].end = research.text.length;
+  const handler = makeHandler({ fetchImpl: async (url, options) => {
+    const body = JSON.parse(options.body);
+    if (!body.tools) return providerResponse();
+    assert.match(body.input[0].content[0].text, /Leaf discoloration/);
+    return Response.json({ status: 'completed', output: [
+      { type: 'web_search_call', status: 'completed', action: { sources: [{ url: research.citations[0].url }] } },
+      { type: 'message', content: [{ type: 'output_text', text: research.text, annotations: research.citations.map(({ start, end, ...citation }) => ({ ...citation, type: 'url_citation', start_index: start, end_index: end })) }] }
+    ] });
+  } });
+  const result = await requestAnalysis(handler);
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.research, research);
+  assert.deepEqual(result.body.nextSteps, []);
+});
+
+test('photo analysis fails closed when online recommendations have no citations', async () => {
+  const handler = makeHandler({ fetchImpl: async (url, options) => JSON.parse(options.body).tools
+    ? Response.json({ status: 'completed', output: [{ type: 'web_search_call', status: 'completed' }, { type: 'message', content: [{ type: 'output_text', text: 'Apply fertiliser.', annotations: [] }] }] })
+    : providerResponse() });
+  assert.equal((await requestAnalysis(handler)).status, 502);
 });

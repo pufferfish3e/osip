@@ -1,7 +1,6 @@
-import { renderPilotMatcher } from './pilot-matcher.mjs';
-import { renderArticleLibrary } from './article-library.mjs';
-import { renderKeypadCalculator } from './keypad-calculator.mjs';
-import { renderSprayCalculator } from './spray-calculator.mjs';
+import { renderMixturePlanner } from './mixture-planner.mjs';
+import { renderPilotMatcher, renderPilotReviews } from './pilot-matcher.mjs';
+import { renderArticleLibrary, renderLearningArticleCard, localizeLearningArticle } from './article-library.mjs';
 import { ARTICLES, COURSES, NEWS, PILOTS, PRODUCTS } from './data.mjs';
 import { getFormatLocale, t } from './i18n.mjs';
 import { emptyState, escapeHtml as esc, localizeDemoState, icon, pageHeading } from './ui.mjs';
@@ -54,25 +53,14 @@ const missingPage = (title, href, label) => emptyState(t(title), t('This item is
 /** @param {string} source @param {string} sourceUrl @returns {string} */
 const sourceReference = (source, sourceUrl) => sourceUrl ? `<a class="link" href="${esc(sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(t(source))}${icon('arrow-up-right', 16)}</a>` : `<p class="muted">${esc(t(source))}</p>`;
 
-/** @param {Article} article @returns {string} */
-const articlePhoto = (article) => !article.image ? `<span class="library-topic-art" aria-hidden="true">${icon('book',40)}</span>` : `<picture class="article-picture"><source media="(max-width: 639px)" srcset="${esc(article.thumbnail)}" width="216" height="216"><img class="media-image article-thumbnail" src="${esc(article.image)}" alt="" loading="lazy" decoding="async" width="1200" height="800"></picture>`;
-
 /** @param {Article} article @param {AppState} state @returns {string} */
-const articleCard = (article, state) => {
-  const isSaved = state.savedArticles.includes(article.id);
-  return `<article class="media-card article-card" data-search-item data-search-text="${esc([article.title, article.category, article.crop, article.summary].flatMap((value) => [value, t(value)]).join(' ').toLowerCase())}" data-topic="${esc(article.category.toLowerCase())}">
-    <a class="article-thumb" href="/learn/knowledge/${esc(article.slug)}" tabindex="-1" aria-hidden="true">${articlePhoto(article)}</a>
-    <div class="card-body"><div class="toolbar"><span class="muted">${esc(t(article.category))} · ${article.readTime ? esc(t('{minutes} min read', { minutes: article.readTime })) : esc(article.source)}</span>
-      <button class="icon-button" type="button" data-action="save-article" data-id="${esc(article.id)}" aria-pressed="${isSaved}" aria-label="${esc(t(isSaved ? 'Unsave {title}' : 'Save {title}', { title: t(article.title) }))}">${icon(isSaved ? 'check' : 'bookmark', 20)}</button></div>
-    <h3><a href="/learn/knowledge/${esc(article.slug)}">${esc(t(article.title))}</a></h3></div>
-  </article>`;
-};
+const articleCard = (article, state) => renderLearningArticleCard(article, state.savedArticles.includes(article.id));
 
 /** @param {Course} course @returns {string} */
-const courseCard = (course) => `<a class="media-card" data-search-item data-search-text="${esc([course.title, course.category, course.instructor, course.summary, ...course.topics].flatMap((value) => [value, t(value)]).join(' ').toLowerCase())}" href="/learn/courses/${esc(course.id)}">
-  ${photo(course.image, '')}<div class="card-body"><span class="badge badge-blue">${esc(t(course.format))}</span>
-  <h3>${esc(t(course.title))}</h3><p class="muted">${esc(t(course.duration))}</p>
-  <div class="toolbar"><span class="muted">${esc(dateLabel(course.date))}</span><span class="price">${esc(t('Free'))}</span></div></div></a>`;
+const courseCard = (course) => `<article class="media-card learning-photo-card course-photo-card" data-search-item data-search-text="${esc([course.title, course.category, course.instructor, course.summary, ...course.topics].flatMap((value) => [value, t(value)]).join(' ').toLowerCase())}">
+  ${photo(course.image, '')}<div class="learning-photo-body"><span class="learning-photo-meta">${esc(t(course.format))} · ${esc(t(course.duration))}</span>
+  <h3><a href="/learn/courses/${esc(course.id)}">${esc(t(course.title))}</a></h3><p class="learning-photo-meta">${esc(dateLabel(course.date))}</p>
+  <div class="learning-photo-footer"><span class="price">${esc(t('Free'))}</span><a class="button" href="/learn/courses/${esc(course.id)}">${esc(t('View course'))}${icon('arrow-up-right', 18)}</a></div></div></article>`;
 
 /** @param {AppState} state @returns {string} */
 const learningHome = (state) => `${pageHeading(t('Learning'), t('Learn something new.'))}
@@ -85,12 +73,24 @@ const learningHome = (state) => `${pageHeading(t('Learning'), t('Learn something
 /** @param {AppState} state @param {boolean} isSavedOnly @returns {string} */
 const knowledgeList = (_state, isSavedOnly) => renderArticleLibrary(isSavedOnly);
 
+/** @param {Article} article @param {boolean} isSaved @returns {string} */
+export function renderPublicationArticle(article, isSaved) {
+  article = localizeLearningArticle(article);
+  const hasBody = article.sections.length > 0 || Boolean(article.contentPath);
+  const body = article.contentPath ? `<div class="article-full-text" data-article-content="${esc(article.contentPath)}"><p role="status">${esc(t('Loading article…'))}</p></div>` : article.sections.map((section) => `<section><h2>${esc(t(section.title))}</h2><p>${esc(t(section.body))}</p></section>`).join('');
+  return `${backLink('/learn/knowledge', 'Farming knowledge')}<article class="detail-content">${pageHeading(t(article.category), t(article.title), t(article.summary))}
+    <div class="toolbar"><button class="button button-secondary" data-action="save-article" data-id="${esc(article.id)}" aria-pressed="${isSaved}">${esc(t(isSaved ? 'Saved' : 'Save guide'))}</button>${hasBody ? `<span class="muted">${esc(t('{minutes} min read', {minutes: article.readTime}))}</span>` : ''}</div>
+    ${article.region === 'MY' && article.image ? `<figure class="article-figure">${photo(article.image, '')}<figcaption>${esc(t('Illustrative field image'))}</figcaption></figure>` : ''}${article.contentPath ? `<p class="muted">${esc(t('Original article in English'))}</p>` : ''}${body}<aside class="card card-pad"><p>${esc(article.author)}</p><p class="muted">${esc(article.source)}${article.publishedYear ? ` · ${article.publishedYear}` : ''}</p>
+    ${article.malaysiaSourceUrl ? `<p>${sourceReference('Malaysian guidance', article.malaysiaSourceUrl)}</p>` : ''}
+    ${!hasBody ? `<p class="muted">${esc(t('The full article is hosted by its publisher; access may require a subscription.'))}</p>` : ''}${article.copyright ? `<p class="muted">${esc(article.copyright)}</p>` : ''}${sourceReference('Read original', article.sourceUrl)}${article.licenseUrl ? `<p>${sourceReference('Creative Commons licence', article.licenseUrl)}</p><p class="muted">${esc(t('Text and figures reproduced with attribution. Formatting adapted for this reader.'))} ${esc(t('Source: Europe PMC and NLM PMC. Imported {date}; later updates may exist.', {date: article.checkedAt}))}</p>` : ''}</aside></article>`;
+}
+
 /** @param {string} slug @param {AppState} state @returns {string} */
 const articleDetail = (slug, state) => {
   const article = ARTICLES.find((item) => item.slug === slug);
   if (!article) return missingPage('Guide not found', '/learn/knowledge', 'Browse guides');
   const isSaved = state.savedArticles.includes(article.id);
-  if (!article.isDemo) return `${backLink('/learn/knowledge', 'Farming knowledge')}<article class="detail-content">${pageHeading(t(article.category),article.title,article.summary)}<div class="toolbar"><button class="button button-secondary" data-action="save-article" data-id="${esc(article.id)}" aria-pressed="${isSaved}">${esc(t(isSaved ? 'Saved' : 'Save guide'))}</button>${sourceReference('Read original',article.sourceUrl)}</div><div class="card card-pad"><p>${esc(article.author)}</p><p class="muted">${esc(article.source)}${article.publishedYear ? ` · ${article.publishedYear}` : ''}</p><p class="muted">${esc(t('Source-screened publication. Findings may not apply to your crop or region.'))}</p><p class="muted">${esc(t('The full article is hosted by its publisher; access may require a subscription.'))}</p></div></article>`;
+  if (!article.isDemo) return renderPublicationArticle(article, isSaved);
   return `${backLink('/learn/knowledge', 'Farming knowledge')}
     <article class="detail-content">${pageHeading(t(article.category), t(article.title), t(article.summary))}
     <div class="toolbar"><span class="muted">${esc(t('{minutes} min read', { minutes: article.readTime }))} · ${esc(t(article.crop))}</span>
@@ -151,22 +151,21 @@ const myCourses = (state) => {
 /** @returns {string} */
 const servicesHome = () => `${pageHeading(t('Services & shop'), t('Services & shop'))}
   <label class="search-field">${icon('search')}<input type="search" data-service-search maxlength="200" aria-label="${esc(t('Search services and shop'))}" placeholder="${esc(t('Search pilots, equipment, or a job…'))}"></label><div data-service-results aria-live="polite" hidden></div><div data-service-browse>
-  <div class="card-grid"><a class="media-card" href="/services/pilots">${photo(COURSES.find((course) => course.id === 'drone-intro')?.image ?? '', '')}<div class="card-body"><h2>${esc(t('Book a drone pilot'))}</h2><span class="link">${esc(t('Find a pilot'))}${icon('arrow-up-right', 18)}</span></div></a>
-  <a class="media-card" href="/shop">${photo(PRODUCTS[0]?.image ?? '', '')}<div class="card-body"><h2>${esc(t('The field shop'))}</h2><span class="link">${esc(t('Explore equipment'))}${icon('arrow-up-right', 18)}</span></div></a></div>
+  <div class="card-grid"><a class="media-card learning-photo-card services-feature-card" href="/services/pilots">${photo(PILOTS[0]?.portrait ?? '/assets/course.jpg', '')}<div class="learning-photo-body"><p class="learning-photo-meta">${esc(t('Drone pilots'))}</p><h2>${esc(t('Book a drone pilot'))}</h2><div class="learning-photo-footer"><span class="button">${esc(t('Find a pilot'))}${icon('arrow-up-right', 18)}</span></div></div></a>
+  <a class="media-card learning-photo-card services-feature-card" href="/shop">${photo('/assets/shop-power.jpg', '')}<div class="learning-photo-body"><p class="learning-photo-meta">${esc(t('The field shop'))}</p><h2>${esc(t('Explore equipment'))}</h2><div class="learning-photo-footer"><span class="button">${esc(t('The field shop'))}${icon('arrow-up-right', 18)}</span></div></div></a></div>
   <div class="section-heading"><h2>${esc(t('Your services'))}</h2></div><div class="card list">
     <a class="list-row" href="/bookings"><span class="row-icon">${icon('calendar')}</span><span class="row-copy"><span class="row-title">${esc(t('Your bookings'))}</span><span class="row-subtitle">${esc(t('Requests, schedules and conversations'))}</span></span>${icon('chevron-right', 18)}</a>
     <a class="list-row" href="/orders"><span class="row-icon">${icon('shopping-bag')}</span><span class="row-copy"><span class="row-title">${esc(t('Shop orders'))}</span><span class="row-subtitle">${esc(t('Order drafts and payment details'))}</span></span>${icon('chevron-right', 18)}</a></div></div>`;
 
 /** @param {Pilot} pilot @returns {string} */
-const pilotCard = (pilot) => `<article class="card card-pad form-stack" data-search-item data-search-text="${esc([pilot.name, pilot.serviceArea, pilot.equipment, ...pilot.services].flatMap((value) => [value, t(value)]).join(' ').toLowerCase())}"><div class="toolbar"><span class="avatar">${esc(pilot.initials)}</span><span class="badge badge-blue">${esc(t('Sample profile'))}</span></div>
-  <div><h2>${esc(pilot.name)}</h2><p class="muted">${icon('map-pin', 16)} ${esc(t(pilot.serviceArea))}</p></div>
-  <div class="chips">${pilot.services.map((service) => `<span class="badge">${esc(t(service))}</span>`).join('')}</div>
-  <p class="muted">${esc(t(pilot.equipment))}</p><div class="toolbar"><span><strong>${money(pilot.rate)}</strong> / ${esc(t(pilot.rateUnit))}</span><a class="button button-secondary button-small" href="/services/pilots/${esc(pilot.id)}">${esc(t('View pilot'))}${icon('chevron-right', 16)}</a></div></article>`;
+const pilotCard = (pilot) => `<article class="pilot-portrait-card pilot-catalog-card" data-search-item data-search-text="${esc([pilot.name, pilot.serviceArea, pilot.equipment, ...pilot.services].flatMap((value) => [value, t(value)]).join(' ').toLowerCase())}">
+  <img class="pilot-match-cover" src="${esc(pilot.portrait)}" alt="" loading="lazy" width="1086" height="1448">
+  <div class="pilot-match-body"><h2>${esc(pilot.name)}</h2><p class="pilot-match-specialty">${esc(t(pilot.serviceArea))} · ${pilot.services.map((service) => esc(t(service))).join(' · ')}</p>
+    <div class="pilot-match-footer"><div class="pilot-match-stats">${renderPilotReviews(pilot)}<span class="pilot-match-percent">${money(pilot.rate)} / ${esc(t(pilot.rateUnit))}</span></div><a class="button" href="/services/pilots/${esc(pilot.id)}">${esc(t('View pilot'))}${icon('arrow-up-right', 18)}</a></div></div></article>`;
 
 /** @returns {string} */
 const pilotList = () => `${backLink('/services', 'Services')}${pageHeading(t('Drone pilots'), t('Find a drone pilot'))}
-  <p class="notice">${esc(t('Sample pilots · Requests stay on this device.'))}</p>
-  ${renderPilotMatcher()}<label class="search-field">${icon('search')}<input type="search" data-search="pilots" aria-label="${esc(t('Search pilots'))}" placeholder="${esc(t('Search pilots'))}"></label><div class="card-grid">${PILOTS.map(pilotCard).join('')}</div><p class="muted" data-search-empty hidden>${esc(t('No matching pilots.'))}</p>`;
+  <div class="pilot-catalog-controls"><div class="search-field">${icon('search')}<input type="search" data-search="pilots" aria-label="${esc(t('Search pilots'))}" placeholder="${esc(t('Search pilots'))}"><button type="button" class="icon-button pilot-search-match" data-match-open aria-label="${esc(t('Find my pilot'))}" title="${esc(t('Find my pilot'))}">${icon('adjustments-horizontal', 20)}</button></div>${renderPilotMatcher()}</div><div class="card-grid">${PILOTS.map(pilotCard).join('')}</div><p class="muted" data-search-empty hidden>${esc(t('No matching pilots.'))}</p>`;
 
 /** @param {string} id @returns {string} */
 const pilotDetail = (id) => {
@@ -176,7 +175,7 @@ const pilotDetail = (id) => {
     ${pageHeading(t('Drone pilot'), pilot.name)}<div class="chips">${pilot.services.map((service) => `<span class="chip">${esc(t(service))}</span>`).join('')}</div>
     <div class="card card-pad form-stack"><h2>${esc(t('Ready for the field'))}</h2><div class="list-row"><span class="row-icon">${icon('map-pin')}</span><div class="row-copy"><span class="row-title">${esc(t('Service area'))}</span><span class="row-subtitle">${esc(t(pilot.serviceArea))}</span></div></div>
       <div class="list-row"><span class="row-icon">${icon('drone')}</span><div class="row-copy"><span class="row-title">${esc(t('Equipment'))}</span><span class="row-subtitle">${esc(t(pilot.equipment))}</span></div></div></div></div>
-    <aside class="card card-pad form-stack"><span class="avatar">${esc(pilot.initials)}</span><span class="badge badge-blue">${esc(t('Sample pilot'))}</span><div><h2>${money(pilot.rate)} <span class="muted">/ ${esc(t(pilot.rateUnit))}</span></h2><p class="muted">${esc(t('Starting rate · Final quote to be agreed.'))}</p></div>
+    <aside class="card card-pad form-stack"><img class="avatar pilot-avatar" src="${esc(pilot.portrait)}" alt="" loading="lazy"><span class="badge badge-blue">${esc(t('Sample pilot'))}</span><div><h2>${money(pilot.rate)} <span class="muted">/ ${esc(t(pilot.rateUnit))}</span></h2><p class="muted">${esc(t('Starting rate · Final quote to be agreed.'))}</p></div>
       <a class="button" href="/services/pilots/${esc(pilot.id)}/book">${esc(t('Request a booking'))}${icon('arrow-up-right', 18)}</a></aside></div>`;
 };
 
@@ -197,15 +196,19 @@ const pilotBooking = (id, state) => {
 };
 
 /** @param {Product} product @returns {string} */
-const productCard = (product) => `<article class="media-card"><a href="/shop/products/${esc(product.id)}" tabindex="-1" aria-hidden="true">${photo(product.image, '')}</a><div class="card-body">
-  <span class="muted">${esc(t(product.category))}</span><h3><a href="/shop/products/${esc(product.id)}">${esc(t(product.name))}</a></h3>
-  <div class="toolbar"><span class="price">${money(product.price)}</span><button class="icon-button" type="button" data-action="add-cart" data-id="${esc(product.id)}" aria-label="${esc(t('Add {name} to cart', { name: t(product.name) }))}">${icon('plus', 20)}</button></div></div></article>`;
+const productCard = (product) => `<article class="pilot-portrait-card pilot-catalog-card shop-product-card"><img class="pilot-match-cover" src="${esc(product.image)}" alt="" loading="lazy" width="1000" height="1200"><div class="pilot-match-body">
+  <p class="pilot-match-specialty">${esc(t(product.isDemo ? 'Sample product' : product.regionalLabel))}</p><h2><a href="/shop/products/${esc(product.id)}">${esc(t(product.name))}</a></h2>
+  ${product.isIllustrativeImage ? `<p class="pilot-match-specialty">${esc(t('Illustrative field image'))}</p>` : ''}
+  <div class="pilot-match-footer"><span class="price">${money(product.price)}</span>${product.isDemo ? `<button class="button" type="button" data-action="add-cart" data-id="${esc(product.id)}" aria-label="${esc(t('Add {name} to cart', { name:t(product.name) }))}">${icon('plus', 20)}${esc(t('Add to cart'))}</button>` : `<a class="button" href="/shop/products/${esc(product.id)}">${esc(t('Details'))}${icon('arrow-up-right', 20)}</a>`}</div></div></article>`;
+
+/** @param {Product} product @returns {string} */
+const productSources = (product) => product.isDemo ? '' : `<aside class="notice"><p>${esc(t('Listed price · {supplier} · Checked {date}', { supplier:product.supplier, date:product.checkedAt }))}</p><p>${esc(t(product.packageName))} · ${esc(t(product.availability))}</p><p>${esc(t('Confirm current price, package contents and availability with the supplier. Cart and checkout create local drafts only.'))}</p><a href="${esc(product.supplierUrl)}" target="_blank" rel="noopener noreferrer">${esc(t('View supplier listing'))}${icon('arrow-up-right', 16)}</a><p>${sourceReference('DJI', product.sourceUrl)} · <a href="${esc(product.regionalSourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(t(product.regionalLabel))}</a></p></aside>`;
 
 /** @param {AppState} state @returns {string} */
 const shopHome = (state) => {
   const count = state.cart.reduce((total, item) => total + item.quantity, 0);
   return `${backLink('/services', 'Services')}${pageHeading(t('The field shop'), t('The field shop'))}
-    <div class="toolbar"><span class="badge badge-blue">${esc(t('Sample catalogue'))}</span><a class="button button-secondary button-small" href="/shop/cart">${icon('shopping-bag', 18)}${esc(t('Cart'))}${count ? ` (${count})` : ''}</a></div>
+    <div class="toolbar"><span class="badge badge-blue">${esc(t('Malaysian equipment'))}</span><a class="button button-secondary button-small" href="/shop/cart">${icon('shopping-bag', 18)}${esc(t('Cart'))}${count ? ` (${count})` : ''}</a></div>
     <div class="card-grid">${PRODUCTS.map(productCard).join('')}</div>`;
 };
 
@@ -213,8 +216,8 @@ const shopHome = (state) => {
 const productDetail = (id) => {
   const product = PRODUCTS.find((item) => item.id === id);
   if (!product) return missingPage('Product not found', '/shop', 'Explore shop');
-  return `${backLink('/shop', 'The field shop')}<div class="two-column"><div class="detail-hero">${photo(product.image, product.name)}</div><div class="form-stack">
-    ${pageHeading(t(product.category), t(product.name), t(product.description))}<span class="badge badge-blue">${esc(t('Sample product'))}</span><p class="price">${money(product.price)}</p>
+  return `${backLink('/shop', 'The field shop')}<div class="two-column"><div><div class="detail-hero">${photo(product.image, product.isIllustrativeImage ? t('Illustrative field image') : product.name)}</div>${product.isIllustrativeImage ? `<p class="muted">${esc(t('Illustrative field image'))}</p>` : ''}</div><div class="form-stack">
+    ${pageHeading(t(product.category), t(product.name), t(product.description))}<span class="badge badge-blue">${esc(t(product.isDemo ? 'Sample product' : product.regionalLabel))}</span><p class="price">${money(product.price)}</p>${productSources(product)}
     <button class="button" type="button" data-action="add-cart" data-id="${esc(product.id)}">${icon('plus', 18)}${esc(t('Add to cart'))}</button><a class="button button-secondary" href="/shop/cart">${esc(t('View cart'))}</a>
     <h2>${esc(t('Details'))}</h2><ul>${product.specs.map((spec) => `<li>${esc(t(spec))}</li>`).join('')}</ul></div></div>`;
 };
@@ -318,9 +321,9 @@ export function renderDiscover(path, state) {
   if (section === 'shop') return renderShop(segments, state);
   if (segments.length > 2) return null;
   if (section === 'news') return id ? newsDetail(id) : newsList();
-  if (section === 'tools' && id === 'spray') return renderSprayCalculator(state);
+  if (section === 'tools' && id === 'spray') return renderMixturePlanner(state);
   if (section === 'tools' && id === 'saved') return savedCalculations(state);
-  if (section === 'tools') return id ? calculatorPage(id) : renderKeypadCalculator();
+  if (section === 'tools') return id ? calculatorPage(id) : renderMixturePlanner(state);
   return null;
 }
 

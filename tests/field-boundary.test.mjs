@@ -11,16 +11,16 @@ const createStorage = () => {
 };
 const draft = (plotId, boundary, crop = 'Rice') => ({ plotId, boundary, crop, name: crop + ' field' });
 
-test('four corners are stable regardless of click order or winding', () => {
+test('boundaries retain click order and winding', () => {
   const expected = normalizeFieldBoundary(BOX);
-  assert.deepEqual(normalizeFieldBoundary([...BOX].reverse()), expected);
-  assert.deepEqual(normalizeFieldBoundary([BOX[0], BOX[2], BOX[1], BOX[3]]), expected);
+  assert.deepEqual(normalizeFieldBoundary([...BOX].reverse()), [...BOX].reverse());
+  assert.throws(() => normalizeFieldBoundary([BOX[0], BOX[2], BOX[1], BOX[3]]));
   assert.ok(fieldAreaHectares(expected) > 4 && fieldAreaHectares(expected) < 5);
 });
 
 test('rejects duplicate, interior, collinear, missing, out-of-range and near-collapsed corners', () => {
-  for (const points of [BOX.slice(0, 3), [...BOX, BOX[0]], [BOX[0], BOX[0], BOX[2], BOX[3]],
-    [BOX[0], BOX[1], BOX[2], [4.001, 101.001]], [[4, 101], [4, 102], [4, 103], [4, 104]],
+  for (const points of [BOX.slice(0, 2), [...BOX, BOX[0]], [BOX[0], BOX[0], BOX[2], BOX[3]],
+    [[4, 101], [4, 102], [4, 103], [4, 104]],
     [[90, 101], ...BOX.slice(1)], [[4, NaN], ...BOX.slice(1)], BOX.map(([lat, lng]) => [4 + (lat - 4) * 0.001, 101 + (lng - 101) * 0.001])]) {
     assert.throws(() => normalizeFieldBoundary(points));
   }
@@ -88,4 +88,24 @@ test('failed deletion persistence keeps the field intact', async () => {
   storage.setItem = () => { throw new Error('Storage full'); };
   assert.throws(() => store.update((state) => deleteField(state, before.farms[0].id, before.farms[0].plots[0].id)), /Could not save/);
   assert.deepEqual(store.getState(), before);
+});
+
+const CONCAVE = [[4, 101], [4, 101.004], [4.001, 101.004], [4.001, 101.001], [4.004, 101.001], [4.004, 101]];
+const NOTCH = [[4.002, 101.002], [4.002, 101.003], [4.003, 101.003], [4.003, 101.002]];
+
+test('three-point and concave six-point fields preserve their exact boundary', () => {
+  assert.deepEqual(normalizeFieldBoundary(BOX.slice(0, 3)), BOX.slice(0, 3));
+  assert.deepEqual(normalizeFieldBoundary(CONCAVE), CONCAVE);
+  assert.equal(fieldsOverlap(CONCAVE, NOTCH), false);
+  assert.equal(fieldsOverlap(CONCAVE, CONCAVE), true);
+  assert.throws(() => normalizeFieldBoundary([...CONCAVE, CONCAVE[0]]));
+});
+
+test('concave fields persist and containment applies to non-rectangular land', () => {
+  const storage = createStorage();
+  const store = createStore(storage);
+  store.update((state) => { state.farms[0].boundary = CONCAVE; state.farms[0].plots = []; });
+  store.update((state) => saveFieldBoundary(state, 'farm-1', draft('', CONCAVE)));
+  assert.deepEqual(createStore(storage).getState().farms[0].plots[0].boundary, CONCAVE);
+  assert.throws(() => store.update((state) => saveFieldBoundary(state, 'farm-1', draft('', NOTCH))), /inside/);
 });

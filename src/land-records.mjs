@@ -1,9 +1,11 @@
 import { fieldAreaHectares, mappedFields } from './field-boundary.mjs';
 import { isLandBoundary } from './land-boundary.mjs';
+import { assignLandCover } from './land-covers.mjs';
 
 /** @typedef {import('./land-boundary.mjs').LandPoint} Point */
 const MAX_POINTS = 100;
 const EPSILON = 1e-12;
+const LOCATION_PRECISION = 5;
 export class LandRecordError extends Error {
   /** @param {string} message */
   constructor(message) { super(message); this.name = 'LandRecordError'; }
@@ -40,22 +42,24 @@ const containsField = (land, field) => field.every((point, index) => {
     return !(cross(a, b, point) * cross(a, b, next) < -(EPSILON ** 2) && cross(point, next, a) * cross(point, next, b) < -(EPSILON ** 2));
   });
 });
-/** @param {import('./store.mjs').AppState} state @param {{id?:string,name:string,location:string,boundary:Point[]}} draft @returns {string} */
+/** @param {import('./store.mjs').AppState} state @param {{id?:string,name:string,location?:string,boundary:Point[]}} draft @returns {string} */
 export function saveLandRecord(state, draft) {
-  if (!draft.location.trim() || draft.name.length > 120 || draft.location.length > 120) throw new LandRecordError('Enter a location; names and locations can have up to 120 characters.');
+  if (draft.location?.trim() === '' || draft.name.length > 120 || (draft.location?.length ?? 0) > 120) throw new LandRecordError('Enter a location; names and locations can have up to 120 characters.');
   if (!isLandBoundary(draft.boundary)) throw new LandRecordError('Mark at least three distinct corners without crossing the boundary.');
   const existing = draft.id ? state.farms.find((land) => land.id === draft.id) : null;
   if (draft.id && !existing) throw new LandRecordError('Land not found.');
   const fields = existing ? mappedFields(existing) : [];
   if (fields.some((field) => field.boundary.length && !containsField(draft.boundary, field.boundary))) throw new LandRecordError('The land boundary must contain its existing fields.');
   const boundary = draft.boundary.map((point) => [...point]);
+  const location = draft.location?.trim() ?? [0, 1].map((axis) => (boundary.reduce((sum, point) => sum + point[axis], 0) / boundary.length).toFixed(LOCATION_PRECISION)).join(', ');
   const area = Number(fieldAreaHectares(boundary).toFixed(4));
   if (area <= 0) throw new LandRecordError('This land boundary is too small.');
   if (existing) {
     for (const field of fields) { const plot = existing.plots.find((item) => item.id === field.id); if (!plot.boundary && field.boundary.length) plot.boundary = field.boundary; }
-    Object.assign(existing, { name: draft.name.trim() || existing?.name || nextLandName(state), location: draft.location.trim(), boundary, area }); return existing.id; }
+    Object.assign(existing, { name: draft.name.trim() || existing?.name || nextLandName(state), location, boundary, area }); return existing.id; }
   const id = `farm-${crypto.randomUUID()}`;
-  state.farms.push({ id, name: draft.name.trim() || existing?.name || nextLandName(state), location: draft.location.trim(), boundary, area, unit: 'ha', crop: '', plantedAt: '', plots: [], isDemo: false });
+  const coverImage = assignLandCover(state.farms);
+  state.farms.push({ id, name: draft.name.trim() || existing?.name || nextLandName(state), location, boundary, area, unit: 'ha', crop: '', plantedAt: '', plots: [], isDemo: false, coverImage });
   return id;
 }
 /** @param {import('./store.mjs').AppState} state @param {string} id @returns {void} */

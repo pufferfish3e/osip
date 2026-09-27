@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import { splitLand, saveLandGrid } from '../src/land-grid.mjs';
 import { fieldAreaHectares } from '../src/field-boundary.mjs';
 import { createStore } from '../src/store.mjs';
@@ -64,4 +66,39 @@ test('land setup derives rough coordinates without asking for a location', () =>
   saveLandGrid(state, { name: '', boundary: QUAD, columns: 1, rows: 1, crops: ['Rice'] });
   assert.equal(state.farms[0].location, '4.00125, 101.00175');
   assert.deepEqual(state.farms[0].boundary.length, 4);
+});
+
+test('dimensions follow the map with compact controls and one continue action', () => {
+  const html = renderLandSetup();
+  assert.ok(html.indexOf('data-grid-map') < html.indexOf('data-grid-details'));
+  assert.match(html, /land-grid-map-tools/);
+  assert.match(html, /land-grid-dimensions/);
+  assert.match(html, /data-grid-count/);
+  assert.match(html, /data-grid-submit>Continue/);
+  assert.doesNotMatch(html, /Columns × rows:|Map areas are estimates/);
+});
+
+test('dimension preview draws each field and reports invalid counts', () => {
+  const source = readFileSync(new URL('../src/land-setup.mjs', import.meta.url), 'utf8');
+  const start = source.indexOf('  const redraw = () => {');
+  const end = source.indexOf('  const refresh =', start);
+  let columns = 3;
+  const polygons = [];
+  const count = { textContent: '' };
+  const error = { textContent: '' };
+  const context = {
+    Error,
+    draft: { points: QUAD, isAssigning: false }, layers: { clearLayers: () => { polygons.length = 0; } },
+    leaflet: { circleMarker: () => ({ addTo() {} }), polygon: (points) => ({ addTo() { polygons.push(points); } }) },
+    form: { elements: { namedItem: (name) => ({ value: name === 'columns' ? columns : 2 }) } },
+    panel: { querySelector: () => count }, error, splitLand, t: (text) => text,
+  };
+  runInNewContext(`${source.slice(start, end)} globalThis.preview = redraw;`, context);
+  context.preview();
+  assert.equal(count.textContent, '6');
+  assert.equal(polygons.length, 7);
+  columns = 0;
+  context.preview();
+  assert.equal(count.textContent, '—');
+  assert.match(error.textContent, /whole rows and columns/);
 });

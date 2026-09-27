@@ -1,11 +1,12 @@
 import { INITIAL_STATE } from './data.mjs';
-import { isFourCornerField } from './field-boundary.mjs';
+import { isFieldBoundary } from './field-boundary.mjs';
 import { isLandBoundary } from './land-boundary.mjs';
+import { STORAGE_PROFILE } from './storage-seed.mjs';
 
 /** @typedef {'farmer' | 'pilot'} Role */
-/** @typedef {{id:string,name:string,crop:string,area:number,plantedAt:string,boundary?:import('./land-boundary.mjs').LandPoint[],isAreaEstimated?:boolean,gridNumber?:number}} Plot */
-/** @typedef {{id:string,name:string,location:string,crop:string,area:number,unit:string,plantedAt:string,plots:Plot[],isDemo?:boolean,boundary?:import('./land-boundary.mjs').LandPoint[]}} Farm */
-/** @typedef {{id:string,farmId:string,title:string,dueDate:string,time:string,category:string,done:boolean,reminder:boolean,repeat?:'none'|'daily'|'weekly'|'monthly',repeatAnchorDay?:number,repeatFromId?:string}} Task */
+/** @typedef {{id:string,name:string,crop:string,area:number,plantedAt:string,boundary?:import('./land-boundary.mjs').LandPoint[],isAreaEstimated?:boolean,gridNumber?:number,mixtureConfig?:import('./mixture-planner.mjs').Recipe}} Plot */
+/** @typedef {{id:string,name:string,location:string,crop:string,area:number,unit:string,plantedAt:string,plots:Plot[],isDemo?:boolean,coverImage?:string,boundary?:import('./land-boundary.mjs').LandPoint[]}} Farm */
+/** @typedef {{id:string,farmId:string,plotId?:string,title:string,dueDate:string,time:string,category:string,done:boolean,reminder:boolean,repeat?:'none'|'daily'|'weekly'|'monthly',repeatAnchorDay?:number,repeatFromId?:string,completedAt?:string}} Task */
 /** @typedef {{id:string,sender:string,text:string,date:string}} Message */
 /** @typedef {{id:string,type:'pilot'|'course',providerId:string,title:string,date:string,time:string,farmId:string,status:string,notes:string,price:number,conversation:Message[],service?:string,direction?:string,rescheduleRequest?:{date:string,time:string}}} Booking */
 /** @typedef {{productId:string,quantity:number}} CartItem */
@@ -30,7 +31,8 @@ import { isLandBoundary } from './land-boundary.mjs';
 /** @typedef {(state:AppState)=>void} StoreListener */
 /** @typedef {{getState:()=>AppState,update:(mutator:(state:AppState)=>void)=>void,subscribe:(listener:StoreListener)=>()=>void,readonly lastError:Error|null}} AppStore */
 
-export const STORAGE_KEY = 'osip-state-v2';
+const DEMO_STORAGE_KEY = 'osip-state-v2';
+export const STORAGE_KEY = STORAGE_PROFILE === 'demo' ? DEMO_STORAGE_KEY : `${DEMO_STORAGE_KEY}-newuser`;
 const LEGACY_STORAGE_KEY = 'osip-checklist-v1';
 const STATE_VERSION = 2;
 const LEGACY_TASK_IDS = ['soil', 'crops', 'water'];
@@ -85,7 +87,7 @@ const isListOf = (value, predicate) => Array.isArray(value) && value.every(predi
 
 /** @param {unknown} value @returns {boolean} */
 const isPlot = (value) => isRecord(value) && hasStrings(value, ['id', 'name', 'crop', 'plantedAt']) && isAmount(value.area)
-  && (value.boundary === undefined || isFourCornerField(value.boundary))
+  && (value.boundary === undefined || isFieldBoundary(value.boundary))
   && (value.isAreaEstimated === undefined || typeof value.isAreaEstimated === 'boolean');
 
 /** @param {unknown} value @returns {boolean} */
@@ -96,6 +98,8 @@ const isFarm = (value) => isRecord(value) && hasStrings(value, ['id', 'name', 'l
 /** @param {unknown} value @returns {boolean} */
 const isTask = (value) => isRecord(value) && hasStrings(value, ['id', 'farmId', 'title', 'dueDate', 'time', 'category'])
   && isDate(value.dueDate) && typeof value.done === 'boolean' && typeof value.reminder === 'boolean'
+  && (value.completedAt === undefined || (typeof value.completedAt === 'string' && Number.isFinite(Date.parse(value.completedAt))))
+  && (value.plotId === undefined || typeof value.plotId === 'string')
   && (value.repeat === undefined || ['none', 'daily', 'weekly', 'monthly'].includes(value.repeat))
   && (value.repeatFromId === undefined || typeof value.repeatFromId === 'string')
   && (value.repeatAnchorDay === undefined || (Number.isInteger(value.repeatAnchorDay) && value.repeatAnchorDay >= 1 && value.repeatAnchorDay <= 31));
@@ -172,9 +176,9 @@ const parseSavedState = (raw) => {
   return /** @type {AppState} */ (envelope.state);
 };
 
-/** @param {string | null} raw @returns {AppState} */
-const migrateChecklist = (raw) => {
-  const state = structuredClone(INITIAL_STATE);
+/** @param {string | null} raw @param {AppState} seed @returns {AppState} */
+const migrateChecklist = (raw, seed) => {
+  const state = structuredClone(seed);
   if (raw === null) return state;
   /** @type {unknown} */
   const checked = JSON.parse(raw);
@@ -184,17 +188,19 @@ const migrateChecklist = (raw) => {
   return state;
 };
 
-/** @param {StorageAdapter | undefined} provided @returns {{storage:StorageAdapter|null,state:AppState,error:Error|null}} */
-const loadState = (provided) => {
+/** @param {StorageAdapter | undefined} provided @param {AppState} seed @param {string} profile @returns {{storage:StorageAdapter|null,state:AppState,key:string,error:Error|null}} */
+const loadState = (provided, seed, profile) => {
   let storage = provided ?? null;
+  const key = profile === 'demo' ? DEMO_STORAGE_KEY : `${DEMO_STORAGE_KEY}-newuser`;
   try {
     storage = provided ?? globalThis.localStorage;
     if (!storage) throw new Error('Local device storage is unavailable.');
-    const raw = storage.getItem(STORAGE_KEY);
-    const state = raw === null ? migrateChecklist(storage.getItem(LEGACY_STORAGE_KEY)) : parseSavedState(raw);
-    return { storage, state, error: null };
+    const raw = storage.getItem(key);
+    const state = raw === null ? migrateChecklist(profile === 'demo' ? storage.getItem(LEGACY_STORAGE_KEY) : null, seed) : parseSavedState(raw);
+    if (raw === null) storage.setItem(key, JSON.stringify({ version:STATE_VERSION, state }));
+    return { storage, state, key, error: null };
   } catch (cause) {
-    return { storage, state: structuredClone(INITIAL_STATE), error: new PersistenceError('Saved data could not be loaded. Default records are shown; previous storage has been kept.', cause) };
+    return { storage, state: structuredClone(seed), key, error: new PersistenceError('Saved data could not be loaded. Default records are shown; previous storage has been kept.', cause) };
   }
 };
 
@@ -219,9 +225,11 @@ const prepareUpdate = (state, mutator) => {
   return structuredClone(draft);
 };
 
-/** @param {StorageAdapter | undefined} storage @returns {AppStore} */
-export function createStore(storage = undefined) {
-  const loaded = loadState(storage);
+/** @param {StorageAdapter | undefined} storage @param {AppState} seed @param {string} profile @returns {AppStore} */
+export function createStore(storage = undefined, seed = INITIAL_STATE, profile = STORAGE_PROFILE) {
+  if (!['demo', 'newuser'].includes(profile)) throw new StateValidationError('Storage profile must be demo or newuser.');
+  validateState(seed);
+  const loaded = loadState(storage, seed, profile);
   let state = loaded.state;
   let lastError = loaded.error;
   /** @type {Set<StoreListener>} */
@@ -237,7 +245,7 @@ export function createStore(storage = undefined) {
     }
     try {
       if (!loaded.storage) throw new Error('Local device storage is unavailable.');
-      loaded.storage.setItem(STORAGE_KEY, JSON.stringify({ version: STATE_VERSION, state: nextState }));
+      loaded.storage.setItem(loaded.key, JSON.stringify({ version: STATE_VERSION, state: nextState }));
     } catch (cause) {
       lastError = new PersistenceError('Could not save changes on this device.', cause);
       throw lastError;

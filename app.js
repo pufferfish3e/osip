@@ -1,7 +1,9 @@
+import { initializeMixturePlanner } from './src/mixture-planner.mjs';
+import { initializeArticleReader } from './src/article-reader.mjs';
+import { initializeFieldCare } from './src/field-care.mjs';
 import { initializePilotMatcher } from './src/pilot-matcher.mjs';
 import { initializeArticleLibrary } from './src/article-library.mjs';
 import { initializeKeypadCalculator } from './src/keypad-calculator.mjs';
-import { initializeSprayCalculator } from './src/spray-calculator.mjs';
 import { initializeLandEditor } from './src/land-editor.mjs';
 import { initializeLandSetup } from './src/land-setup.mjs';
 import { applyAction, collectReminders, submitForm } from './src/actions.mjs';
@@ -77,7 +79,9 @@ const initializeCourseBookingSheet = () => {
 /** @param {boolean} shouldAnimate @returns {void} */
 const render = (shouldAnimate = false) => {
   plantWebRequest?.abort();
-  disposeLandMap();
+  const disposePreviousLandMap = disposeLandMap;
+  disposeLandMap = () => {};
+  disposePreviousLandMap();
   disposeSprayCalculator();
   animationContext?.revert();
   const state = STORE.getState();
@@ -95,10 +99,12 @@ const render = (shouldAnimate = false) => {
   const recordPanel = MAIN.querySelector('[data-land-editor]');
   if (recordPanel) disposeLandMap = initializeLandEditor(recordPanel, STORE, window.L);
   initializeSchedule(MAIN);
+  initializeFieldCare(MAIN, STORE);
   initializePilotMatcher(MAIN);
   initializeArticleLibrary(MAIN, state);
+  void initializeArticleReader(MAIN).catch((error) => console.error('Article reader failed.', error));
   initializeKeypadCalculator(MAIN, STORE);
-  disposeSprayCalculator = initializeSprayCalculator(MAIN);
+  disposeSprayCalculator = initializeMixturePlanner(MAIN, STORE);
   initializeCourseBookingSheet();
   restoreFormDraft();
   initializeMobileOnboarding(path);

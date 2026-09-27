@@ -1,3 +1,4 @@
+import { escapeHtml } from '../src/ui.mjs';
 import { PLANT_TRANSLATIONS } from '../src/locales/plant.mjs';
 import { DISCOVER_TRANSLATIONS } from '../src/locales/discover.mjs';
 import { WORKSPACE_TRANSLATIONS } from '../src/locales/workspace.mjs';
@@ -30,7 +31,7 @@ const tokens=html=>[...html.matchAll(/>([^<>]+)</g),...html.matchAll(/(?:aria-la
 
 afterEach(() => setLocale('en'));
 const DICTIONARIES = [CORE_TRANSLATIONS, WORKSPACE_TRANSLATIONS, DISCOVER_TRANSLATIONS, PLANT_TRANSLATIONS];
-const PROPER_NAMES = new Set([INITIAL_STATE.profile.name, ...PILOTS.map((pilot) => pilot.name), 'English', 'Bahasa Melayu']);
+const PROPER_NAMES = new Set([INITIAL_STATE.profile.name, ...PILOTS.map((pilot) => pilot.name), ...PRODUCTS.filter((product) => product.name.startsWith('DJI ')).map((product) => product.name), 'English', 'Bahasa Melayu', 'DJI', ...ARTICLES.filter((article) => article.kind).flatMap((article) => [article.title, article.author, article.source, article.summary, article.copyright, `${article.source} · ${article.publishedYear}`])].flatMap((text) => typeof text === 'string' ? [text, escapeHtml(text)] : []));
 test('every route, catalogue detail, and plant guide translates visible copy and accessible labels', () => {
   for (const path of new Set(routes)) {
     setLocale('en');

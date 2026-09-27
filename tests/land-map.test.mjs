@@ -43,7 +43,7 @@ test('editor saves, highlights, reloads, undoes and cancels boundary edits', () 
     BOUNDARY.forEach(editor.add);
     assert.equal(editor.elements.get('[data-land-action="save"]').disabled, false);
     editor.click('undo');
-    assert.equal(editor.elements.get('[data-land-action="save"]').disabled, true);
+    assert.equal(editor.elements.get('[data-land-action="save"]').disabled, false);
     editor.add(BOUNDARY[3]);
     editor.click('next');
     assert.equal(editor.elements.get('[data-field-title]').textContent, 'What do you call it?');
@@ -96,7 +96,7 @@ test('map buttons, zoom labels, and editing status follow both translated locale
       editor.click('edit');
       editor.click('clear');
       BOUNDARY.forEach(editor.add);
-      assert.equal(editor.elements.get('[data-field-corners]').textContent, t('{count}/4 corners. Tap each outer corner; tap a marked corner to move it.', { count: 4 }));
+      assert.equal(editor.elements.get('[data-field-corners]').textContent, t('{count} corners. Mark 3–100 points in boundary order; tap a marked corner to move it.', { count: 4 }));
       editor.click('next'); editor.click('next'); editor.click('next');
     editor.click('save');
       assert.equal(editor.elements.get('[data-field-name]').value, 'Main plot');
@@ -135,7 +135,12 @@ test('overview draws saved field boundaries without mounting editing inputs or h
     const before = structuredClone(store.getState());
     const overview = createHarness(store, true);
     assert.deepEqual(overview.polygons.at(-1).points, BOUNDARY);
-    assert.deepEqual([...overview.listeners.keys()], ['panel-change']);
+    assert.equal(overview.polygons.at(-2).options.color, '#ffffff');
+    assert.equal(overview.polygons.at(-2).options.fill, false);
+    assert.ok(overview.polygons.at(-2).options.weight > overview.polygons.at(-1).options.weight);
+    assert.equal(overview.polygons.at(-1).options.color, '#075bea');
+    assert.equal(overview.polygons.at(-1).options.opacity, 1);
+    assert.deepEqual([...overview.listeners.keys()], ['panel-change', 'panel-click', 'panel-keydown']);
     assert.equal(overview.elements.has('[data-field-name]'), false);
     assert.deepEqual(store.getState(), before);
     overview.dispose();
@@ -189,4 +194,27 @@ test('map preference persists across reloads and repeated selection does not rec
     overview.dispose();
     assert.equal(overview.listeners.size, 0);
   } finally { globalThis.HTMLElement = previous; }
+});
+
+test('editor accepts a fifth corner and restores all points when editing', () => {
+  const previous = { Element: globalThis.Element, HTMLElement: globalThis.HTMLElement, HTMLButtonElement: globalThis.HTMLButtonElement, document: globalThis.document };
+  Object.assign(globalThis, { Element: ElementStub, HTMLElement: ElementStub, HTMLButtonElement: ElementStub, document: { createElement: () => new ElementStub() } });
+  try {
+    const records = new Map();
+    const storage = { getItem: (key) => records.get(key) ?? null, setItem: (key, value) => records.set(key, value) };
+    const store = createStore(storage);
+    const editor = createHarness(store);
+    editor.click('edit');
+    editor.click('clear');
+    const boundary = [...BOUNDARY, [4.6005, 101.0995]];
+    boundary.forEach(editor.add);
+    assert.equal(editor.elements.get('[data-land-action="save"]').disabled, false);
+    editor.click('save');
+    assert.deepEqual(store.getState().farms[0].plots[0].boundary, boundary);
+    editor.click('edit');
+    assert.match(editor.elements.get('[data-field-corners]').textContent, /5 corners/);
+    editor.dispose();
+  } finally {
+    Object.assign(globalThis, previous);
+  }
 });

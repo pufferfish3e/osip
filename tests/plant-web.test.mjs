@@ -9,7 +9,7 @@ import { renderPlantResults } from '../src/plant-help.mjs';
 import { renderPlantWebResult, searchPlantWeb, validateWebResult } from '../src/plant-web.mjs';
 
 const RESULT = { text: 'Check soil moisture. [source]', citations: [{ url: 'https://extension.example.org/plants', title: 'Plant care', start: 21, end: 29 }] };
-const providerPayload = () => ({ status: 'completed', output: [{ type: 'web_search_call', status: 'completed' }, { type: 'message', content: [{ type: 'output_text', text: RESULT.text, annotations: RESULT.citations.map(({ start, end, ...source }) => ({ ...source, type: 'url_citation', start_index: start, end_index: end })) }] }] });
+const providerPayload = () => ({ status: 'completed', output: [{ type: 'web_search_call', status: 'completed', action: { sources: [{ url: RESULT.citations[0].url }] } }, { type: 'message', content: [{ type: 'output_text', text: RESULT.text, annotations: RESULT.citations.map(({ start, end, ...source }) => ({ ...source, type: 'url_citation', start_index: start, end_index: end })) }] }] });
 const makeHandler = (options = {}) => createPlantSearchHandler({ apiKey: 'mock-key-for-tests', trustedOrigin: '', fetchImpl: async () => Response.json(providerPayload()), ...options });
 const requestSearch = async (handler, overrides = {}) => {
   const socket = new Socket(); Object.defineProperty(socket, 'remoteAddress', { value: '127.0.0.1' });
@@ -78,4 +78,13 @@ test('provider failures and request limits surface an error instead of an invent
   const handler = makeHandler({ now: () => 1000 });
   for (let index = 0; index < 6; index += 1) assert.equal((await requestSearch(handler)).status, 200);
   assert.equal((await requestSearch(handler)).status, 429);
+});
+
+test('every advice paragraph needs a citation and citations must come from retrieved sources', () => {
+  assert.throws(() => validateWebResult({ ...RESULT, text: `${RESULT.text}\n\nApply fertiliser immediately.` }), /without a supporting citation/);
+  const payload = providerPayload();
+  payload.output[0].action.sources = [{ url: 'https://other.example.org/' }];
+  assert.throws(() => parseSearchResult(payload), /retrieved sources/);
+  payload.output[0].action.sources = [];
+  assert.throws(() => parseSearchResult(payload), /retrieved sources/);
 });

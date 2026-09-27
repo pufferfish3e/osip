@@ -56,3 +56,33 @@ test('land summary uses field and crop counts and matching crop emoji', () => {
   assert.match(html, /Crop types/);
   assert.doesNotMatch(html, />Tasks to do<|>Completed</);
 });
+
+test('land editor uses two steps without manual location entry', () => {
+  for (const route of ['/farm/new', '/farm/farm-1/edit']) {
+    const html = renderWorkspace(route, INITIAL_STATE);
+    assert.match(html, />1 \/ 2<\/p>/);
+    assert.match(html, /name="name"/);
+    assert.doesNotMatch(html, /name="location"|data-land-step="2"/);
+  }
+});
+
+test('completed land groups map type and accessible edit pencil without a separate edit link', () => {
+  const state = structuredClone(INITIAL_STATE);
+  state.farms[0].plots[0].boundary = [[4,101],[4,101.002],[4.002,101.002],[4.002,101]];
+  const html = renderWorkspace('/farm/farm-1', state);
+  assert.match(html, /land-overview-controls[\s\S]*data-map-type[\s\S]*land-overview-edit/);
+  assert.match(html, /class="icon-button land-overview-edit" href="\/farm\/farm-1\/edit" aria-label="Edit land"/);
+  assert.equal((html.match(/href="\/farm\/farm-1\/edit"/g) ?? []).length, 1);
+  assert.doesNotMatch(html, />Edit land<\/a>/);
+});
+
+test('land cards use photo overlays, pill links and different parcel images', () => {
+  const state = structuredClone(INITIAL_STATE);
+  state.farms.push({ ...state.farms[0], id: 'second-land', name: 'Second parcel' });
+  const html = renderWorkspace('/farm', state);
+  assert.match(html, /learning-photo-card farm-card/);
+  assert.ok(html.includes('/assets/farm.jpg'));
+  assert.ok(html.includes('/assets/crops.jpg'));
+  assert.match(html, /View my land/);
+  assert.match(html, /href="\/farm\/second-land"/);
+});

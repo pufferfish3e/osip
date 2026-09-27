@@ -5,7 +5,7 @@ import { deleteLandRecord, editLandPoint, saveLandRecord } from './land-records.
 import { t } from './i18n.mjs';
 import { escapeHtml as esc, icon, pageHeading } from './ui.mjs';
 
-const LAND_CORNERS = 4;
+const MAX_LAND_POINTS = 100;
 const POINT_MOTION_SECONDS = 0.18;
 const LAND_ZOOM = 16;
 const POINT_RADIUS = 5;
@@ -15,7 +15,7 @@ const SELECTED_POINT_RADIUS = 7;
 const input = (name, label, value) => `<label class="field">${esc(t(label))}<input class="input" name="${name}" value="${esc(value)}" ${name === 'name' ? '' : 'required'} maxlength="120"></label>`;
 /** @param {Land} [land] @param {boolean} [isInline] @returns {string} */
 export function renderLandEditor(land, isInline = false) {
-  return `${isInline ? '' : pageHeading('', t(land ? 'Edit land' : 'Add land'))}<section class="land-record-editor" data-land-editor="${esc(land?.id ?? '')}"><p class="muted" data-land-progress aria-live="polite">1 / 3</p><div data-land-step="0"><div class="land-record-map-wrap"><div class="land-setup-map" data-record-map></div><div class="land-record-point-toolbar" role="toolbar" aria-label="${esc(t('Land map'))}">${[['locate', 'Use my location', 'map-pin'], ['add', 'Create point', 'plus'], ['move', 'Update point', 'pencil'], ['remove', 'Delete point', 'trash']].map(([action, label, symbol]) => `<button type="button" class="land-map-button" data-point-action="${action}" aria-label="${esc(t(label))}" title="${esc(t(label))}">${icon(symbol, 20)}</button>`).join('')}<label class="land-record-map-type"><span class="sr-only">${esc(t('Map type'))}</span><select data-record-map-type><option value="street">${esc(t('Street'))}</option><option value="satellite">${esc(t('Satellite'))}</option></select></label></div></div><p role="status" data-point-status></p></div><form class="form-stack" data-land-record-form novalidate><div data-land-step="1" hidden>${input('name', 'Land name', land?.name ?? '')}</div><div data-land-step="2" hidden>${input('location', 'Location', land?.location ?? '')}</div><p class="muted land-map-disclaimer">${esc(t('Map areas are estimates, not surveyed boundaries.'))}</p><p role="alert" data-record-error></p><div class="form-stack"><button type="button" class="button button-secondary" data-point-action="previous" hidden>${esc(t('Back'))}</button><button type="button" class="button" data-point-action="next">${esc(t('Continue'))}</button><button hidden type="submit" class="button" name="next" value="split">${esc(t('Save and choose field dimensions'))}</button><button hidden type="submit" class="button button-secondary" name="next" value="save">${esc(t('Save land'))}</button><a class="button button-secondary" href="/farm${land ? `/${esc(land.id)}` : ''}">${esc(t('Cancel'))}</a>${land ? `<button type="button" class="button button-secondary land-delete-button" data-point-action="delete-land">${esc(t('Delete land'))}</button>` : ''}</div></form><dialog class="install-dialog" data-land-delete-dialog aria-labelledby="land-delete-heading"><h2 id="land-delete-heading">${esc(t('Delete land'))}</h2><p>${esc(t('Delete this land, its fields and scheduled tasks? This cannot be undone.'))}</p><div class="toolbar"><button class="button button-secondary" data-point-action="cancel-delete" autofocus>${esc(t('Cancel'))}</button><button class="button" data-point-action="confirm-delete">${esc(t('Delete land'))}</button></div></dialog></section>`;
+  return `${isInline ? '' : pageHeading('', t(land ? 'Edit land' : 'Add land'))}<section class="land-record-editor" data-land-editor="${esc(land?.id ?? '')}"><p class="muted" data-land-progress aria-live="polite">1 / 2</p><div data-land-step="0"><div class="land-record-map-wrap"><div class="land-setup-map" data-record-map></div><div class="land-record-point-toolbar" role="toolbar" aria-label="${esc(t('Land map'))}">${[['locate', 'Use my location', 'map-pin'], ['add', 'Create point', 'plus'], ['move', 'Update point', 'pencil'], ['remove', 'Delete point', 'trash']].map(([action, label, symbol]) => `<button type="button" class="land-map-button" data-point-action="${action}" aria-label="${esc(t(label))}" title="${esc(t(label))}">${icon(symbol, 20)}</button>`).join('')}<label class="land-record-map-type"><span class="sr-only">${esc(t('Map type'))}</span><select data-record-map-type><option value="street">${esc(t('Street'))}</option><option value="satellite">${esc(t('Satellite'))}</option></select></label></div></div><p role="status" data-point-status></p></div><form class="form-stack" data-land-record-form novalidate><div data-land-step="1" hidden>${input('name', 'Land name', land?.name ?? '')}</div><p role="alert" data-record-error></p><div class="form-stack"><button type="button" class="button button-secondary" data-point-action="previous" hidden>${esc(t('Back'))}</button><button type="button" class="button" data-point-action="next">${esc(t('Continue'))}</button><button hidden type="submit" class="button" name="next" value="split">${esc(t('Save and choose field dimensions'))}</button><a class="button button-secondary" href="/farm${land ? `/${esc(land.id)}` : ''}">${esc(t('Cancel'))}</a>${land ? `<button type="button" class="button button-secondary land-delete-button" data-point-action="delete-land">${esc(t('Delete land'))}</button>` : ''}</div></form><dialog class="install-dialog" data-land-delete-dialog aria-labelledby="land-delete-heading"><h2 id="land-delete-heading">${esc(t('Delete land'))}</h2><p>${esc(t('Delete this land, its fields and scheduled tasks? This cannot be undone.'))}</p><div class="toolbar"><button class="button button-secondary" data-point-action="cancel-delete" autofocus>${esc(t('Cancel'))}</button><button class="button" data-point-action="confirm-delete">${esc(t('Delete land'))}</button></div></dialog></section>`;
 }
 /** @typedef {{getLatLng:()=>{lat:number,lng:number},getRadius:()=>number,setLatLng:(point:number[])=>void,setRadius:(radius:number)=>void,setStyle:(style:object)=>void}} PointMarker */
 /** @typedef {{isDisposed:boolean,step:number,stepMotion:{kill:()=>void}|null,markers:PointMarker[],polygon:{setLatLngs:(points:number[][])=>void}|null,motion:{kill:()=>void}|null,panel:HTMLElement,store:import('./store.mjs').AppStore,id:string,points:import('./land-boundary.mjs').LandPoint[],selected:number,isAdding:boolean,map:import('./land-map.mjs').LandMap,leaflet:import('./land-map.mjs').Leaflet,layers:import('./land-map.mjs').LayerGroup,base:import('./land-map.mjs').Layer}} Editor */
@@ -46,14 +46,14 @@ const updateShapes = (editor) => {
 const redraw = (editor) => {
   updateShapes(editor);
   for (const action of ['move', 'remove']) editor.panel.querySelector(`[data-point-action="${action}"]`).disabled = editor.selected < 0;
-  editor.panel.querySelector('[data-point-action="add"]').disabled = editor.points.length >= LAND_CORNERS;
+  editor.panel.querySelector('[data-point-action="add"]').disabled = editor.points.length >= MAX_LAND_POINTS;
   editor.panel.querySelector('[data-point-action="add"]').setAttribute('aria-pressed', String(editor.isAdding));
   editor.panel.querySelector('[data-point-action="move"]').setAttribute('aria-pressed', String(!editor.isAdding));
   updateMapHint(editor);
 };
 /** @param {Editor} editor @returns {void} */
 const updateMapHint = (editor) => {
-  editor.panel.querySelector('[data-point-status]').textContent = editor.map.getZoom() < LAND_ZOOM ? t('Zoom in closer to mark your land.') : editor.isAdding ? t('Tap four corners · {count}/4', { count: editor.points.length }) : t('Select a point, then tap to move it.');
+  editor.panel.querySelector('[data-point-status]').textContent = editor.map.getZoom() < LAND_ZOOM ? t('Zoom in closer to mark your land.') : editor.isAdding ? t('{count} corners. Mark 3–100 points in boundary order; tap a marked corner to move it.', { count: editor.points.length }) : t('Select a point, then tap to move it.');
 };
 /** @param {Editor} editor @returns {void} */
 const locateLand = (editor) => {
@@ -65,14 +65,14 @@ const locateLand = (editor) => {
 /** @param {Editor} editor @param {number} direction @returns {void} */
 const changeStep = (editor, direction) => {
   if (direction > 0 && editor.step === 0) normalizeFieldBoundary(editor.points);
-  if (direction > 0 && editor.step === 1 && !editor.panel.querySelector('[name="name"]').reportValidity()) return;
-  editor.step = Math.max(0, Math.min(2, editor.step + direction));
+  
+  editor.step = Math.max(0, Math.min(1, editor.step + direction));
   editor.stepMotion?.kill();
   editor.panel.querySelectorAll('[data-land-step]').forEach((element) => { element.hidden = Number(element.dataset.landStep) !== editor.step; });
-  editor.panel.querySelector('[data-land-progress]').textContent = `${editor.step + 1} / 3`;
+  editor.panel.querySelector('[data-land-progress]').textContent = `${editor.step + 1} / 2`;
   editor.panel.querySelector('[data-point-action="previous"]').hidden = editor.step === 0;
-  editor.panel.querySelector('[data-point-action="next"]').hidden = editor.step === 2;
-  editor.panel.querySelectorAll('button[type="submit"]').forEach((button) => { button.hidden = editor.step !== 2; });
+  editor.panel.querySelector('[data-point-action="next"]').hidden = editor.step === 1;
+  editor.panel.querySelectorAll('button[type="submit"]').forEach((button) => { button.hidden = editor.step !== 1; });
   editor.panel.querySelector('[data-record-error]').textContent = '';
   const current = editor.panel.querySelector(`[data-land-step="${editor.step}"]`);
   if (editor.step === 0) editor.map.invalidateSize({ animate: false });
@@ -101,20 +101,19 @@ const save = (editor, event) => {
   event.preventDefault(); event.stopPropagation();
   const form = editor.panel.querySelector('form'); const data = new FormData(form);
   try {
-    if (editor.step < 2) { changeStep(editor, 1); return; }
-    if (!editor.panel.querySelector('[name="location"]').reportValidity()) return;
+    if (editor.step < 1) { changeStep(editor, 1); return; }
+    if (!editor.panel.querySelector('[name="name"]').reportValidity()) return;
     const boundary = normalizeFieldBoundary(editor.points);
     let id = '';
-    editor.store.update((state) => { id = saveLandRecord(state, { id: editor.id, name: String(data.get('name')), location: String(data.get('location')), boundary }); });
-    const shouldSplit = event.submitter?.getAttribute('value') === 'split';
-    editor.panel.dispatchEvent(new CustomEvent('land-record-saved', { bubbles: true, detail: { path: `/farm/${id}${shouldSplit ? '/fields/setup' : ''}` } }));
+    editor.store.update((state) => { id = saveLandRecord(state, { id: editor.id, name: String(data.get('name')), boundary }); });
+    editor.panel.dispatchEvent(new CustomEvent('land-record-saved', { bubbles: true, detail: { path: `/farm/${id}/fields/setup` } }));
   } catch (error) { showError(editor, error); }
 };
 /** @param {Editor} editor @returns {()=>void} */
 const bind = (editor) => {
   const onMapClick = (event) => {
     if (editor.map.getZoom() < LAND_ZOOM) { updateMapHint(editor); return; }
-    if (editor.isAdding && editor.points.length >= LAND_CORNERS) return;
+    if (editor.isAdding && editor.points.length >= MAX_LAND_POINTS) return;
     try { editor.points = editLandPoint(editor.points, editor.isAdding ? 'add' : 'move', editor.selected, [event.latlng.lat, event.latlng.lng]); if (editor.isAdding) editor.selected += 1; redraw(editor); }
     catch (error) { showError(editor, error); }
   };
@@ -135,7 +134,8 @@ export function initializeLandEditor(panel, store, leaflet) {
   if (!leaflet) { panel.querySelector('[data-record-error]').textContent = t('Map unavailable. Reload to try again.'); return () => {}; }
   const land = store.getState().farms.find((record) => record.id === panel.dataset.landEditor);
   const points = land ? displayedLandBoundary(land) : [];
-  const map = leaflet.map(panel.querySelector('[data-record-map]'), { scrollWheelZoom: false }).setView([4.75, 100.9], LAND_ZOOM);
+  const map = leaflet.map(panel.querySelector('[data-record-map]'), { scrollWheelZoom: true, touchZoom: true, zoomControl: true }).setView([4.75, 100.9], LAND_ZOOM);
+  map.attributionControl?.setPrefix(false);
   const editor = { isDisposed: false, step: 0, stepMotion: null, markers: [], polygon: null, motion: null, panel, store, id: land?.id ?? '', points, selected: points.length - 1, isAdding: !points.length, map, leaflet, layers: leaflet.layerGroup().addTo(map), base: createMapLayer(leaflet, savedMapType(store)).addTo(map) };
   if (points.length) map.fitBounds(leaflet.latLngBounds(points), { padding: [24, 24], maxZoom: 18 });
   for (const [selector, label] of [['.leaflet-control-zoom-in', 'Zoom in'], ['.leaflet-control-zoom-out', 'Zoom out']]) { panel.querySelector(selector)?.setAttribute('aria-label', t(label)); panel.querySelector(selector)?.setAttribute('title', t(label)); }

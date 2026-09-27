@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { dirname, extname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { OPEN_ARTICLE_FILES } from './src/open-articles.mjs';
 import { createPlantSearchHandler } from './server/plant-search.mjs';
 import { createPlantAnalysisHandler } from './server/plant-analysis.mjs';
 
@@ -13,15 +14,21 @@ const DEFAULT_PORT = 4173;
 const MAX_PORT = 65535;
 const ROUTE_PREFIXES = ['/farm', '/learn', '/services', '/tools', '/weather', '/onboarding', '/auth', '/account', '/notifications', '/bookings', '/messages', '/pilot', '/shop', '/checkout', '/orders', '/news', '/plant-help'];
 const PUBLIC_FILES = new Set([
-  '/src/land-editor.mjs', '/src/land-records.mjs', '/src/land-grid.mjs', '/src/land-setup.mjs', '/src/field-boundary.mjs', '/src/land-boundary.mjs', '/src/land-map.mjs', '/src/schedule.mjs',
+  '/src/real-products.mjs', '/src/land-covers.mjs',
+  '/src/mixture-planner.mjs',
+  '/assets/shop-power.jpg', '/assets/shop-weather.jpg',
+  ...OPEN_ARTICLE_FILES,
+  '/src/malaysia-articles.mjs',
+  '/assets/article-aphids.jpg', '/assets/article-caterpillars.jpg', '/assets/article-leafminers.jpg', '/assets/article-rice-blast.jpg', '/assets/article-rice-planthoppers.jpg', '/assets/article-snails.jpg', '/assets/article-water-stress.jpg', '/assets/article-waterlogging.jpg', '/assets/article-whiteflies.jpg', '/assets/article-yellow-leaves.jpg',
+  '/src/land-editor.mjs', '/src/land-records.mjs', '/src/land-grid.mjs', '/src/land-setup.mjs', '/src/field-boundary.mjs', '/src/land-boundary.mjs', '/src/land-map.mjs', '/src/field-care.mjs', '/src/schedule.mjs',
   '/assets/vendor/leaflet.js', '/assets/vendor/leaflet.css',
   '/index.html', '/offline.html', '/app.js', '/sw.js', '/manifest.webmanifest',
-  '/src/extension-articles.mjs', '/src/article-catalogue.mjs', '/src/article-library.mjs', '/src/data.mjs', '/src/store.mjs', '/src/spray-calculator.mjs', '/src/calculators.mjs', '/src/ui.mjs', '/src/shell.mjs',
+  '/src/open-articles.mjs', '/src/article-reader.mjs', '/src/extension-articles.mjs', '/src/article-catalogue.mjs', '/src/article-library.mjs', '/src/data.mjs', '/src/store.mjs', '/src/spray-calculator.mjs', '/src/calculators.mjs', '/src/ui.mjs', '/src/shell.mjs',
   '/src/home.mjs', '/src/workspace.mjs', '/src/discover.mjs', '/src/pilot-matcher.mjs', '/src/keypad-calculator.mjs', '/src/actions.mjs', '/src/pwa.mjs', '/src/drafts.mjs',
   '/src/plant-web.mjs', '/src/plant-action.mjs', '/src/plant-guides.mjs', '/src/plant-help.mjs', '/src/plant-photo.mjs',
   '/src/i18n.mjs', '/src/language.mjs', '/src/locales/core.mjs', '/src/locales/workspace.mjs', '/src/locales/discover.mjs', '/src/locales/plant.mjs',
   '/assets/app.css', '/assets/vendor/gsap.min.js', '/assets/icons.svg', '/assets/mark.svg', '/assets/avatar-default.svg',
-  '/assets/profile-ahmad.jpg', '/assets/farm.jpg', '/assets/crops.jpg', '/assets/drone.jpg', '/assets/course.jpg',
+  '/assets/pilot-azlan.png', '/assets/pilot-maya.png', '/assets/pilot-daniel.png', '/assets/profile-ahmad.jpg', '/assets/farm.jpg', '/assets/crops.jpg', '/assets/drone.jpg', '/assets/course.jpg',
   '/assets/learn-soil.jpg', '/assets/learn-soil-thumb.jpg', '/assets/learn-water.jpg', '/assets/learn-water-thumb.jpg', '/assets/learn-scouting.jpg', '/assets/learn-scouting-thumb.jpg', '/assets/learn-harvest.jpg', '/assets/learn-harvest-thumb.jpg',
   '/assets/icon-192.png', '/assets/icon-512.png', '/assets/icon-maskable.png',
 ]);

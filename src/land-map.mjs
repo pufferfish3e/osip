@@ -1,4 +1,4 @@
-import { escapeHtml } from './ui.mjs';
+import { escapeHtml, icon } from './ui.mjs';
 import { displayedLandBoundary } from './land-boundary.mjs';
 import { t } from './i18n.mjs';
 import { deleteField, fieldAreaHectares, mappedFields, normalizeFieldBoundary, saveFieldBoundary } from './field-boundary.mjs';
@@ -13,9 +13,10 @@ import { deleteField, fieldAreaHectares, mappedFields, normalizeFieldBoundary, s
 const DEFAULT_CENTER = [4.75, 100.9];
 const DEFAULT_ZOOM = 8;
 const LOCATION_ZOOM = 17;
-const MAX_ZOOM = 19;
+const MAX_ZOOM = 22;
+const NATIVE_TILE_ZOOM = 19;
 const LOCATION_TIMEOUT_MS = 15000;
-const MAX_POINTS = 4;
+const MAX_POINTS = 100;
 const CORNER_RADIUS = 10;
 const MIN_CORNER_DISTANCE = 0.000001;
 const POSITION_RADIUS = 7;
@@ -23,6 +24,56 @@ const BOUNDARY_PADDING = [24, 24];
 const BOUNDARY_FILL_OPACITY = 0.22;
 const EDIT_COLOR = '#075bea';
 const SAVED_COLOR = '#225e42';
+const OVERVIEW_OUTLINE_COLOR = '#075bea';
+const OVERVIEW_HALO_COLOR = '#ffffff';
+const OVERVIEW_HALO_WEIGHT = 7;
+const OVERVIEW_OUTLINE_WEIGHT = 3;
+const MAP_EXPAND_SECONDS = 0.32;
+
+const createMapExpansionMotion = (panel, map) => {
+  let motion;
+  let placeholder;
+  const clear = () => {
+    motion?.kill();
+    panel.style?.removeProperty('transform');
+    panel.style?.removeProperty('transform-origin');
+    placeholder?.remove();
+    placeholder = null;
+  };
+  const animate = (isExpanded) => {
+    const gsap = globalThis.gsap;
+    if (!gsap || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      clear();
+      panel.classList.toggle('is-map-expanded', isExpanded);
+      map.invalidateSize({ animate: false });
+      return;
+    }
+    motion?.kill();
+    const start = panel.getBoundingClientRect();
+    if (isExpanded && !placeholder) {
+      placeholder = document.createElement('div');
+      placeholder.style.height = `${start.height}px`;
+      placeholder.setAttribute('aria-hidden', 'true');
+      panel.before(placeholder);
+    }
+    panel.classList.add('is-map-expanded');
+    map.invalidateSize({ animate: false });
+    const end = isExpanded ? panel.getBoundingClientRect() : placeholder.getBoundingClientRect();
+    const viewport = panel.getBoundingClientRect();
+    const transform = (rect) => ({ x:rect.left - viewport.left, y:rect.top - viewport.top, scaleX:rect.width / viewport.width, scaleY:rect.height / viewport.height });
+    motion = gsap.fromTo(panel, { ...transform(start), transformOrigin:'top left' }, {
+      ...transform(end), duration:MAP_EXPAND_SECONDS, ease:'power2.inOut',
+      onComplete:() => {
+        panel.classList.toggle('is-map-expanded', isExpanded);
+        panel.style.removeProperty('transform');
+        panel.style.removeProperty('transform-origin');
+        if (!isExpanded) clear();
+        map.invalidateSize({ animate:false });
+      },
+    });
+  };
+  return { animate, clear };
+};
 
 /** @param {Editor} editor @param {string} text @param {boolean} [shouldShow] @returns {void} */
 const setStatus = (editor, text, shouldShow = true) => {
@@ -42,7 +93,8 @@ export function initializeLandMap(panel, store, leaflet) {
   const farm = store.getState().farms.find((item) => item.id === panel.dataset.farmMap);
   const canvas = panel.querySelector('[data-land-canvas]');
   if (!farm || !(canvas instanceof HTMLElement)) return () => {};
-  const map = leaflet.map(canvas, { scrollWheelZoom: false }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+  const map = leaflet.map(canvas, { scrollWheelZoom: true, touchZoom: true, zoomControl: true }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+  map.attributionControl?.setPrefix(false);
   const mapType = savedMapType(store);
   const baseLayer = createMapLayer(leaflet, mapType).addTo(map);
   const mapTypeSelect = panel.querySelector('[data-map-type]');
@@ -174,12 +226,12 @@ const addCorner = (editor, point) => {
     editor.points[editor.selectedCorner] = coordinate;
     editor.selectedCorner = null;
   } else {
-    if (editor.points.length >= MAX_POINTS) { setStatus(editor, 'Four corners marked. Select a corner to move it, or undo.'); return; }
+    if (editor.points.length >= MAX_POINTS) { setStatus(editor, '100 corners marked. Select a corner to move it, or undo.'); return; }
     if (editor.points.some((existing) => Math.hypot(existing[0] - point.lat, existing[1] - point.lng) < MIN_CORNER_DISTANCE)) { setStatus(editor, 'This corner is too close to another. Choose a different position.'); return; }
     editor.points.push(coordinate);
   }
   redraw(editor);
-  if (editor.points.length === MAX_POINTS && !validCorners(editor.points)) setStatus(editor, 'Choose four outer corners; undo or move a corner to fix this shape.');
+  if (editor.points.length >= 3 && !validCorners(editor.points)) setStatus(editor, 'Mark corners in boundary order; undo or move a corner to fix this shape.');
 };
 
 /** @param {Editor} editor @param {string} name @returns {void} */
@@ -212,7 +264,7 @@ const beginField = (editor, isNew) => {
     editor.plotId = ''; editor.points = [];
     editor.panel.querySelector('[data-field-name]').value = '';
     editor.panel.querySelector('[data-field-crop]').value = '';
-  } else editor.points = editor.saved.length === MAX_POINTS ? structuredClone(editor.saved) : [];
+  } else editor.points = editor.saved.length >= 3 ? structuredClone(editor.saved) : [];
   redraw(editor);
   focusSheet(editor);
 };
@@ -295,7 +347,7 @@ const updateSheet = (editor) => {
   panel.querySelector('[data-field-progress]').textContent = t('Step {step} of 4', { step: step + 1 });
   panel.querySelector('[data-field-title]').textContent = t(FIELD_STEP_TITLES[step]);
   FIELD_STEPS.forEach((name, index) => { panel.querySelector(`[data-field-step="${name}"]`).hidden = index !== step; });
-  panel.querySelector('[data-field-corners]').textContent = t('{count}/4 corners. Tap each outer corner; tap a marked corner to move it.', { count: editor.points.length });
+  panel.querySelector('[data-field-corners]').textContent = t('{count} corners. Mark 3–100 points in boundary order; tap a marked corner to move it.', { count: editor.points.length });
   panel.querySelector('[data-land-action="back"]').hidden = step === 0;
   panel.querySelector('[data-land-action="next"]').hidden = step === 3 || Boolean(editor.plotId);
   panel.querySelector('[data-land-action="next"]').disabled = step === 0 && !validCorners(editor.points);
@@ -312,7 +364,7 @@ const updateSheet = (editor) => {
 /** @param {Editor} editor @returns {void} */
 const advanceSheet = (editor) => {
   const selector = editor.step === 1 ? '[data-field-name]' : '[data-field-crop]';
-  if (editor.step === 0 && !validCorners(editor.points)) { setStatus(editor, 'Mark four distinct outer corners.'); return; }
+  if (editor.step === 0 && !validCorners(editor.points)) { setStatus(editor, 'Mark 3–100 distinct corners in boundary order without crossing edges.'); return; }
   if ((editor.step === 1 || editor.step === 2) && !editor.panel.querySelector(selector).value.trim()) {
     setStatus(editor, editor.step === 1 ? 'Enter a field name.' : 'Choose a crop.'); return;
   }
@@ -349,11 +401,11 @@ const syncCropChoices = (editor, isOther = false) => {
 /** @param {Leaflet} leaflet @param {string} type @returns {Layer} */
 export function createMapLayer(leaflet, type) {
   if (type === 'satellite') return leaflet.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    maxZoom: MAX_ZOOM, maxNativeZoom: 19,
+    maxZoom: MAX_ZOOM, maxNativeZoom: NATIVE_TILE_ZOOM,
     attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Sources: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
   });
   return leaflet.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: MAX_ZOOM, attribution: `&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ${t('contributors')}`,
+    maxZoom: MAX_ZOOM, maxNativeZoom: NATIVE_TILE_ZOOM, attribution: `&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ${t('contributors')}`,
   });
 };
 
@@ -388,7 +440,10 @@ const initializeLandOverview = (panel, farm, map, leaflet, store, baseLayer) => 
   const fields = mappedFields(farm);
   for (const field of fields) {
     if (!field.boundary?.length) continue;
-    labelFieldCrop(leaflet.polygon(field.boundary, { color: SAVED_COLOR, weight: 2, fillOpacity: BOUNDARY_FILL_OPACITY, interactive: false }).addTo(map), field.crop);
+    leaflet.polygon(field.boundary, { color: OVERVIEW_HALO_COLOR, weight: OVERVIEW_HALO_WEIGHT, opacity: 0.95, fill: false, interactive: false }).addTo(map);
+    const polygon = leaflet.polygon(field.boundary, { color: OVERVIEW_OUTLINE_COLOR, weight: OVERVIEW_OUTLINE_WEIGHT, opacity: 1, fillOpacity: 0.08, interactive: true }).addTo(map);
+    polygon.bindTooltip(`<button type="button" class="field-care-map-button" aria-label="${escapeHtml(field.name)} · ${escapeHtml(t('Field care'))}"><span aria-hidden="true">${cropEmoji(field.crop)}</span></button>`, { permanent: true, direction: 'center', className: 'field-care-label', opacity: 1, interactive: true });
+    polygon.on('click', () => panel.closest('main')?.querySelector('[data-field-care-sheet]')?.dispatchEvent(new CustomEvent('field-care-open', { detail: { farmId: farm.id, plotId: field.id } })));
   }
   const bounds = [...boundary, ...fields.flatMap((field) => field.boundary ?? [])];
   if (bounds.length) map.fitBounds(leaflet.latLngBounds(bounds), { padding: BOUNDARY_PADDING, maxZoom: LOCATION_ZOOM });
@@ -409,7 +464,8 @@ const initializeLandOverview = (panel, farm, map, leaflet, store, baseLayer) => 
     }
   };
   panel.addEventListener('change', onChange);
-  return () => { panel.removeEventListener('change', onChange); map.remove(); };
+  const closeExpandedMap = initializeExpandedMap(panel, map);
+  return () => { closeExpandedMap(); panel.removeEventListener('change', onChange); map.remove(); };
 };
 
 /** @type {Array<[string, RegExp]>} */
@@ -453,4 +509,43 @@ export function saveMapType(store, value) {
   if ((value !== 'street' && value !== 'satellite') || value === savedMapType(store)) return false;
   store.update((state) => { state.settings.mapType = value; });
   return true;
+}
+
+/** @param {HTMLElement} panel @param {LandMap} map @returns {()=>void} */
+export function initializeExpandedMap(panel, map) {
+  const button = panel.querySelector('[data-map-expand]');
+  if (!button) return () => {};
+  let isExpanded = false;
+  const motion = createMapExpansionMotion(panel, map);
+  const toggle = () => {
+    isExpanded = !isExpanded;
+    motion.animate(isExpanded);
+    button.setAttribute('aria-expanded', String(isExpanded));
+    const label = t(isExpanded ? 'Close expanded map' : 'Expand map');
+    button.setAttribute('aria-label', label);
+    button.setAttribute('title', label);
+    button.innerHTML = isExpanded ? icon('arrows-minimize', 20) : icon('arrows-maximize', 20);
+    button.focus({ preventScroll: true });
+  };
+  const onClick = (event) => {
+    if (!event.target.closest('[data-map-expand]')) return;
+    event.preventDefault();
+    toggle();
+  };
+  const onKey = (event) => {
+    if (!isExpanded) return;
+    if (event.key === 'Escape') { event.preventDefault(); toggle(); }
+    if (event.key !== 'Tab') return;
+    const controls = [...panel.querySelectorAll('a[href],button,select,[tabindex="0"]')].filter((control) => !control.disabled && control.getClientRects().length);
+    const edge = event.shiftKey ? controls[0] : controls.at(-1);
+    if (document.activeElement === edge) { event.preventDefault(); (event.shiftKey ? controls.at(-1) : controls[0])?.focus(); }
+  };
+  panel.addEventListener('click', onClick);
+  panel.addEventListener('keydown', onKey);
+  return () => {
+    panel.removeEventListener('click', onClick);
+    panel.removeEventListener('keydown', onKey);
+    motion.clear();
+    panel.classList?.toggle('is-map-expanded', false);
+  };
 }

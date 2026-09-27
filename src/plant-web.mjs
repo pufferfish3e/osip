@@ -21,6 +21,12 @@ export function validateWebResult(value) {
     if (!isRecord(citation) || !isSafeUrl(citation.url) || typeof citation.title !== 'string' || !citation.title.trim() || citation.title.length > 500 || !Number.isInteger(citation.start) || !Number.isInteger(citation.end) || citation.start < end || citation.end <= citation.start || citation.end > value.text.length) throw new Error('The web result could not be read. Please try again.');
     end = citation.end;
   }
+  for (const paragraph of value.text.matchAll(/[^\n]+(?:\n(?!\n)[^\n]+)*/g)) {
+    if (!paragraph[0].trim()) continue;
+    const start = paragraph.index;
+    const end = start + paragraph[0].length;
+    if (!value.citations.some((citation) => citation.start >= start && citation.end <= end)) throw new Error('The web result contains advice without a supporting citation.');
+  }
   return /** @type {PlantWebResult} */ (value);
 }
 /** @param {PlantWebResult} result @returns {string} */

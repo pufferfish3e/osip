@@ -2,6 +2,14 @@
 
 Mobile-first HTML, Tailwind CSS, and vanilla JavaScript PWA. This is the interactive prototype milestone in `PLAN.md`, with a Revolut-inspired visual system adapted for farming. It does not use Revolut's private UI kit.
 
+## Local data templates
+
+Set `profile` in `data/active.json` to `demo` or `newuser`, then run `npm run build` and reload. `data/demo.json` contains sample land and tasks; `data/newuser.json` contains empty user collections and default preferences. Edit either JSON file to customize its starting data.
+
+Each template initializes localStorage on first use. Demo uses `osip-state-v2` (preserving existing saves); new-user mode uses `osip-state-v2-newuser`. Switching modes preserves both sets of saved records. Changing a template does not overwrite an existing save; clear only that mode's localStorage key to start from its edited template.
+
+User records, drafts and language preferences stay on the device. Read-only courses, articles and product catalogues remain shared application content. The JSON files are starting templates, not browser-writable databases. Both templates are cached for offline access.
+
 ## Run
 
 ```sh
@@ -110,3 +118,26 @@ Plant-help searches first match the offline guides. Submitting a query with no m
 Tools → Spray estimate uses the saved land or individual field area for one application. Reference setups cite DJI T40 paddy (15 L/ha, 40 L tank), DJI T30 (4.8 L/acre, 30 L tank), and Penn State's calibrated backpack example (20 US gal/acre; a separately identified editable 16 L tank assumption). These are documented examples, not evidence of regional adoption or pesticide dose recommendations. Select a setup, review its calibrated spray volume and tank size, and optionally enter the formulated product label rate in mL/ha, g/ha, mL/L or g/L of finished spray. Results distinguish finished mixture from product, tank loads and the partial final load. No overlap allowance, spot-treatment fraction, active-ingredient calculation or label compliance assessment is inferred.
 
 The optional `/api/spray-config` uses the existing server-side OpenAI configuration to extract explicitly supplied quantities from natural language into a reviewable draft. Missing or ambiguous values remain blank; farmers must check AI interpretations against their labels before calculating. Manual estimation works offline; AI requires internet. No product recommendations or inferred doses are requested, and no configuration is automatically saved.
+
+## Sourced article library
+
+Learn → Farming knowledge provides university extension resources and a catalogue of real journal publications, with topic filters, publisher/author/title search, bookmarks, and batches of 24 cards. Topics include Soil, Water, Pests, Harvest, Technology, Drones, Sustainability, and Crop production. The catalogue is bundled locally for offline browsing; publisher links need internet and some publications require a subscription. External entries include their actual title, publisher, author metadata and publication year where available. Full copyrighted articles and abstracts are not republished, and no reading times or article photographs are invented.
+
+`article-source-audit.json` records catalogue counts, the source-journal allowlist, retrieval date and screening limitations. Research metadata comes from Crossref's public API, filtered to journal articles published from 2010 through the import date. Topic relevance is checked against titles, DOI records are deduplicated, and correction/retraction notices identifiable in titles are excluded. Citation counts order candidate selection, not scientific validity. A reputable publisher and registered DOI are provenance checks, not independent full-text review or complete retraction screening. These resources are not certified Malaysian agronomic guidance; readers must assess applicability to their crops and region. Existing sample guides remain accessible through their old URLs and saved records but are omitted from the main imported-resource catalogue.
+
+Practical guide illustrations use distinct [Pexels stock photos](https://www.pexels.com/license/), bundled locally. These are illustrative topic photos, not diagnostic examples or photographs from the cited publications.
+
+- `assets/article-aphids.jpg`: https://www.pexels.com/photo/32700469/
+- `assets/article-whiteflies.jpg`: https://www.pexels.com/photo/6508841/
+- `assets/article-leafminers.jpg`: https://www.pexels.com/photo/13922660/
+- `assets/article-caterpillars.jpg`: https://www.pexels.com/photo/8464926/
+- `assets/article-rice-planthoppers.jpg`: https://www.pexels.com/photo/6129010/
+- `assets/article-rice-blast.jpg`: https://www.pexels.com/photo/8289984/
+- `assets/article-waterlogging.jpg`: https://www.pexels.com/photo/7232905/
+- `assets/article-snails.jpg`: https://www.pexels.com/photo/5969267/
+- `assets/article-water-stress.jpg`: https://www.pexels.com/photo/12442916/
+- `assets/article-yellow-leaves.jpg`: https://www.pexels.com/photo/19075979/
+
+Shop stock photos, under the Pexels license (illustrative products):
+- `assets/shop-power.jpg`: Amar Preciado, https://www.pexels.com/photo/portable-power-station-with-drone-accessories-37489594/
+- `assets/shop-weather.jpg`: Ulrick Trappschuh, https://www.pexels.com/photo/device-measuring-wind-speed-15784822/

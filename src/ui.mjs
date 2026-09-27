@@ -38,7 +38,7 @@ export function friendlyDate(value) {
 export function localizeDemoState(state) {
   const demo = INITIAL_STATE.farms[0];
   const farms = state.farms.map((farm) => {
-    if (farm.id !== demo.id || farm.isDemo === false) return { ...farm, crop: farm.crop.split(', ').map((crop) => t(crop)).join(', '), plots: farm.plots.map((plot) => ({ ...plot, name: Number.isInteger(plot.gridNumber) && plot.name === `Field ${plot.gridNumber}` ? t('Field {number}', { number: plot.gridNumber }) : plot.name, crop: t(plot.crop) })) };
+    if (farm.id !== demo?.id || farm.isDemo === false) return { ...farm, crop: farm.crop.split(', ').map((crop) => t(crop)).join(', '), plots: farm.plots.map((plot) => ({ ...plot, name: Number.isInteger(plot.gridNumber) && plot.name === `Field ${plot.gridNumber}` ? t('Field {number}', { number: plot.gridNumber }) : plot.name, crop: t(plot.crop) })) };
     const localized = { ...farm };
     for (const key of ['name', 'location', 'crop']) if (farm[key] === demo[key]) localized[key] = t(farm[key]);
     if (farm.name === demo.name) localized.name = t('Sungai Dua land');

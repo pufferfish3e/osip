@@ -1,0 +1,39 @@
+{
+  "profile": {
+    "name": "",
+    "firstName": "",
+    "lastName": "",
+    "role": "farmer",
+    "roles": [
+      "farmer"
+    ],
+    "onboarded": false,
+    "hasChosenRole": false
+  },
+  "farms": [],
+  "tasks": [],
+  "bookings": [],
+  "cart": [],
+  "orders": [],
+  "savedArticles": [],
+  "savedCalculations": [],
+  "pilot": {
+    "services": [],
+    "area": "",
+    "equipment": "",
+    "rate": 0,
+    "credentialReference": "",
+    "availability": {
+      "days": [],
+      "timeStart": "08:00",
+      "timeEnd": "17:00"
+    },
+    "verification": "not-submitted"
+  },
+  "settings": {
+    "unit": "ha",
+    "language": "en",
+    "currency": "MYR"
+  },
+  "notifications": []
+}

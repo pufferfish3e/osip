@@ -83,6 +83,7 @@ test('invalid updates roll back with a validation error', () => {
 test('domain errors retain their identity and roll back before any write or notification', () => {
   const storage = memoryStorage();
   const store = createStore(storage);
+  const savedBefore = storage.getItem(STORAGE_KEY);
   const originalError = new Error('Choose a future booking time.');
   let notifications = 0;
   store.subscribe(() => { notifications += 1; });
@@ -92,7 +93,7 @@ test('domain errors retain their identity and roll back before any write or noti
   }), (error) => error === originalError);
   assert.equal(store.lastError, originalError);
   assert.deepEqual(store.getState(), INITIAL_STATE);
-  assert.equal(storage.getItem(STORAGE_KEY), null);
+  assert.equal(storage.getItem(STORAGE_KEY), savedBefore);
   assert.equal(notifications, 0);
 });
 

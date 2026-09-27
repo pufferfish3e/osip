@@ -81,7 +81,7 @@ const savePlot = (state, fields) => {
 /** @param {AppState} state @param {Fields} fields @returns {ActionResult} */
 const saveTask = (state, fields) => {
   const farmId = text(fields, 'farmId');
-  find(state.farms, (farm) => farm.id === farmId, 'Farm');
+  const farm = find(state.farms, (farm) => farm.id === farmId, 'Farm');
   const dueDate = text(fields, 'dueDate');
   const time = text(fields, 'time');
   validateSchedule(dueDate, time);
@@ -90,10 +90,12 @@ const saveTask = (state, fields) => {
   const prior = !id && creationKey ? state.tasks.find((task) => task.creationKey === creationKey && task.farmId === farmId) : null;
   if (prior) return { redirect: `/farm/${farmId}/schedule`, message: t('Event created') };
   const existing = id ? find(state.tasks, (task) => task.id === id && task.farmId === farmId, 'Task') : undefined;
+  const plotId = fields.plotId === undefined ? existing?.plotId ?? '' : text(fields, 'plotId', false);
+  if (plotId) find(farm.plots, (plot) => plot.id === plotId, 'Field');
   const repeat = text(fields, 'repeat', false) || existing?.repeat || 'none';
   if (!['none', 'daily', 'weekly', 'monthly'].includes(repeat)) throw new ActionError('Choose a valid repeat frequency.');
   const repeatAnchorDay = existing?.dueDate === dueDate ? (existing.repeatAnchorDay ?? Number(dueDate.slice(8))) : Number(dueDate.slice(8));
-  const next = { ...(creationKey ? { creationKey } : {}), repeat, repeatAnchorDay, id: id || makeId('task'), farmId, title: text(fields, 'title'), dueDate, time, category: text(fields, 'category'), done: existing?.done ?? false, reminder: Boolean(fields.reminder) };
+  const next = { ...(creationKey ? { creationKey } : {}), repeat, repeatAnchorDay, id: id || makeId('task'), farmId, plotId, title: text(fields, 'title'), dueDate, time, category: text(fields, 'category'), done: existing?.done ?? false, reminder: Boolean(fields.reminder) };
   if (existing) Object.assign(existing, next); else state.tasks.push(next);
   return { redirect: `/farm/${farmId}/schedule`, message: t('Task saved. Reminders appear while the app is open.') };
 };
@@ -107,7 +109,7 @@ const createNextOccurrence = (state, task) => {
     date.setDate(Math.min(anchor, new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()));
   } else date.setDate(date.getDate() + (task.repeat === 'weekly' ? 7 : 1));
   const dueDate = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
-  const { creationKey, ...occurrence } = task;
+  const { creationKey, completedAt, ...occurrence } = task;
   state.tasks.push({ ...occurrence, id: makeId('task'), dueDate, done: false, repeatFromId: task.id });
 };
 
@@ -259,6 +261,8 @@ export function applyAction(state, action, id = '', role = '') {
   if (action === 'toggle-task') {
     const task = find(state.tasks, (item) => item.id === id, 'Task');
     task.done = !task.done;
+    if (task.done) task.completedAt = new Date().toISOString();
+    else delete task.completedAt;
     if (task.done) createNextOccurrence(state, task);
     return { message: t(task.done ? 'Task complete.' : 'Task reopened.') };
   }

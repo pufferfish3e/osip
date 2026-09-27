@@ -1,8 +1,10 @@
 import { isIPv4 } from 'node:net';
 
+import { requestSearch } from './plant-search.mjs';
+
 import { PLANT_GUIDES } from '../src/plant-guides.mjs';
 
-/** @typedef {{title:string,summary:string,isPlant:boolean,observations:string[],nextSteps:string[],guideSlugs:string[]}} PlantAnalysis */
+/** @typedef {{title:string,summary:string,isPlant:boolean,observations:string[],nextSteps:string[],guideSlugs:string[],research?:import('../src/plant-web.mjs').PlantWebResult}} PlantAnalysis */
 /** @typedef {{apiKey?:string,model?:string,trustedOrigin?:string,fetchImpl?:typeof fetch,now?:()=>number,timeoutMs?:number,bodyTimeoutMs?:number}} AnalysisOptions */
 /** @typedef {(request:import('node:http').IncomingMessage,response:import('node:http').ServerResponse)=>Promise<void>} AnalysisHandler */
 
@@ -302,6 +304,10 @@ export function createPlantAnalysisHandler(options = {}) {
       const image = validatePhoto(payload);
       const locale = isRecord(payload) && typeof payload.locale === 'string' ? payload.locale : 'en';
       const analysis = await analyzePhoto(image, settings, cancellation.signal, locale);
+      if (analysis.isPlant) {
+        analysis.research = await requestSearch({ query: `${analysis.title}: ${analysis.observations.join('; ')}`.slice(0, 160), locale }, settings, cancellation.signal);
+        analysis.nextSteps = [];
+      }
       if (!cancellation.signal.aborted && !response.destroyed) sendJson(response, STATUS.ok, analysis);
     } catch (error) {
       if (cancellation.signal.aborted || response.destroyed) return;

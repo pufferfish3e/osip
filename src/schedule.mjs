@@ -1,5 +1,5 @@
 import { getFormatLocale, t } from './i18n.mjs';
-import { escapeHtml as esc } from './ui.mjs';
+import { escapeHtml as esc, icon } from './ui.mjs';
 
 const DAYS_PER_WEEK = 7;
 const SELECTED_DATES = new Map();
@@ -20,8 +20,8 @@ export const calendarDays = (selected, month, isExpanded) => {
 export const renderCalendar = (selected, month, isExpanded, marked = [], canExpand = true) => {
   const heading = parseDate(`${month}-01`).toLocaleDateString(getFormatLocale(), { month: 'long', year: 'numeric' });
   const weekdays = calendarDays('2026-09-21', '2026-09', false).map((date) => `<span>${esc(parseDate(date).toLocaleDateString(getFormatLocale(), { weekday: 'short' }))}</span>`).join('');
-  const monthHeading = canExpand ? `<button type="button" data-calendar-expand aria-expanded="${isExpanded}">${esc(heading)} <span aria-hidden="true">⌄</span></button>` : `<span>${esc(heading)}</span>`;
-  return `<div class="calendar-heading"><button type="button" data-calendar-move="-1" aria-label="${esc(t('Previous'))}">‹</button>${monthHeading}<button type="button" data-calendar-move="1" aria-label="${esc(t('Next'))}">›</button></div><div class="calendar-weekdays" aria-hidden="true">${weekdays}</div><div class="calendar-days">${calendarDays(selected, month, isExpanded).map((date) => `<button type="button" data-calendar-date="${date}" aria-pressed="${date === selected}" aria-label="${esc(parseDate(date).toLocaleDateString(getFormatLocale(), { dateStyle: 'full' }))}${marked.includes(date) ? `, ${esc(t('Tasks to do'))}` : ''}" class="${date.slice(0, 7) !== month ? 'calendar-outside' : ''}"><span>${parseDate(date).getDate()}</span>${marked.includes(date) ? '<i aria-hidden="true"></i>' : ''}</button>`).join('')}</div>`;
+  const monthHeading = canExpand ? `<button type="button" data-calendar-expand aria-expanded="${isExpanded}">${esc(heading)} ${icon('chevron-down', 16)}</button>` : `<span>${esc(heading)}</span>`;
+  return `<div class="calendar-heading"><button type="button" data-calendar-move="-1" aria-label="${esc(t('Previous'))}">${icon('chevron-left', 20)}</button>${monthHeading}<button type="button" data-calendar-move="1" aria-label="${esc(t('Next'))}">${icon('chevron-right', 20)}</button></div><div class="calendar-weekdays" aria-hidden="true">${weekdays}</div><div class="calendar-days">${calendarDays(selected, month, isExpanded).map((date) => `<button type="button" data-calendar-date="${date}" aria-pressed="${date === selected}" aria-label="${esc(parseDate(date).toLocaleDateString(getFormatLocale(), { dateStyle: 'full' }))}${marked.includes(date) ? `, ${esc(t('Tasks to do'))}` : ''}" class="${date.slice(0, 7) !== month ? 'calendar-outside' : ''}"><span>${parseDate(date).getDate()}</span>${marked.includes(date) ? '<i aria-hidden="true"></i>' : ''}</button>`).join('')}</div>`;
 };
 
 /** @param {HTMLElement} root @returns {void} */
@@ -31,7 +31,7 @@ export function initializeSchedule(root) {
   const today = calendarDate(new Date());
   const rows = [...panel.querySelectorAll('[data-agenda] [data-task-date]')];
   const marked = rows.filter((row) => row.dataset.taskDone === 'false').map((row) => row.dataset.taskDate);
-  const dialog = panel.querySelector('dialog');
+  const dialog = panel.querySelector('.task-sheet');
   const form = dialog.querySelector('form');
   const picker = dialog.querySelector('[data-task-picker]');
   const calendar = panel.querySelector('[data-schedule-calendar]');
@@ -86,6 +86,7 @@ export function initializeSchedule(root) {
 /** @param {HTMLFormElement} form @param {HTMLDialogElement} dialog @returns {void} */
 const renderTaskReview = (form, dialog) => {
   const values = [form.elements.title.value, parseDate(form.elements.dueDate.value).toLocaleDateString(getFormatLocale(), { dateStyle: 'long' }), form.elements.time.value, t(form.elements.category.value), t({ none: 'Never', daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' }[form.elements.repeat.value])];
+  values.push(form.elements.plotId?.selectedOptions[0]?.textContent ?? t('Whole land'));
   dialog.querySelectorAll('[data-task-review]').forEach((item, index) => { item.textContent = values[index]; });
 };
 /** @param {HTMLElement} panel @param {HTMLDialogElement} dialog @param {HTMLFormElement} form @param {HTMLElement} picker @param {string[]} marked @param {()=>void} open @param {()=>void} next @param {()=>void} back @returns {void} */

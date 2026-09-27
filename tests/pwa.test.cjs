@@ -24,6 +24,7 @@ const cacheHarness = (cached) => ({
       cached.set(new URL(path, ORIGIN).href, new Response(body));
     }
   },
+  async put(request, response) { cached.set(request.url, response.clone()); },
   async match(request) {
     const url = new URL(typeof request === 'string' ? request : request.url, ORIGIN);
     url.search = '';
@@ -212,4 +213,25 @@ test('allowlisted symlinks cannot expose external or private files', async (cont
   assert.equal(response.status, 403);
   assert.ok(!(await response.text()).includes('Outside the public root'));
   assert.equal((await fetch(`${origin}/assets/icon-192.png`)).status, 403);
+});
+
+test('article bodies and figures cache on demand and remain readable offline', async () => {
+  const online = workerHarness();
+  const path = '/content/articles/PMC123.json';
+  assert.equal(await (await workerRequest(online, path, 'cors')).text(), 'Network response');
+  assert.ok(online.cached.has(`${ORIGIN}${path}`));
+  await workerRequest(online, path, 'cors');
+  assert.equal(online.network.length, 1);
+  const offline = workerHarness(true);
+  offline.cached.set(`${ORIGIN}${path}`, online.cached.get(`${ORIGIN}${path}`));
+  assert.equal(await (await workerRequest(offline, path, 'cors')).text(), 'Network response');
+  assert.equal((await workerRequest(offline, '/content/articles/PMC999.json', 'cors')).status, 503);
+});
+
+test('opening a cached article figure in a new tab works offline', async () => {
+  const harness = workerHarness(true);
+  const path = '/content/articles/PMC123-figure-1.jpg';
+  harness.cached.set(`${ORIGIN}${path}`, new Response('image data'));
+  assert.equal(await (await workerRequest(harness,path,'navigate')).text(),'image data');
+  assert.equal(harness.network.length,0);
 });

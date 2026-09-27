@@ -6,6 +6,21 @@ import { createStore } from '../src/store.mjs';
 const BOX = [[4,101],[4,101.002],[4.002,101.002],[4.002,101]];
 const storage = () => { const records = new Map(); return { getItem:(key)=>records.get(key)??null,setItem:(key,value)=>records.set(key,value) }; };
 const draft = { name:'North land', location:'Perak', boundary:BOX };
+test('new lands vary their covers and keep them after editing, deletion and reload', () => {
+  const disk = storage();
+  const store = createStore(disk);
+  const ids = [];
+  for (let index = 0; index < 5; index += 1) {
+    store.update((state) => { ids.push(saveLandRecord(state, draft)); });
+  }
+  const lands = store.getState().farms;
+  assert.equal(new Set(lands.slice(0, 4).map((land) => land.coverImage)).size, 4);
+  for (let index = 1; index < lands.length; index += 1) assert.notEqual(lands[index].coverImage, lands[index - 1].coverImage);
+  const last = lands.find((land) => land.id === ids.at(-1));
+  store.update((state) => saveLandRecord(state, { ...draft, id:last.id, name:'Updated' }));
+  store.update((state) => deleteLandRecord(state, ids[0]));
+  assert.equal(createStore(disk).getState().farms.find((land) => land.id === last.id).coverImage, last.coverImage);
+});
 test('point add, move and arbitrary deletion preserve order and leave the original unchanged', () => {
   const added = editLandPoint(BOX,'add',0,[4,101.001]);
   assert.equal(added.length,5); assert.deepEqual(added[1],[4,101.001]);
@@ -72,4 +87,14 @@ test('generated names avoid custom names regardless of case and direct grid crea
   assert.equal(store.getState().farms.find((land) => land.id === id).name, 'Land 2');
   store.update((state) => saveLandRecord(state, { ...draft, id, name: 'West land' }));
   assert.equal(store.getState().farms.find((land) => land.id === id).name, 'West land');
+});
+
+test('land without a typed location derives coordinates and refreshes them after moving', () => {
+  const store = createStore({ getItem: () => null, setItem() {} });
+  let id;
+  store.update((state) => { id = saveLandRecord(state, { name: 'Mapped land', boundary: BOX }); });
+  assert.equal(store.getState().farms.find((land) => land.id === id).location, '4.00100, 101.00100');
+  const moved = BOX.map(([lat, lng]) => [lat + 0.1, lng]);
+  store.update((state) => saveLandRecord(state, { id, name: 'Mapped land', boundary: moved }));
+  assert.equal(store.getState().farms.find((land) => land.id === id).location, '4.10100, 101.00100');
 });

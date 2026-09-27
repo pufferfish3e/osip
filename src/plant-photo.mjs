@@ -1,16 +1,17 @@
+import { validateWebResult } from './plant-web.mjs';
 import { getLocale, t } from './i18n.mjs';
 import { findPlantGuide } from './plant-guides.mjs';
 import { renderPlantAnalysis } from './plant-help.mjs';
 import { escapeHtml as esc, icon } from './ui.mjs';
 
-/** @typedef {{title:string,summary:string,isPlant:boolean,observations:string[],nextSteps:string[],guideSlugs:string[]}} PlantAnalysis */
+/** @typedef {{title:string,summary:string,isPlant:boolean,observations:string[],nextSteps:string[],guideSlugs:string[],research?:import('./plant-web.mjs').PlantWebResult}} PlantAnalysis */
 /** @typedef {{status:'idle'|'preparing'|'ready'|'analyzing'|'success'|'error',image:string,result:PlantAnalysis|null,error:string}} PhotoState */
 const MAX_FILE_BYTES = 15 * 1024 * 1024;
 const MAX_IMAGE_CHARACTERS = Math.ceil(4 * 1024 * 1024 / 3) * 4 + 40;
 const MAX_EDGE = 1600;
 const MAX_PIXELS = 48 * 1000 * 1000;
 const JPEG_QUALITY = 0.84;
-const REQUEST_TIMEOUT = 55000;
+const REQUEST_TIMEOUT = 75000;
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
 
 /** @param {{size:number,type:string}} file @returns {void} */
@@ -60,7 +61,7 @@ const isTextList = (value, limit) => Array.isArray(value) && value.length <= lim
 /** @param {unknown} value @returns {PlantAnalysis} */
 export function parsePlantAnalysis(value) {
   if (!isObject(value) || typeof value.title !== 'string' || !value.title.trim() || value.title.length > 200 || typeof value.summary !== 'string' || !value.summary.trim() || value.summary.length > 3000 || typeof value.isPlant !== 'boolean' || !isTextList(value.observations, 6) || !isTextList(value.nextSteps, 6) || !isTextList(value.guideSlugs, 3) || value.guideSlugs.some((slug) => !findPlantGuide(slug))) throw new Error('The photo summary was incomplete. Please try again.');
-  return { title: value.title, summary: value.summary, isPlant: value.isPlant, observations: value.observations, nextSteps: value.nextSteps, guideSlugs: value.isPlant ? [...new Set(value.guideSlugs)] : [] };
+  return { title: value.title, summary: value.summary, isPlant: value.isPlant, observations: value.observations, nextSteps: value.nextSteps, guideSlugs: value.isPlant ? [...new Set(value.guideSlugs)] : [], ...(value.research ? { research: validateWebResult(value.research) } : {}) };
 }
 
 /** @param {string} image @param {AbortSignal} signal @param {typeof fetch} fetcher @returns {Promise<PlantAnalysis>} */

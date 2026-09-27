@@ -1,5 +1,9 @@
+import { OPEN_ARTICLES } from './open-articles.mjs';
+import { MALAYSIA_ARTICLES, MALAYSIA_CONTEXT } from './malaysia-articles.mjs';
+import { PLANT_GUIDES } from './plant-guides.mjs';
 import { EXTENSION_ARTICLES } from './extension-articles.mjs';
 import { ARTICLE_CATALOGUE } from './article-catalogue.mjs';
+import { REAL_PRODUCTS } from './real-products.mjs';
 const TODAY = new Date();
 const DATE_OFFSET_DAYS = { tomorrow: 1, course: 6, workshop: 12, nextCourse: 18 };
 
@@ -13,6 +17,17 @@ const dateAfter = (offset) => {
 };
 
 export const ARTICLES = [
+  ...PLANT_GUIDES.map((guide) => ({
+    id: `practical-${guide.slug}`, slug: `practical-${guide.slug}`, plantGuideSlug: guide.slug,
+    title: guide.title, category: guide.category, topics: [guide.category], crop: guide.crops[0] ?? 'All crops',
+    readTime: 2, image: `/assets/article-${guide.slug}.jpg`, thumbnail: `/assets/article-${guide.slug}.jpg`,
+    summary: guide.summary, author: 'Aura editorial', reviewedAt: '', source: guide.sources[0].title,
+    sourceUrl: guide.sources[0].url, isDemo: false, kind: 'practical',
+    region: 'MY', malaysiaSourceUrl: MALAYSIA_CONTEXT[guide.slug]?.sourceUrl, keywords: guide.keywords,
+    sections: [{title: 'Look for', body: guide.symptoms.join(' ')}, {title: 'What to do first', body: guide.actions.join(' ')}, {title: 'When to get help', body: guide.whenToGetHelp}],
+  })),
+  ...MALAYSIA_ARTICLES,
+  ...OPEN_ARTICLES,
   ...EXTENSION_ARTICLES,
   ...ARTICLE_CATALOGUE,
   {
@@ -524,35 +539,36 @@ export const COURSES = [
 
 export const PILOTS = [
   {
-    id: 'azlan', name: 'Azlan Ibrahim', initials: 'AI', serviceArea: 'Perak', services: ['Mapping', 'Crop survey'],
+    id: 'azlan', reviews: ['Clear field maps and a helpful handover.', 'Arrived on time and explained the survey clearly.'], portrait: '/assets/pilot-azlan.png', name: 'Azlan Ibrahim', initials: 'AI', serviceArea: 'Perak', services: ['Mapping', 'Crop survey'],
     equipment: 'Multispectral survey drone', rating: 4.9, reviewCount: 28, rate: 65, rateUnit: 'ha', available: dateAfter(DATE_OFFSET_DAYS.tomorrow),
     status: 'Profile', bio: 'Example mapping service for farmers who want organised plot imagery and a clear record of field observations.', isDemo: true,
   },
   {
-    id: 'maya', name: 'Maya Tan', initials: 'MT', serviceArea: 'Perak & Kedah', services: ['Mapping', 'Spraying'],
+    id: 'maya', reviews: ['Explained the plan before starting work.', 'Easy to coordinate the visit and field access.'], portrait: '/assets/pilot-maya.png', name: 'Maya Tan', initials: 'MT', serviceArea: 'Perak & Kedah', services: ['Mapping', 'Spraying'],
     equipment: 'Agricultural application drone', rating: 4.8, reviewCount: 19, rate: 75, rateUnit: 'ha', available: dateAfter(DATE_OFFSET_DAYS.tomorrow),
     status: 'Profile', bio: 'Example agricultural service profile. Job scope, permissions, site conditions, and any application details require professional review.', isDemo: true,
   },
   {
-    id: 'daniel', name: 'Daniel Lee', initials: 'DL', serviceArea: 'Kedah', services: ['Crop survey', 'Mapping'],
+    id: 'daniel', reviews: ['Useful crop photos with clear notes.', 'Careful survey and an organised handover.'], portrait: '/assets/pilot-daniel.png', name: 'Daniel Lee', initials: 'DL', serviceArea: 'Kedah', services: ['Crop survey', 'Mapping'],
     equipment: 'Survey drone with RGB camera', rating: 4.9, reviewCount: 34, rate: 60, rateUnit: 'ha', available: dateAfter(DATE_OFFSET_DAYS.course),
     status: 'Profile', bio: 'Example survey service for comparing field photographs and documenting plot boundaries supplied by the farmer.', isDemo: true,
   },
 ];
 
 export const PRODUCTS = [
+  ...REAL_PRODUCTS,
   {
     id: 'scout-drone', name: 'Field Scout drone', category: 'Drones', price: 4800, image: '/assets/drone.jpg',
     description: 'A fictional survey-drone listing for exploring the shop and checkout flow. Specifications and pricing are illustrative.',
     specs: ['Sample RGB imaging kit', 'Sample flight controller', 'Supplier consultation required'], isDemo: true,
   },
   {
-    id: 'field-battery', name: 'Field power kit', category: 'Accessories', price: 680, image: '/assets/drone.jpg',
+    id: 'field-battery', name: 'Field power kit', category: 'Accessories', price: 680, image: '/assets/shop-power.jpg',
     description: 'A fictional spare-power kit. Confirm model compatibility and supplier specifications before a real purchase.',
     specs: ['Sample battery kit', 'Sample charging case', 'Compatibility to be confirmed'], isDemo: true,
   },
   {
-    id: 'weather-meter', name: 'Pocket weather meter', category: 'Field tools', price: 240, image: '/assets/farm.jpg',
+    id: 'weather-meter', name: 'Pocket weather meter', category: 'Field tools', price: 240, image: '/assets/shop-weather.jpg',
     description: 'A fictional handheld field-instrument listing. Readings, calibration, and suitability would depend on the actual device.',
     specs: ['Sample wind reading', 'Sample temperature display', 'Illustrative product'], isDemo: true,
   },
@@ -596,15 +612,4 @@ export const WEATHER = {
 };
 
 /** @type {import('./store.mjs').AppState} */
-export const INITIAL_STATE = {
-  profile: { name: 'Ambitious Ahmad', role: 'farmer', roles: ['farmer'], onboarded: false },
-  farms: [{ id: 'farm-1', name: 'Sungai Dua Farm', location: 'Perak, Malaysia', crop: 'Rice', area: 4.2, unit: 'ha', plantedAt: dateAfter(0), isDemo: true, plots: [{ id: 'plot-1', name: 'Main plot', crop: 'Rice', area: 4.2, plantedAt: dateAfter(0) }] }],
-  tasks: [
-    { id: 'soil', farmId: 'farm-1', title: 'Record soil observations', dueDate: dateAfter(0), time: '08:00', category: 'Soil', done: false, reminder: true },
-    { id: 'crops', farmId: 'farm-1', title: 'Walk the north plot', dueDate: dateAfter(0), time: '10:30', category: 'Crop care', done: false, reminder: true },
-    { id: 'water', farmId: 'farm-1', title: 'Update the irrigation log', dueDate: dateAfter(0), time: '16:00', category: 'Water', done: false, reminder: false },
-  ],
-  bookings: [], cart: [], orders: [], savedArticles: [], savedCalculations: [],
-  pilot: { services: [], area: '', equipment: '', rate: 0, credentialReference: '', availability: { days: [], timeStart: '08:00', timeEnd: '17:00' }, verification: 'not-submitted' },
-  settings: { unit: 'ha', language: 'en', currency: 'MYR' }, notifications: [],
-};
+export { SEED_STATE as INITIAL_STATE } from './storage-seed.mjs';
