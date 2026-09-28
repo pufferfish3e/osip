@@ -1,0 +1,2 @@
+.brand img, .mobile-brand img { display: block; width: 34px; height: 34px; flex: none; border-radius: 10px; object-fit: cover; }
+.mobile-brand img { width: 30px; height: 30px; border-radius: 9px; }
