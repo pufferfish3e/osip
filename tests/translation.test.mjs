@@ -53,7 +53,7 @@ test('failed, malformed and aborted translations are not accepted', async () => 
 });
 
 test('AI translation retains citation markers, offsets, URLs and image credits', async () => {
-  const source = { ...RESULT, research: { text: 'Read [1] now.', citations: [{ start: 5, end: 8, title: 'Source', url: 'https://example.org/article' }] }, referenceImages: [{ title: 'Aphid', url: 'https://example.org/aphid.jpg', credit: 'Photographer' }] };
+  const source = { ...RESULT, possibleCauses: ['Could be caterpillars.'], confirmationChecks: ['Inspect leaf undersides.'], research: { text: 'Read [1] now.', citations: [{ start: 5, end: 8, title: 'Source', url: 'https://example.org/article' }] }, referenceImages: [{ title: 'Aphid', url: 'https://example.org/aphid.jpg', credit: 'Photographer' }] };
   const copy = await translateAnalysis(source, 'ms', undefined, translated);
   const citation = copy.research.citations[0];
   assert.equal(copy.research.text.slice(citation.start, citation.end), '[1]');
@@ -61,6 +61,8 @@ test('AI translation retains citation markers, offsets, URLs and image credits',
   assert.equal(copy.referenceImages[0].credit, 'Photographer');
   assert.equal(source.title, RESULT.title);
   assert.match(copy.nextSteps[0], /Terjemahan/);
+  assert.match(copy.possibleCauses[0], /Terjemahan/);
+  assert.match(copy.confirmationChecks[0], /Terjemahan/);
 });
 
 test('article translation preserves tables, equations, images and the original', async () => {

@@ -66,7 +66,7 @@ test('photo state renders native capture, gallery fallback and explicit send act
   assert.match(renderPhotoState({ status: 'analyzing', image: IMAGE, result: null, error: '' }), /Looking at your plant…/);
 });
 
-test('researched actions keep their own article links and optional reference photos', () => {
+test('photo checks remain beside cited guidance with publisher details and reference photos', () => {
   const research = { text: 'Check beneath leaves. [one]\n\nInspect nearby plants. [two]', citations: [
     { url: 'https://extension.example.org/one', title: 'Leaf guide', start: 22, end: 27 },
     { url: 'https://extension.example.org/two', title: 'Field guide', start: 52, end: 57 },
@@ -76,11 +76,29 @@ test('researched actions keep their own article links and optional reference pho
   assert.match(html, /Photos to compare/);
   assert.match(html, /Aphid close-up/);
   assert.match(html, /Check beneath leaves/);
-  assert.match(html, /Read article/);
-  assert.equal((html.match(/Read article/g) ?? []).length, 2);
+  assert.match(html, /Look under the leaves\./);
+  assert.match(html, /Advice from published sources/);
+  assert.match(html, /Leaf guide/);
+  assert.match(html, /extension\.example\.org/);
+  assert.equal((html.match(/class="plant-source-links"/g) ?? []).length, 2);
   assert.ok(html.indexOf('extension.example.org/one') < html.indexOf('extension.example.org/two'));
   assert.doesNotMatch(renderPlantAnalysis({ ...RESULT, isPlant: false, research, referenceImages }), /Photos to compare/);
   assert.throws(() => parsePlantAnalysis({ ...RESULT, referenceImages: [{ ...referenceImages[0], url: 'javascript:alert(1)' }] }), /references/);
+});
+
+test('photo shows possible causes and distinguishing checks without claiming sources confirm the photo', () => {
+  const result = { ...RESULT, possibleCauses: ['Could be caterpillars if fresh feeding is present.'], confirmationChecks: ['Look for living larvae beneath nearby leaves.'] };
+  const html = renderPlantAnalysis(result);
+  assert.match(html, /Possible causes/);
+  assert.match(html, /Could be caterpillars/);
+  assert.match(html, /What to check to confirm/);
+  assert.match(html, /Look for living larvae/);
+  assert.match(html, /not a confirmed diagnosis/);
+  const unrelated = renderPlantAnalysis({ ...result, isPlant: false, nextSteps: ['Take a clearer plant photo.'], guideSlugs: [] });
+  assert.doesNotMatch(unrelated, /Possible causes|living larvae|plant-evidence-note/);
+  assert.match(unrelated, /Take a clearer plant photo/);
+  assert.throws(() => parsePlantAnalysis({ ...result, isPlant: false, guideSlugs: [] }), /incomplete/);
+  assert.throws(() => parsePlantAnalysis({ ...result, possibleCauses: ['a', 'b', 'c'] }), /incomplete/);
 });
 
 test('photo request uses only same-origin API and propagates safe server errors', async () => {
