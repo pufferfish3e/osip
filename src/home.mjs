@@ -26,6 +26,7 @@ export function selectFeaturedLand(state) {
 const farmOverview = (state) => {
   const featured = selectFeaturedLand(state);
   const farm = featured?.farm ?? state.farms[0];
+  if (!farm) return `<section class="farm-overview"><img src="/assets/farm.jpg" alt="" fetchpriority="high"><div class="farm-overview-content"><span class="photo-label">${icon('plant-2', 16)} ${esc(t('My land'))}</span><div class="farm-total"><h2 class="farm-empty-title">${esc(t('No land added yet'))}</h2><p>${esc(t('Add your land to see it here.'))}</p></div><a class="photo-button" href="/farm/new">${esc(t('Add land'))} ${icon('plus', 18)}</a></div></section>`;
   const crops = [...new Set(farm?.plots.map((plot) => plot.crop).filter(Boolean) ?? [])].join(', ') || farm?.crop;
   const unit = state.settings.unit === 'acre' ? 'acre' : 'ha';
   const area = convertArea(farm?.area ?? 0, 'ha', unit);
