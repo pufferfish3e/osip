@@ -5,7 +5,7 @@ import { renderDealSearch, renderShopOffers } from './shop-deals.mjs';
 // import { renderMixturePlanner, renderPesticideOptions, renderProductMatchPage, renderTankPreparation } from './mixture-planner.mjs';
 import { renderPilotMatcher, renderPilotReviews } from './pilot-matcher.mjs';
 import { renderArticleLibrary, renderLearningArticleCard, localizeLearningArticle } from './article-library.mjs';
-import { ARTICLES, COURSES, NEWS, PILOTS, PRODUCTS } from './data.mjs';
+import { ARTICLES, COURSES, NEWS, PILOTS, PRODUCTS, isArticleCatalogueLoaded } from './data.mjs';
 import { getFormatLocale, t } from './i18n.mjs';
 import { emptyState, escapeHtml as esc, localizeDemoState, icon, pageHeading } from './ui.mjs';
 
@@ -92,6 +92,7 @@ export function renderPublicationArticle(article, isSaved) {
 /** @param {string} slug @param {AppState} state @returns {string} */
 const articleDetail = (slug, state) => {
   const article = ARTICLES.find((item) => item.slug === slug);
+  if (!article && !isArticleCatalogueLoaded()) return `<p class="loading-state" role="status" data-load-article-catalogue>${esc(t('Loading article…'))}</p>`;
   if (!article) return missingPage('Guide not found', '/learn/knowledge', 'Browse guides');
   const isSaved = state.savedArticles.includes(article.id);
   if (!article.isDemo) return renderPublicationArticle(article, isSaved);

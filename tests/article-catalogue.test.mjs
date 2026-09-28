@@ -4,11 +4,12 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ARTICLE_CATALOGUE } from '../src/article-catalogue.mjs';
 import { EXTENSION_ARTICLES } from '../src/extension-articles.mjs';
-import { ARTICLES, INITIAL_STATE } from '../src/data.mjs';
+import { ARTICLES, INITIAL_STATE, loadArticleCatalogue } from '../src/data.mjs';
 import { renderDiscover, renderPublicationArticle } from '../src/discover.mjs';
 import { matchArticles, renderArticleLibrary } from '../src/article-library.mjs';
 
 const TOPICS = ['Soil','Water','Pests','Harvest','Technology','Drones','Sustainability','Crop production'];
+await loadArticleCatalogue();
 test('each requested topic contains at least 100 distinct original publication links', () => {
   for (const topic of TOPICS) {
     const records = ARTICLES.filter((article) => !article.isDemo && article.topics?.includes(topic));

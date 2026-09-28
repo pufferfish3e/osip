@@ -15,6 +15,7 @@ import { renderDiscover, renderServiceResults } from './discover.mjs';
 import { clearDraft, readDraft, saveDraft } from './drafts.mjs';
 import { initializeLandMap } from './land-map.mjs';
 import { renderHome } from './home.mjs';
+import { loadArticleCatalogue } from './data.mjs';
 import { getFormatLocale, getLocale, loadLocale, saveLocale, setLocale, t } from './i18n.mjs';
 import { captureFormState, initializeLocalizedValidation, localizeDocument, restoreFormState } from './language.mjs';
 import { initializePlantAction } from './plant-action.mjs';
@@ -128,6 +129,12 @@ const render = (shouldAnimate = false) => {
   renderShell(path, state);
   localizeDocument(document);
   MAIN.innerHTML = path === '/' ? (state.profile.role === 'pilot' ? renderWorkspace('/pilot', state) : renderHome(state)) : renderPlantHelp(path, plantQuery, plantCategory) ?? renderWorkspace(path, state) ?? renderDiscover(path, state) ?? emptyState('This page is not here', 'Choose a destination from the navigation.', '/', 'Go home');
+  const cataloguePanel = MAIN.querySelector('[data-load-article-catalogue]');
+  if (cataloguePanel) void loadArticleCatalogue().then(() => {
+    if (cataloguePanel.isConnected) render();
+  }).catch((error) => {
+    if (cataloguePanel.isConnected) { cataloguePanel.textContent = t('Could not connect. Check your connection or search the guides.'); reportError(error); }
+  });
   const photoPanel = MAIN.querySelector('[data-plant-camera]');
   if (photoPanel) photoPanel.innerHTML = renderPhotoState(PHOTO.getState());
   const landPanel = MAIN.querySelector('[data-farm-map]');
@@ -611,7 +618,7 @@ window.setInterval(() => {
   const task = tasks.find((item) => item.id === fieldTask?.dataset.careTask);
   if (task) careSheet.querySelector('[data-care-content]').innerHTML = renderFieldSchedules(tasks, task.farmId, task.plotId);
 }, REMINDER_INTERVAL);
-await initializePwa(toast);
+void initializePwa(toast);
 
 /** @param {import('./store.mjs').Booking | {id:string,name:string,conversation:import('./store.mjs').Message[]}} conversation @returns {Promise<void>} */
 async function replyToConversation(conversation) {

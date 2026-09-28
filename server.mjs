@@ -2,6 +2,7 @@ import { createMockChatHandler } from './server/mock-chat.mjs';
 import { createSprayConfigHandler } from './server/spray-config.mjs';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
+import { createHash } from 'node:crypto';
 import { dirname, extname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -31,7 +32,7 @@ const PUBLIC_FILES = new Set([
   '/src/home.mjs', '/src/workspace.mjs', '/src/discover.mjs', '/src/pilot-matcher.mjs', '/src/expert-data.mjs', '/src/expert-ui.mjs', '/src/keypad-calculator.mjs', '/src/actions.mjs', '/src/pwa.mjs', '/src/drafts.mjs',
   '/src/plant-web.mjs', '/src/plant-action.mjs', '/src/plant-guides.mjs', '/src/plant-help.mjs', '/src/plant-photo.mjs',
   '/src/i18n.mjs', '/src/language.mjs', '/src/locales/core.mjs', '/src/locales/workspace.mjs', '/src/locales/discover.mjs', '/src/locales/plant.mjs',
-  '/assets/app.css', '/assets/vendor/gsap.min.js', '/assets/icons.svg', '/assets/mark.svg', '/assets/avatar-default.svg',
+  '/assets/app.css', '/assets/aura-brand.css', '/assets/vendor/gsap.min.js', '/assets/icons.svg', '/assets/mark.svg', '/assets/avatar-default.svg',
   '/assets/expert-farid.jpg',
   '/assets/expert-aisyah.jpg',
   '/assets/expert-hafiz.jpg',
@@ -65,7 +66,8 @@ const PUBLIC_FILES = new Set([
   '/assets/pilot-joanne.jpg',
   '/assets/pilot-nabil.jpg',
   '/assets/pilot-izzat.jpg',
-  '/assets/pilot-azlan.png', '/assets/pilot-maya.png', '/assets/pilot-daniel.png', '/assets/profile-ahmad.jpg', '/assets/farm.jpg', '/assets/crops.jpg', '/assets/drone.jpg', '/assets/course.jpg',
+  '/assets/pilot-azlan.webp', '/assets/pilot-maya.webp', '/assets/pilot-daniel.webp', '/assets/profile-ahmad.jpg', '/assets/farm.jpg', '/assets/crops.jpg', '/assets/drone.jpg', '/assets/course.jpg',
+  '/assets/pilot-azlan.png', '/assets/pilot-maya.png', '/assets/pilot-daniel.png',
   '/assets/learn-soil.jpg', '/assets/learn-soil-thumb.jpg', '/assets/learn-water.jpg', '/assets/learn-water-thumb.jpg', '/assets/learn-scouting.jpg', '/assets/learn-scouting-thumb.jpg', '/assets/learn-harvest.jpg', '/assets/learn-harvest-thumb.jpg',
   '/assets/icon-192.png', '/assets/icon-512.png', '/assets/icon-maskable.png',
 ]);
@@ -73,9 +75,15 @@ const MIME_TYPES = new Map([
   ['.html', 'text/html; charset=utf-8'], ['.js', 'text/javascript; charset=utf-8'],
   ['.mjs', 'text/javascript; charset=utf-8'], ['.css', 'text/css; charset=utf-8'],
   ['.webmanifest', 'application/manifest+json; charset=utf-8'], ['.json', 'application/json; charset=utf-8'],
-  ['.svg', 'image/svg+xml'], ['.png', 'image/png'], ['.jpg', 'image/jpeg'],
+  ['.svg', 'image/svg+xml'], ['.png', 'image/png'], ['.jpg', 'image/jpeg'], ['.webp', 'image/webp'],
 ]);
 const STATUS = { ok: 200, badRequest: 400, forbidden: 403, notFound: 404, methodNotAllowed: 405, error: 500 };
+// Preserve existing directory URLs while serving the smaller image format.
+const PUBLIC_ASSET_ALIASES = new Map([
+  ['/assets/pilot-azlan.png', '/assets/pilot-azlan.webp'],
+  ['/assets/pilot-maya.png', '/assets/pilot-maya.webp'],
+  ['/assets/pilot-daniel.png', '/assets/pilot-daniel.webp'],
+]);
 
 /** Invalid requests must not be mistaken for missing app routes. */
 class RequestPathError extends Error {
@@ -103,7 +111,7 @@ const publicPath = (target) => {
     throw new RequestPathError('Path traversal is not allowed.', STATUS.forbidden);
   }
   if (pathname === '/' || ROUTE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) return '/index.html';
-  if (PUBLIC_FILES.has(pathname)) return pathname;
+  if (PUBLIC_FILES.has(pathname)) return PUBLIC_ASSET_ALIASES.get(pathname) ?? pathname;
   throw new RequestPathError('Not found.', STATUS.notFound);
 };
 
@@ -141,7 +149,17 @@ const serveRequest = async (request, response, root) => {
     const pathname = publicPath(request.url ?? '/');
     const filePath = await containedFile(root, pathname);
     const content = await readFile(filePath);
-    const headers = { 'Content-Type': MIME_TYPES.get(extname(pathname)) ?? 'application/octet-stream', 'Content-Length': content.byteLength, 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff' };
+    const etag = `"${createHash('sha256').update(content).digest('hex')}"`;
+    // Public files contain no account data. Cache them at Vercel's edge; browsers
+    // revalidate stable filenames so a deployment cannot strand an old app shell.
+    const headers = { 'Content-Type': MIME_TYPES.get(extname(pathname)) ?? 'application/octet-stream', 'Cache-Control': pathname === '/sw.js' ? 'no-cache' : 'public, max-age=0, must-revalidate', 'ETag': etag, 'X-Content-Type-Options': 'nosniff' };
+    if (pathname !== '/sw.js') headers['Vercel-CDN-Cache-Control'] = 'public, max-age=86400';
+    if (request.headers['if-none-match']?.split(',').some((value) => value.trim().replace(/^W\//, '') === etag)) {
+      response.writeHead(304, headers);
+      response.end();
+      return;
+    }
+    headers['Content-Length'] = content.byteLength;
     response.writeHead(STATUS.ok, headers);
     response.end(isHead ? undefined : content);
   } catch (error) {
