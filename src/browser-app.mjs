@@ -25,7 +25,7 @@ import { renderPlantHelp, renderPlantResults } from './plant-help.mjs';
 import { createPlantPhotoController, renderPhotoState } from './plant-photo.mjs';
 import { applyUpdate, initializePwa, installApp } from './pwa.mjs';
 import { initializeBookingCalendar, initializeSchedule } from './schedule.mjs';
-import { renderNotificationBell, renderShell } from './shell.mjs';
+import { renderShell, updateNotificationBell } from './shell.mjs';
 import { createStore } from './store.mjs';
 import { emptyState, escapeHtml as esc, icon } from './ui.mjs';
 import { animateChatTyping, appendChatReply, initializeChatComposer, initializeNotificationStacks, renderWorkspace, requestChatReply } from './workspace.mjs';
@@ -273,9 +273,11 @@ const initializeMobileOnboarding = (path) => {
   showStep();
 };
 
-/** @param {string} path @returns {void} */
-const navigate = (path) => {
-  if (window.location.pathname !== path) history.pushState({}, '', path);
+/** @param {string} path @param {{refresh?:boolean}} options @returns {void} */
+const navigate = (path, { refresh = false } = {}) => {
+  const isCurrentPath = `${window.location.pathname}${window.location.search}` === path;
+  if (isCurrentPath && !refresh) return;
+  if (!isCurrentPath) history.pushState({}, '', path);
   activeSearch = '';
   activeFilter = 'all';
   lastCalculation = null;
@@ -340,7 +342,7 @@ const finishAction = (result) => {
   const active = document.activeElement;
   const action = active?.dataset?.action;
   const id = active?.dataset?.id;
-  if (result.redirect) navigate(result.redirect); else render();
+  if (result.redirect) navigate(result.redirect, { refresh: true }); else render();
   if (!result.redirect && action) {
     const selector = `[data-action="${CSS.escape(action)}"]${id ? `[data-id="${CSS.escape(id)}"]` : ''}`;
     MAIN.querySelector(selector)?.focus({ preventScroll: true });
@@ -538,10 +540,7 @@ const checkReminders = () => {
   try {
     STORE.update((state) => { state.notifications = draft.notifications; });
     if (location.pathname === '/notifications') render();
-    else {
-      const bell = document.querySelector('.notification-bell');
-      if (bell) bell.outerHTML = renderNotificationBell(STORE.getState(), location.pathname);
-    }
+    else updateNotificationBell(STORE.getState(), location.pathname);
     toast('A farm task is due. Check notifications.');
   }
   catch (error) { reportError(error); }
