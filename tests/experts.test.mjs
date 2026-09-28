@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { submitForm } from '../src/actions.mjs';
 import { INITIAL_STATE } from '../src/data.mjs';
-import { matchExperts, startExpertChat } from '../src/expert-data.mjs';
+import { EXPERTS, matchExperts, startExpertChat } from '../src/expert-data.mjs';
 import { renderExperts } from '../src/expert-ui.mjs';
 import { renderHome } from '../src/home.mjs';
 import { setLocale } from '../src/i18n.mjs';
@@ -52,4 +52,22 @@ test('typed crop and help choices use entered values without altering saved sele
   assert.equal(matchExperts(resolved)[0].score,100);
   assert.equal(resolveExpertPreferences({...preferences,crop:'Coconut'}).crop,'Coconut');
   assert.ok(matchExperts({...resolved,crop:'Unknown crop'})[0].score <= 60);
+});
+
+test('every listed crop has a matching specialist and every state has a drone specialist', () => {
+  const crops = ['Rice','Oil palm','Rubber','Coconut','Durian','Banana','Pineapple','Guava','Vegetables','Chilli','Cocoa','Pepper'];
+  const states = ['Kedah','Perlis','Penang','Perak','Selangor','Negeri Sembilan','Melaka','Johor','Pahang','Kelantan','Terengganu','Sabah','Sarawak'];
+  for (const crop of crops) {
+    assert.ok(EXPERTS.some((expert) => expert.crops.includes(crop) && expert.topics.some((topic) => topic !== 'Drone operations')), crop);
+  }
+  for (const area of states) {
+    const matches = matchExperts({crop:'Rice',topic:'Drone operations',area,language:'Bahasa Melayu'});
+    assert.equal(matches[0].score,100, area);
+    assert.ok(matches[0].expert.topics.includes('Drone operations'), area);
+  }
+  assert.ok(EXPERTS.every((expert) => expert.isDemo === true));
+  const page = renderExperts();
+  assert.match(page,/Demo profiles/);
+  assert.match(page,/Drone operations/);
+  assert.match(page,/Negeri Sembilan/);
 });
