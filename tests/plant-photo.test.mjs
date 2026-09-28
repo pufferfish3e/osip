@@ -62,6 +62,25 @@ test('photo state renders native capture, gallery fallback and explicit send act
   assert.match(idle, /Take a photo/);
   assert.match(idle, /Choose a photo/);
   assert.match(idle, /plant-viewfinder[^>]*><svg/);
+  assert.match(ready, /plant-camera-has-photo/);
+  assert.match(renderPhotoState({ status: 'analyzing', image: IMAGE, result: null, error: '' }), /Looking at your plant…/);
+});
+
+test('researched actions keep their own article links and optional reference photos', () => {
+  const research = { text: 'Check beneath leaves. [one]\n\nInspect nearby plants. [two]', citations: [
+    { url: 'https://extension.example.org/one', title: 'Leaf guide', start: 22, end: 27 },
+    { url: 'https://extension.example.org/two', title: 'Field guide', start: 52, end: 57 },
+  ] };
+  const referenceImages = [{ url: 'https://upload.wikimedia.org/example.jpg', source: 'https://commons.wikimedia.org/wiki/File:Example.jpg', title: 'Aphid close-up', credit: 'Example author · CC BY 4.0' }];
+  const html = renderPlantAnalysis({ ...RESULT, research, referenceImages });
+  assert.match(html, /Photos to compare/);
+  assert.match(html, /Aphid close-up/);
+  assert.match(html, /Check beneath leaves/);
+  assert.match(html, /Read article/);
+  assert.equal((html.match(/Read article/g) ?? []).length, 2);
+  assert.ok(html.indexOf('extension.example.org/one') < html.indexOf('extension.example.org/two'));
+  assert.doesNotMatch(renderPlantAnalysis({ ...RESULT, isPlant: false, research, referenceImages }), /Photos to compare/);
+  assert.throws(() => parsePlantAnalysis({ ...RESULT, referenceImages: [{ ...referenceImages[0], url: 'javascript:alert(1)' }] }), /references/);
 });
 
 test('photo request uses only same-origin API and propagates safe server errors', async () => {
