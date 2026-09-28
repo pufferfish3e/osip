@@ -42,7 +42,7 @@ const workerHarness = (isOffline = false) => {
   const lifecycle = { claims: 0, skipped: 0 };
   const cache = cacheHarness(cached);
   const context = {
-    URL, Set, Response,
+    URL, Set, Response, Request,
     console: { warn(...args) { logs.push(args); }, error(...args) { logs.push(args); } },
     caches: { async open() { return cache; }, async keys() { return ['other-app-v1', 'osip-shell-v1', CURRENT_CACHE]; }, async delete(key) { retired.push(key); return true; } },
     fetch: async (request) => { network.push(request.url); if (isOffline) throw new Error('Offline test'); return new Response('Network response'); },
@@ -96,21 +96,20 @@ test('manifest installs at the root with standalone display and real PNG icons',
   }
 });
 
-test('precache contains every source module and the existing local production assets', async () => {
+test('precache keeps the complete app usable offline without downloading the photo directory', async () => {
   const harness = workerHarness();
   await lifecycleEvent(harness.handlers.install);
   const paths = [...harness.cached.keys()].map((url) => new URL(url).pathname);
   for (const path of paths) assert.ok(existsSync(resolve(ROOT, path === '/' ? 'index.html' : path.slice(1))), path);
   for (const module of readdirSync(resolve(ROOT, 'src')).filter((name) => name.endsWith('.mjs'))) assert.ok(paths.includes(`/src/${module}`), module);
-  for (const asset of ['/assets/app.css', '/assets/vendor/gsap.min.js', '/assets/icons.svg', '/assets/farm.jpg', '/assets/crops.jpg', '/assets/drone.jpg', '/assets/course.jpg']) assert.ok(paths.includes(asset), asset);
+  for (const asset of ['/assets/app.css', '/assets/vendor/gsap.min.js', '/assets/icons.svg', '/assets/icon-192.png']) assert.ok(paths.includes(asset), asset);
+  assert.ok(!paths.some((path) => /\.(jpg|webp)$/.test(path) || /pilot-.*\.png$/.test(path)));
   assert.ok(!paths.some((path) => path.startsWith('/api/') || path.includes('node_modules') || path.includes('.agents')));
 });
 
 test('cache revision covers every shell file and is deterministic regardless of enumeration order', async () => {
   const { computeCacheRevision } = await import('../scripts/build.mjs');
-  const harness = workerHarness();
-  await lifecycleEvent(harness.handlers.install);
-  const paths = [...harness.cached.keys()].map((url) => new URL(url).pathname);
+  const paths = [...WORKER_SOURCE.match(/const SHELL_FILES = \[([\s\S]*?)\];/)[1].matchAll(/['"]([^'"]+)['"]/g)].map((match) => match[1]);
   const contents = new Map(paths.map((path) => [path, readFileSync(resolve(ROOT, path === '/' ? 'index.html' : path.slice(1)))]));
   const revision = computeCacheRevision(paths, (path) => contents.get(path));
   assert.equal(CURRENT_CACHE, `osip-shell-v3-${revision}`, 'Run npm run build after changing app assets.');
@@ -157,6 +156,27 @@ test('worker intercepts only listed static assets and bypasses APIs, POST and ex
   ]) harness.handlers.fetch({ request, respondWith() { assert.fail(`Must bypass: ${request.url}`); } });
 });
 
+test('viewed photos are fetched once and saved for subsequent offline use', async () => {
+  const online = workerHarness();
+  await lifecycleEvent(online.handlers.install);
+  assert.equal(online.cached.has(`${ORIGIN}/assets/farm.jpg`), false);
+  assert.equal(await (await workerRequest(online, '/assets/farm.jpg', 'cors')).text(), 'Network response');
+  assert.equal(online.network.length, 1);
+  assert.equal(await (await workerRequest(online, '/assets/farm.jpg', 'cors')).text(), 'Network response');
+  assert.equal(online.network.length, 1);
+  const offline = workerHarness(true);
+  offline.cached.set(`${ORIGIN}/assets/farm.jpg`, online.cached.get(`${ORIGIN}/assets/farm.jpg`).clone());
+  assert.equal(await (await workerRequest(offline, '/assets/farm.jpg', 'cors')).text(), 'Network response');
+  assert.equal(offline.network.length, 0);
+});
+
+test('initial-page photos can be saved after worker activation without fetching untrusted paths', async () => {
+  const harness = workerHarness();
+  await lifecycleEvent(harness.handlers.message, { data: { type: 'CACHE_VIEWED_PHOTOS', paths: ['/assets/farm.jpg', '/assets/farm.jpg', '/api/private', 'https://other.test/photo.jpg'] } });
+  assert.deepEqual(harness.network, [`${ORIGIN}/assets/farm.jpg`]);
+  assert.ok(harness.cached.has(`${ORIGIN}/assets/farm.jpg`));
+});
+
 test('updates wait for an explicit message and activation retains unrelated caches', async () => {
   const harness = workerHarness();
   await lifecycleEvent(harness.handlers.install);
@@ -181,6 +201,21 @@ test('static server supports deep links, JavaScript MIME types, HEAD and method 
   const module = await fetch(`${origin}/src/discover.mjs`);
   assert.match(module.headers.get('content-type'), /text\/javascript/);
   assert.equal(module.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(module.headers.get('vercel-cdn-cache-control'), 'public, max-age=86400');
+  const unchanged = await fetch(`${origin}/src/discover.mjs`, { headers: { 'If-None-Match': module.headers.get('etag') } });
+  assert.equal(unchanged.status, 304);
+  assert.equal(await unchanged.text(), '');
+  const worker = await fetch(`${origin}/sw.js`);
+  assert.equal(worker.headers.get('cache-control'), 'no-cache');
+  assert.equal(worker.headers.get('vercel-cdn-cache-control'), null);
+  assert.equal((await fetch(`${origin}/assets/aura-brand.css`)).status, 200);
+  const portrait = await fetch(`${origin}/assets/pilot-maya.webp`);
+  assert.equal(portrait.headers.get('content-type'), 'image/webp');
+  const legacyPortrait = await fetch(`${origin}/assets/pilot-maya.png`);
+  assert.equal(legacyPortrait.status, 200);
+  assert.equal(legacyPortrait.headers.get('content-type'), 'image/webp');
+  assert.equal(legacyPortrait.headers.get('etag'), portrait.headers.get('etag'));
+  assert.deepEqual(await legacyPortrait.arrayBuffer(), await portrait.arrayBuffer());
   const manifest = await fetch(`${origin}/manifest.webmanifest`);
   assert.match(manifest.headers.get('content-type'), /application\/manifest\+json/);
   const head = await fetch(`${origin}/index.html`, { method: 'HEAD' });

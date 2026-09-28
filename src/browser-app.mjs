@@ -15,6 +15,7 @@ import { renderDiscover, renderServiceResults } from './discover.mjs';
 import { clearDraft, readDraft, saveDraft } from './drafts.mjs';
 import { initializeLandMap } from './land-map.mjs';
 import { renderHome } from './home.mjs';
+import { loadArticleCatalogue } from './data.mjs';
 import { getFormatLocale, getLocale, loadLocale, saveLocale, setLocale, t } from './i18n.mjs';
 import { captureFormState, initializeLocalizedValidation, localizeDocument, restoreFormState } from './language.mjs';
 import { initializePlantAction } from './plant-action.mjs';
@@ -24,7 +25,7 @@ import { renderPlantHelp, renderPlantResults } from './plant-help.mjs';
 import { createPlantPhotoController, renderPhotoState } from './plant-photo.mjs';
 import { applyUpdate, initializePwa, installApp } from './pwa.mjs';
 import { initializeBookingCalendar, initializeSchedule } from './schedule.mjs';
-import { renderNotificationBell, renderShell } from './shell.mjs';
+import { renderShell, updateNotificationBell } from './shell.mjs';
 import { createStore } from './store.mjs';
 import { emptyState, escapeHtml as esc, icon } from './ui.mjs';
 import { animateChatTyping, appendChatReply, initializeChatComposer, initializeNotificationStacks, renderWorkspace, requestChatReply } from './workspace.mjs';
@@ -128,6 +129,12 @@ const render = (shouldAnimate = false) => {
   renderShell(path, state);
   localizeDocument(document);
   MAIN.innerHTML = path === '/' ? (state.profile.role === 'pilot' ? renderWorkspace('/pilot', state) : renderHome(state)) : renderPlantHelp(path, plantQuery, plantCategory) ?? renderWorkspace(path, state) ?? renderDiscover(path, state) ?? emptyState('This page is not here', 'Choose a destination from the navigation.', '/', 'Go home');
+  const cataloguePanel = MAIN.querySelector('[data-load-article-catalogue]');
+  if (cataloguePanel) void loadArticleCatalogue().then(() => {
+    if (cataloguePanel.isConnected) render();
+  }).catch((error) => {
+    if (cataloguePanel.isConnected) { cataloguePanel.textContent = t('Could not connect. Check your connection or search the guides.'); reportError(error); }
+  });
   const photoPanel = MAIN.querySelector('[data-plant-camera]');
   if (photoPanel) photoPanel.innerHTML = renderPhotoState(PHOTO.getState());
   const landPanel = MAIN.querySelector('[data-farm-map]');
@@ -266,9 +273,11 @@ const initializeMobileOnboarding = (path) => {
   showStep();
 };
 
-/** @param {string} path @returns {void} */
-const navigate = (path) => {
-  if (window.location.pathname !== path) history.pushState({}, '', path);
+/** @param {string} path @param {{refresh?:boolean}} options @returns {void} */
+const navigate = (path, { refresh = false } = {}) => {
+  const isCurrentPath = `${window.location.pathname}${window.location.search}` === path;
+  if (isCurrentPath && !refresh) return;
+  if (!isCurrentPath) history.pushState({}, '', path);
   activeSearch = '';
   activeFilter = 'all';
   lastCalculation = null;
@@ -333,7 +342,7 @@ const finishAction = (result) => {
   const active = document.activeElement;
   const action = active?.dataset?.action;
   const id = active?.dataset?.id;
-  if (result.redirect) navigate(result.redirect); else render();
+  if (result.redirect) navigate(result.redirect, { refresh: true }); else render();
   if (!result.redirect && action) {
     const selector = `[data-action="${CSS.escape(action)}"]${id ? `[data-id="${CSS.escape(id)}"]` : ''}`;
     MAIN.querySelector(selector)?.focus({ preventScroll: true });
@@ -531,10 +540,7 @@ const checkReminders = () => {
   try {
     STORE.update((state) => { state.notifications = draft.notifications; });
     if (location.pathname === '/notifications') render();
-    else {
-      const bell = document.querySelector('.notification-bell');
-      if (bell) bell.outerHTML = renderNotificationBell(STORE.getState(), location.pathname);
-    }
+    else updateNotificationBell(STORE.getState(), location.pathname);
     toast('A farm task is due. Check notifications.');
   }
   catch (error) { reportError(error); }
@@ -611,7 +617,7 @@ window.setInterval(() => {
   const task = tasks.find((item) => item.id === fieldTask?.dataset.careTask);
   if (task) careSheet.querySelector('[data-care-content]').innerHTML = renderFieldSchedules(tasks, task.farmId, task.plotId);
 }, REMINDER_INTERVAL);
-await initializePwa(toast);
+void initializePwa(toast);
 
 /** @param {import('./store.mjs').Booking | {id:string,name:string,conversation:import('./store.mjs').Message[]}} conversation @returns {Promise<void>} */
 async function replyToConversation(conversation) {
