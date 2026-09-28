@@ -1,3 +1,4 @@
+import { createRecordId } from './record-id.mjs';
 import { latestCompletedTasks } from './task-history.mjs';
 import { applyAction, canCompleteTask, completeTaskField } from './actions.mjs';
 import { getFormatLocale, t } from './i18n.mjs';
@@ -90,7 +91,7 @@ export function recordFieldCare(state, farmId, plotId, category) {
   const next = state.tasks.filter((task) => task.farmId === farmId && task.plotId === plotId && task.category === category && !task.done).sort((first, second) => first.dueDate.localeCompare(second.dueDate))[0];
   if (next && next.dueDate <= calendarDate(new Date())) { applyAction(state, 'toggle-task', next.id); return; }
   if (state.tasks.some((task) => task.farmId === farmId && task.plotId === plotId && task.category === category && task.done && task.completedAt && calendarDate(new Date(task.completedAt)) === calendarDate(new Date()))) return;
-  state.tasks.push({ id: `task-${crypto.randomUUID()}`, farmId, plotId, category, title: category, dueDate: calendarDate(new Date()), time: '08:00', done: true, completedAt: new Date().toISOString(), reminder: false, repeat: 'none' });
+  state.tasks.push({ id: `task-${createRecordId()}`, farmId, plotId, category, title: category, dueDate: calendarDate(new Date()), time: '08:00', done: true, completedAt: new Date().toISOString(), reminder: false, repeat: 'none' });
 }
 /** @param {import('./store.mjs').Task[]} tasks @param {string} farmId @param {string} plotId @returns {string} */
 const renderCareChoices = (tasks, farmId, plotId) => CARE_TYPES.map((category) => {

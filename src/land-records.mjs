@@ -1,3 +1,4 @@
+import { createRecordId } from './record-id.mjs';
 import { fieldAreaHectares, mappedFields } from './field-boundary.mjs';
 import { isLandBoundary } from './land-boundary.mjs';
 import { assignLandCover } from './land-covers.mjs';
@@ -57,7 +58,7 @@ export function saveLandRecord(state, draft) {
   if (existing) {
     for (const field of fields) { const plot = existing.plots.find((item) => item.id === field.id); if (!plot.boundary && field.boundary.length) plot.boundary = field.boundary; }
     Object.assign(existing, { name: draft.name.trim() || existing?.name || nextLandName(state), location, boundary, area }); return existing.id; }
-  const id = `farm-${crypto.randomUUID()}`;
+  const id = `farm-${createRecordId()}`;
   const coverImage = assignLandCover(state.farms);
   state.farms.push({ id, name: draft.name.trim() || existing?.name || nextLandName(state), location, boundary, area, unit: 'ha', crop: '', plantedAt: '', plots: [], isDemo: false, coverImage });
   return id;

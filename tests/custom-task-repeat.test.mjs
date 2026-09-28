@@ -6,7 +6,7 @@ import { createStore } from '../src/store.mjs';
 import { renderWorkspace } from '../src/workspace.mjs';
 import { taskRepeatLabel } from '../src/schedule.mjs';
 
-const FIELDS = { farmId: DEMO.farms[0].id, title: 'Check water', dueDate: '2032-02-29', time: '23:45', category: 'Water', repeat: 'custom', reminder: 'on' };
+const FIELDS = { farmId: DEMO.farms[0].id, title: 'Check water', dueDate: '2032-02-29', time: '23:45', category: 'Water', repeat: 'custom', reminder: 'on', endKind:'date', endDate:'2032-12-31' };
 
 test('custom intervals cross midnight and leap-day boundaries with date and time preserved', () => {
   for (const [repeatUnit, repeatInterval, date, time] of [['minutes', 30, '2032-03-01', '00:15'], ['hours', 6, '2032-03-01', '05:45'], ['days', 2, '2032-03-02', '23:45']]) {

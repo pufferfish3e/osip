@@ -7,7 +7,7 @@ import { STORAGE_PROFILE } from './storage-seed.mjs';
 /** @typedef {'farmer' | 'pilot'} Role */
 /** @typedef {{id:string,name:string,crop:string,area:number,plantedAt:string,boundary?:import('./land-boundary.mjs').LandPoint[],isAreaEstimated?:boolean,gridNumber?:number,mixtureConfig?:import('./mixture-planner.mjs').Recipe}} Plot */
 /** @typedef {{id:string,name:string,location:string,crop:string,area:number,unit:string,plantedAt:string,plots:Plot[],isDemo?:boolean,coverImage?:string,boundary?:import('./land-boundary.mjs').LandPoint[]}} Farm */
-/** @typedef {{id:string,farmId:string,plotId?:string,title:string,dueDate:string,time:string,category:string,done:boolean,reminder:boolean,repeat?:'none'|'daily'|'weekly'|'monthly'|'custom',repeatInterval?:number,repeatUnit?:'minutes'|'hours'|'days',repeatAnchorDay?:number,repeatFromId?:string,completedAt?:string}} Task */
+/** @typedef {{id:string,farmId:string,plotId?:string,title:string,dueDate:string,time:string,category:string,done:boolean,reminder:boolean,repeat?:'none'|'daily'|'weekly'|'monthly'|'custom',repeatInterval?:number,repeatUnit?:'minutes'|'hours'|'days',repeatAnchorDay?:number,scheduleId?:string,endKind?:'never'|'date'|'harvest',endDate?:string,repeatFromId?:string,completedAt?:string}} Task */
 /** @typedef {{id:string,sender:string,text:string,date:string}} Message */
 /** @typedef {{id:string,type:'pilot'|'course',providerId:string,title:string,date:string,time:string,farmId:string,status:string,notes:string,price:number,conversation:Message[],service?:string,services?:string[],direction?:string,rescheduleRequest?:{date:string,time:string}}} Booking */
 /** @typedef {{productId:string,quantity:number}} CartItem */
@@ -104,6 +104,9 @@ const isTask = (value) => isRecord(value) && hasStrings(value, ['id', 'farmId', 
   && (value.plotId === undefined || typeof value.plotId === 'string')
   && (value.repeat === undefined || ['none', 'daily', 'weekly', 'monthly', 'custom'].includes(value.repeat))
   && (value.repeat !== 'custom' || (Number.isInteger(value.repeatInterval) && value.repeatInterval >= 1 && value.repeatInterval <= 999 && ['minutes', 'hours', 'days'].includes(value.repeatUnit)))
+  && (value.scheduleId === undefined || typeof value.scheduleId === 'string')
+  && (value.endKind === undefined || ['never', 'date', 'harvest'].includes(value.endKind))
+  && (value.endDate === undefined || value.endDate === '' || (isDate(value.endDate) && value.endDate >= value.dueDate))
   && (value.repeatFromId === undefined || typeof value.repeatFromId === 'string')
   && (value.repeatAnchorDay === undefined || (Number.isInteger(value.repeatAnchorDay) && value.repeatAnchorDay >= 1 && value.repeatAnchorDay <= 31));
 

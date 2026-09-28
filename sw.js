@@ -1,7 +1,9 @@
 const CACHE_PREFIX = 'osip-shell-';
 // The build fingerprints shell content so browsers discover asset updates.
-const CACHE_NAME = `${CACHE_PREFIX}v3-092f23c73aa07550`;
+const CACHE_NAME = `${CACHE_PREFIX}v3-2ec689d523b01c40`;
 const SHELL_FILES = [
+  '/src/booking-dates.mjs',
+  '/src/record-id.mjs',
   '/src/task-history.mjs',
   '/src/shop-deals.mjs',
   '/data/active.json', '/data/demo.json', '/data/newuser.json', '/src/storage-seed.mjs',

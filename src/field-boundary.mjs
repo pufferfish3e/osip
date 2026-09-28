@@ -1,3 +1,4 @@
+import { createRecordId } from './record-id.mjs';
 import { displayedLandBoundary, isLandBoundary } from './land-boundary.mjs';
 
 /** @typedef {import('./land-boundary.mjs').LandPoint} LandPoint */
@@ -122,7 +123,7 @@ export function saveFieldBoundary(state, farmId, draft) {
   const others = mappedFields(farm).filter((item) => item.id !== draft.plotId && isFieldBoundary(item.boundary));
   if (others.some((item) => fieldsOverlap(boundary, item.boundary))) throw new Error('This field overlaps another field. Adjust the corners before saving.');
   if (plot) { plot.boundary = boundary; plot.name = name; plot.crop = crop; if (plot.isAreaEstimated) plot.area = Number(fieldAreaHectares(boundary).toFixed(4)); return plot.id; }
-  const id = `plot-${crypto.randomUUID()}`;
+  const id = `plot-${createRecordId()}`;
   const area = Math.max(1 / AREA_PRECISION, Math.round(fieldAreaHectares(boundary) * AREA_PRECISION) / AREA_PRECISION);
   for (const field of mappedFields(farm)) {
     const existing = farm.plots.find((item) => item.id === field.id);

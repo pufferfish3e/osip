@@ -1,3 +1,4 @@
+import { createRecordId } from './record-id.mjs';
 import { initializeExpertMatcher } from './expert-ui.mjs';
 import { initializeShopDeals } from './shop-deals.mjs';
 import { initializeProfilePicture } from './profile-photo.mjs';
@@ -27,7 +28,7 @@ import { initializeBookingCalendar, initializeSchedule } from './schedule.mjs';
 import { renderNotificationBell, renderShell } from './shell.mjs';
 import { createStore } from './store.mjs';
 import { emptyState, escapeHtml as esc, icon } from './ui.mjs';
-import { animateChatTyping, appendChatReply, initializeChatComposer, initializeNotificationStacks, renderWorkspace, requestChatReply } from './workspace.mjs';
+import { animateChatTyping, appendChatReply, initializeChatComposer, initializeNotificationStacks, renderScheduledAgenda, renderWorkspace, requestChatReply } from './workspace.mjs';
 
 const STORE = createStore();
 try { loadLocale(localStorage); }
@@ -137,7 +138,9 @@ const render = (shouldAnimate = false) => {
   if (recordPanel) disposeLandMap = initializeLandEditor(recordPanel, STORE, window.L);
   initializeLandCardDeletion(MAIN, STORE);
   initializeProfilePicture(MAIN, STORE);
-  initializeSchedule(MAIN);
+  const scheduleFarm = state.farms.find((farm) => farm.id === MAIN.querySelector('[data-schedule]')?.dataset.schedule);
+  const scheduleTasks = state.tasks.filter((task) => task.farmId === scheduleFarm?.id);
+  initializeSchedule(MAIN, scheduleFarm ? {tasks:scheduleTasks,renderAgenda:(date,limit) => renderScheduledAgenda(scheduleFarm,scheduleTasks,date,limit),onAgendaRendered:() => initializeNotificationStacks(MAIN)} : {});
   if (new URLSearchParams(window.location.search).get('plan') === '1') {
     const planner = MAIN.querySelector('[data-plan-task]');
     if (planner) { planner.click(); history.replaceState({}, '', window.location.pathname); }
@@ -424,7 +427,7 @@ const showCalculation = (form, fields) => {
   else if (kind === 'cost') { result = calculateCost(Number(fields.area), Number(fields.rate), Number(fields.unitCost)); unit = 'MYR'; }
   else { result = calculateMargin(Number(fields.revenue), Number(fields.cost)); unit = 'MYR'; }
   const title = { area: 'Area conversion', cost: 'Input cost', margin: 'Simple margin' }[kind];
-  lastCalculation = { id: crypto.randomUUID(), type: kind, title, inputs: fields, result, unit, date: new Date().toISOString() };
+  lastCalculation = { id: createRecordId(), type: kind, title, inputs: fields, result, unit, date: new Date().toISOString() };
   renderCalculation();
 };
 /** @returns {void} */
@@ -481,7 +484,7 @@ const onSubmit = async (event) => {
     }
     const fields = fieldsFrom(form);
     if (form.dataset.form === 'message' && PENDING_CHATS.has(fields.chatId ?? fields.bookingId)) return;
-    if (form.dataset.form === 'task') fields.creationKey = form.dataset.creationKey ?? (form.dataset.creationKey = crypto.randomUUID());
+    if (form.dataset.form === 'task') fields.creationKey = form.dataset.creationKey ?? (form.dataset.creationKey = createRecordId());
     if (form.dataset.form === 'calculator') return showCalculation(form, fields);
     let result;
     STORE.update((state) => { result = submitForm(state, form.dataset.form, fields); });

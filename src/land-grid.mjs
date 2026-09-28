@@ -1,3 +1,4 @@
+import { createRecordId } from './record-id.mjs';
 import { nextLandName } from './land-records.mjs';
 import { fieldAreaHectares, normalizeFieldBoundary } from './field-boundary.mjs';
 
@@ -45,13 +46,13 @@ export function saveLandGrid(state, draft) {
   const fields = splitLand(draft.boundary, draft.columns, draft.rows);
   if (draft.name.length > 120 || (draft.location ?? '').length > 120) throw new Error('Names and locations can have up to 120 characters.');
   if (draft.crops.length !== fields.length || draft.crops.some((crop) => !crop.trim() || crop.length > 80)) throw new Error('Choose a crop for every field.');
-  const id = existing?.id ?? `farm-${crypto.randomUUID()}`;
+  const id = existing?.id ?? `farm-${createRecordId()}`;
   const boundary = normalizeFieldBoundary(draft.boundary);
   const total = Number(fieldAreaHectares(boundary).toFixed(4));
   const center = [0, 1].map((axis) => (boundary.reduce((sum, point) => sum + point[axis], 0) / boundary.length).toFixed(COORDINATE_PRECISION));
   const location = draft.location?.trim() || existing?.location || center.join(', ');
   const record = { id, name: draft.name.trim() || existing?.name || nextLandName(state), location, crop: [...new Set(draft.crops)].join(', '), area: total, unit: 'ha', plantedAt: '', boundary, isDemo: false,
-    plots: fields.map((shape, index) => ({ id: `plot-${crypto.randomUUID()}`, name: `Field ${index + 1}`, gridNumber: index + 1, crop: draft.crops[index], area: Number((total / fields.length).toFixed(4)), plantedAt: '', boundary: shape, isAreaEstimated: true })) };
+    plots: fields.map((shape, index) => ({ id: `plot-${createRecordId()}`, name: `Field ${index + 1}`, gridNumber: index + 1, crop: draft.crops[index], area: Number((total / fields.length).toFixed(4)), plantedAt: '', boundary: shape, isAreaEstimated: true })) };
   if (existing) Object.assign(existing, record); else state.farms.push(record);
   return id;
 }

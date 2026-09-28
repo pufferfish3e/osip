@@ -7,6 +7,7 @@ import { fieldAreaHectares } from '../src/field-boundary.mjs';
 import { createStore } from '../src/store.mjs';
 import { renderLandSetup } from '../src/land-setup.mjs';
 import { setLocale } from '../src/i18n.mjs';
+import DEMO from '../data/demo.json' with {type:'json'};
 const QUAD = [[4,101],[4,101.004],[4.002,101.003],[4.003,101]];
 
 test('6 × 1 and 3 × 2 cover a skewed parcel with equal local projected areas', () => {
@@ -28,9 +29,9 @@ test('invalid subdivisions and incomplete crop assignment cannot create land', (
 });
 test('multiple land parcels and independent crops persist without changing existing records', () => {
   const records = new Map(); const storage = {getItem:(key)=>records.get(key)??null,setItem:(key,value)=>records.set(key,value)};
-  const store = createStore(storage); const before = store.getState();
+  const store = createStore(storage,DEMO,'demo'); const before = store.getState();
   store.update((state) => saveLandGrid(state,{name:'North',location:'Perak',boundary:QUAD,columns:6,rows:1,crops:['Rice','Coconut','Rice','Vegetables','Oil palm','Beans']}));
-  const reloaded = createStore(storage).getState();
+  const reloaded = createStore(storage,DEMO,'demo').getState();
   assert.equal(reloaded.farms.length,before.farms.length+1);
   assert.deepEqual(reloaded.farms[0],before.farms[0]);
   assert.deepEqual(reloaded.farms.at(-1).plots.map((field)=>field.crop),['Rice','Coconut','Rice','Vegetables','Oil palm','Beans']);

@@ -1,4 +1,6 @@
-import { latestCompletedTasks } from './task-history.mjs';
+import { pilotBookingDateRange } from './booking-dates.mjs';
+import { createRecordId } from './record-id.mjs';
+import { scheduleCycleProgress, nextTaskOccurrence, currentTaskRounds, taskScheduleGroups, tasksOnCalendarDate, latestCompletedTasks } from './task-history.mjs';
 import { EXPERTS } from './expert-data.mjs';
 import { canCompleteTask } from './actions.mjs';
 import { renderFieldCareSheet } from './field-care.mjs';
@@ -7,7 +9,7 @@ import { cropEmoji, fieldTaskUrgency } from './land-map.mjs';
 import { isLandBoundary } from './land-boundary.mjs';
 import { renderLandEditor } from './land-editor.mjs';
 import { renderLandSetup } from './land-setup.mjs';
-import { calendarDate, taskRepeatLabel } from './schedule.mjs';
+import { calendarDate, renderTaskTimePicker, taskRepeatLabel } from './schedule.mjs';
 import { COURSES, PILOTS, PRODUCTS, WEATHER } from './data.mjs';
 import { getFormatLocale, getLocale, SUPPORTED_LOCALES, t } from './i18n.mjs';
 import { escapeHtml as esc, localizeDemoState, icon, pageHeading, emptyState, profilePhoto } from './ui.mjs';
@@ -18,6 +20,7 @@ import { escapeHtml as esc, localizeDemoState, icon, pageHeading, emptyState, pr
 /** @typedef {AppState['bookings'][number] & {direction?:string,rescheduleRequest?:{date:string,time:string}}} Booking */
 /** @typedef {AppState['orders'][number]} Order */
 
+const AGENDA_PAGE_SIZE = 10;
 const TASK_CATEGORIES = ['General', 'Water', 'Irrigation', 'Crop care', 'Fertilizer', 'Pesticide', 'Harvest', 'Soil', 'Other'];
 const WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const OPEN_BOOKING_STATUSES = ['requested', 'confirmed', 'accepted'];
@@ -87,7 +90,27 @@ const taskAssignment = (farm, task) => {
   const assigned = farm.plots.find((plot) => plot.id === task.plotId);
   return assigned ? `${assigned.name} · ${assigned.crop}` : t('Whole land');
 };
-const taskList = (farm, tasks) => tasks.length ? `<div class="card list">${tasks.map((task) => `<div class="list-row ${canCompleteTask(task) ? '' : 'is-task-unavailable'}" data-task-date="${esc(task.dueDate)}" data-task-done="${task.done}"><button class="task-check task-status-control ${task.done ? 'is-complete' : ''}" type="button" data-action="toggle-task" data-id="${esc(task.id)}" ${canCompleteTask(task) ? '' : 'disabled'} aria-label="${esc(t(task.done ? 'Completed {title}' : 'Complete {title}', { title: task.title }))}" aria-pressed="${task.done}">${task.done ? icon('check', 16) : ''}</button><a class="row-copy" href="/farm/${esc(farm.id)}/tasks/${esc(task.id)}"><span class="row-title task-status-title"><span class="sr-only">${esc(t(task.done ? 'Completed' : 'Pending'))}: </span><span>${esc(task.title)}</span></span><span class="row-subtitle">${esc(farm.plots.find((plot) => plot.id === task.plotId)?.name ?? t('Whole land'))}</span></a><button type="button" class="icon-button task-delete" data-action="delete-task" data-id="${esc(task.id)}" aria-label="${esc(t('Delete task'))}" title="${esc(t('Delete task'))}">${icon('trash', 18)}</button></div>`).join('')}</div>` : `<div class="task-empty">${icon('calendar', 28)}<p>${esc(t('No tasks available right now.'))}</p></div>`;
+const taskList = (farm, tasks, isBare = false) => tasks.length ? `<div class="${isBare ? 'list schedule-field-list' : 'card list'}">${tasks.map((task) => `<div class="list-row ${canCompleteTask(task) ? '' : 'is-task-unavailable'}" data-task-date="${esc(task.dueDate)}" data-task-done="${task.done}"><button class="task-check task-status-control ${task.done ? 'is-complete' : ''}" type="button" data-action="toggle-task" data-id="${esc(task.id)}" ${canCompleteTask(task) ? '' : 'disabled'} aria-label="${esc(t(task.done ? 'Completed {title}' : 'Complete {title}', { title: task.title }))}" aria-pressed="${task.done}">${task.done ? icon('check', 16) : ''}</button><a class="row-copy" href="/farm/${esc(farm.id)}/tasks/${esc(task.id)}"><span class="row-title task-status-title"><span class="sr-only">${esc(t(task.done ? 'Completed' : 'Pending'))}: </span><span>${esc(task.title)}</span></span><span class="row-subtitle">${esc(farm.plots.find((plot) => plot.id === task.plotId)?.name ?? t('Whole land'))}</span></a><button type="button" class="icon-button task-delete" data-action="delete-task" data-id="${esc(task.id)}" aria-label="${esc(t('Delete task'))}" title="${esc(t('Delete task'))}">${icon('trash', 18)}</button></div>`).join('')}</div>` : `<div class="task-empty">${icon('calendar', 28)}<p>${esc(t('No tasks available right now.'))}</p></div>`;
+
+/** @param {Farm} farm @param {Task[]} tasks @returns {string} */
+const scheduleTree = (farm, tasks) => currentTaskRounds(tasks).map((round) => renderTaskNotificationStack(farm,round,tasks)).join('');
+
+/** @param {Farm} farm @param {Task[]} tasks @param {string} date @param {number} [limit] @returns {string} */
+export function renderScheduledAgenda(farm,tasks,date,limit = AGENDA_PAGE_SIZE) {
+  const rounds = taskScheduleGroups(tasksOnCalendarDate(tasks,date)).flatMap((group) => {
+    const roundsByTime = new Map();
+    for (const task of group) {
+      if (!roundsByTime.has(task.time)) roundsByTime.set(task.time,[]);
+      roundsByTime.get(task.time).push(task);
+    }
+    return [...roundsByTime.values()];
+  }).sort((a,b) => a[0].time.localeCompare(b[0].time));
+  const visible = rounds.slice(0,limit).map((round) => renderTaskNotificationStack(farm,round,tasks)).join('');
+  return visible + (rounds.length > limit ? `<button type="button" class="button button-secondary" data-schedule-more>${esc(t('Show more rounds'))}</button>` : '');
+}
+
+/** @param {Task|undefined} task @returns {string} */
+const scheduleEndPicker = (task) => `<fieldset class="task-repeat-picker"><legend class="sr-only">${esc(t('When should it end?'))}</legend>${[['date','On a date'],['harvest','Until harvest'],...(task?.repeat && task.repeat !== 'none' && !task.endDate ? [['never','No end date']] : [])].map(([value,label]) => `<label class="task-repeat-choice"><input type="radio" name="endKind" value="${value}" ${(task?.repeat && task.repeat !== 'none' ? task.endKind ?? 'date' : 'date') === value ? 'checked' : ''}><span>${esc(t(label))}</span></label>`).join('')}</fieldset><section class="form-stack" data-end-date hidden><h3 id="task-end-date-label" data-end-date-label>${esc(t('End date'))}</h3><input type="hidden" name="endDate" value="${esc(task?.endDate ?? '')}"><div data-task-end-picker role="group" aria-labelledby="task-end-date-label"></div><p class="muted" data-end-date-error role="alert" hidden></p></section><p class="muted" data-harvest-note hidden>${esc(t('Enter your expected harvest date. This schedule stops on that date.'))}</p>`;
 
 /** @param {Task|undefined} task @returns {string} */
 const repeatPicker = (task) => {
@@ -103,14 +126,18 @@ const plotsList = (farm, tasks) => {
   return plots.length ? `<div class="field-card-scroll" aria-label="${esc(t('Your fields'))}">${plots.map((plot) => `<a class="field-summary-card" href="/farm/${esc(farm.id)}/plots/${esc(plot.id)}"><span class="field-card-crop" aria-hidden="true">${cropEmoji(plot.crop)}</span><span class="row-copy"><span class="row-title">${esc(plot.name)}</span><span class="row-subtitle">${esc(plot.crop)} · ${esc(String(plot.area))} ${esc(t('ha'))}</span>${fieldReminder(plot.id, tasks)}</span></a>`).join('')}</div>` : emptyState('No fields recorded yet', 'Your land’s crop and area are saved above.');
 };
 
+const LAND_COMPLETED_PREVIEW_LIMIT = 4;
+/** @param {Farm} farm @param {Task[]} tasks @param {number} [limit] @returns {string} */
+const completedTaskList = (farm, tasks, limit = Infinity) => taskScheduleGroups(latestCompletedTasks(tasks))
+  .slice(0, limit).map((group) => renderTaskNotificationStack(farm, group, tasks)).join('');
+
 /** @param {Farm} farm @param {AppState} state @returns {string} */
 const renderFarm = (farm, state) => {
   const tasks = state.tasks.filter((task) => task.farmId === farm.id);
-  const remainingTasks = tasks.filter((task) => !task.done).sort((first, second) => `${first.dueDate}${first.time}`.localeCompare(`${second.dueDate}${second.time}`));
   const completedTasks = latestCompletedTasks(tasks);
   const isSetupComplete = farm.plots.length > 0 && farm.plots.every((plot) => isLandBoundary(plot.boundary) && plot.crop?.trim());
   const landView = isSetupComplete ? renderLandOverview(farm) : renderLandEditor(farm, true);
-  return `${back('/farm', t('All land'))}${pageHeading(farm.location, farm.name, `${farm.crop}${farm.isDemo || farm.id === 'farm-1' ? ` · ${t('Land')}` : ''}`)}<div data-schedule="${esc(farm.id)}"><div class="toolbar land-task-actions"><button type="button" class="button" data-plan-task>${icon('plus', 18)} ${esc(t('Schedule task'))}</button>${link(`/farm/${farm.id}/schedule`, esc(t('Open schedule')), 'button button-secondary')}</div>${renderTaskSheet(farm)}${renderFieldCareSheet()}</div>${landView}<div class="card card-pad land-summary"><div class="stat-grid">${stat('Total area', `${farm.area} ${t(farm.unit ?? 'ha')}`)}${stat('Fields', String(farm.plots.length))}${stat('Crop types', String(new Set(farm.plots.map((plot) => plot.crop.trim().toLowerCase()).filter(Boolean)).size))}</div><div class="toolbar">${link(`/weather`, `${icon('cloud', 18)} ${esc(t('Local weather'))}`)}</div></div>${section('Your fields', `<div class="section-stack">${plotsList(farm, tasks)}</div>`)}${section('Next on your land', taskList(farm, remainingTasks), link(`/farm/${farm.id}/schedule`, esc(t('View all')), 'link'))}${completedTasks.length ? section('Completed', taskList(farm, completedTasks.slice(0, 4)), link(`/farm/${farm.id}/schedule`, esc(t('View all')), 'link')) : ''}`;
+  return `${back('/farm', t('All land'))}${pageHeading(farm.location, farm.name, `${farm.crop}${farm.isDemo || farm.id === 'farm-1' ? ` · ${t('Land')}` : ''}`)}<div data-schedule="${esc(farm.id)}"><div class="toolbar land-task-actions"><button type="button" class="button" data-plan-task>${icon('plus', 18)} ${esc(t('Schedule task'))}</button>${link(`/farm/${farm.id}/schedule`, esc(t('Open schedule')), 'button button-secondary')}</div>${renderTaskSheet(farm)}${renderFieldCareSheet()}</div>${landView}<div class="card card-pad land-summary"><div class="stat-grid">${stat('Total area', `${farm.area} ${t(farm.unit ?? 'ha')}`)}${stat('Fields', String(farm.plots.length))}${stat('Crop types', String(new Set(farm.plots.map((plot) => plot.crop.trim().toLowerCase()).filter(Boolean)).size))}</div><div class="toolbar">${link(`/weather`, `${icon('cloud', 18)} ${esc(t('Local weather'))}`)}</div></div>${section('Your fields', `<div class="section-stack">${plotsList(farm, tasks)}</div>`)}${section('Next on your land', `<div class="land-task-preview">${scheduleTree(farm, tasks) || `<p class="muted">${esc(t('Your schedule is clear'))}</p>`}</div>`, link(`/farm/${farm.id}/schedule`, esc(t('View all')), 'link'))}${completedTasks.length ? section('Completed', `<div class="land-task-preview">${completedTaskList(farm, tasks, LAND_COMPLETED_PREVIEW_LIMIT)}</div>`, link(`/farm/${farm.id}/history`, esc(t('View all')), 'link')) : ''}`;
 };
 
 const MILLISECONDS_PER_DAY = 86400000;
@@ -158,8 +185,8 @@ const renderPlotCare = (farm, plot, state, landTasks) => {
 const renderSchedule = (farm, state) => {
   const tasks = state.tasks.filter((task) => task.farmId === farm.id).sort((first, second) => `${first.dueDate}${first.time}`.localeCompare(`${second.dueDate}${second.time}`));
   const today = calendarDate(new Date());
-  const overdue = tasks.filter((task) => !task.done && task.dueDate < today);
-  return `${back(`/farm/${farm.id}`, farm.name)}${pageHeading('', t('Land schedule'), farm.name)}<div data-schedule="${esc(farm.id)}"><section class="schedule-calendar card card-pad" aria-label="${esc(t('Land schedule'))}" data-schedule-calendar></section><div class="toolbar schedule-agenda-heading"><h2 data-agenda-title></h2><button type="button" class="button" data-plan-task>${icon('plus', 18)} ${esc(t('Plan a task'))}</button></div><div data-agenda>${tasks.length ? taskList(farm, tasks) : ''}</div><p class="muted" data-agenda-empty hidden>${esc(t(tasks.length ? 'No tasks on this date. Choose a highlighted date to see your scheduled tasks.' : 'Your schedule is clear'))}</p>${overdue.length ? section('Overdue', taskList(farm, overdue)) : ''}${renderTaskSheet(farm)}</div>`;
+  const overdue = currentTaskRounds(tasks).filter((round) => round[0].dueDate < today).flat();
+  return `${back(`/farm/${farm.id}`, farm.name)}${pageHeading('', t('Land schedule'), farm.name)}<div class="land-schedule-view" data-schedule="${esc(farm.id)}"><section class="schedule-calendar card card-pad" aria-label="${esc(t('Land schedule'))}" data-schedule-calendar></section><div class="toolbar schedule-agenda-heading"><h2 data-agenda-title></h2><button type="button" class="button" data-plan-task>${icon('plus', 18)} ${esc(t('Plan a task'))}</button></div><div data-agenda>${scheduleTree(farm, tasks)}</div><p class="muted" data-agenda-empty hidden>${esc(t(tasks.length ? 'No tasks on this date. Choose a highlighted date to see your scheduled tasks.' : 'Your schedule is clear'))}</p>${overdue.length ? section('Overdue', scheduleTree(farm, overdue)) : ''}<a class="button button-secondary schedule-history-button" href="/farm/${esc(farm.id)}/history">${icon('clock',18)}${esc(t('View history'))}</a>${renderTaskSheet(farm)}</div>`;
 };
 
 /** @param {string} plotId @param {Task[]} tasks @returns {string} */
@@ -172,10 +199,15 @@ const fieldReminder = (plotId, tasks) => {
 const fieldSelection = (farm, plotId) => `<fieldset class="task-field-selection"><legend>${esc(t('Field'))}</legend><div class="task-field-pills">${[{ id: '', name: t('Whole land') }, ...farm.plots].map((plot) => `<label class="task-field-pill"><input type="checkbox" name="plotIds" value="${esc(plot.id)}" ${plot.id === plotId ? 'checked' : ''}><span>${esc(plot.name)}</span></label>`).join('')}</div></fieldset>`;
 
 /** @param {Farm} farm @param {Task} [task] @param {string} [plotId] @returns {string} */
-const renderTaskSheet = (farm, task, plotId = task?.plotId ?? '') => `<dialog class="task-sheet" aria-labelledby="task-sheet-title"><form data-form="task">${hidden('farmId', farm.id)}${hidden('dueDate', task?.dueDate ?? '')}${task ? hidden('id', task.id) : ''}<div class="task-sheet-heading"><span class="muted" data-task-progress></span><button type="button" class="icon-button" data-task-close aria-label="${esc(t('Cancel'))}">${icon('x', 20)}</button></div><div data-task-step><h2 id="task-sheet-title">${esc(t('Choose a date'))}</h2><div data-task-picker></div></div><div data-task-step hidden><h2>${esc(t('What needs doing?'))}</h2>${field({ label: 'Task name', name: 'title', value: task?.title ?? '', placeholder: 'e.g. Check irrigation channels' })}${select('category', 'Category', TASK_CATEGORIES, task?.category ?? 'General')}${fieldSelection(farm, plotId)}</div><div data-task-step hidden><h2>${esc(t('Choose a time'))}</h2>${field({ label: 'Time', name: 'time', type: 'time', value: task?.time ?? '08:00' })}${checkbox('reminder', 'Show a reminder in my notifications', task?.reminder ?? true)}</div><div data-task-step hidden><h2>${esc(t('Does this repeat?'))}</h2>${repeatPicker(task)}</div><div data-task-step hidden><h2>${esc(t('Review your task'))}</h2><dl class="field-review">${['Task name', 'Date', 'Time', 'Category', 'Repeat', 'Field'].map((label) => `<div><dt>${esc(t(label))}</dt><dd data-task-review></dd></div>`).join('')}</dl><p class="muted">${esc(t('In-app reminders only. Background alerts are not connected.'))}</p></div><div class="task-sheet-actions"><button type="button" class="button button-secondary" data-task-back hidden>${esc(t('Back'))}</button><button type="button" class="button" data-task-next>${esc(t('Continue'))}</button><button type="submit" class="button" hidden>${esc(t(task ? 'Save changes' : 'Add to schedule'))}</button></div></form></dialog>`;
+const renderTaskSheet = (farm, task, plotId = task?.plotId ?? '') => `<dialog class="task-sheet" aria-labelledby="task-sheet-title"><form data-form="task">${hidden('farmId', farm.id)}${hidden('dueDate', task?.dueDate ?? '')}${task ? hidden('id', task.id) : ''}<div class="task-sheet-heading"><span class="muted" data-task-progress></span><button type="button" class="icon-button" data-task-close aria-label="${esc(t('Cancel'))}">${icon('x', 20)}</button></div><div data-task-step><h2 id="task-sheet-title">${esc(t('Choose a date'))}</h2><div data-task-picker></div></div><div data-task-step hidden><h2>${esc(t('What needs doing?'))}</h2>${field({ label: 'Task name', name: 'title', value: task?.title ?? '', placeholder: 'e.g. Check irrigation channels' })}${select('category', 'Category', TASK_CATEGORIES, task?.category ?? 'General')}${fieldSelection(farm, plotId)}</div><div data-task-step hidden><h2>${esc(t('Choose a time'))}</h2>${renderTaskTimePicker(task?.time ?? '08:00')}${checkbox('reminder', 'Show a reminder in my notifications', task?.reminder ?? true)}</div><div data-task-step hidden><h2>${esc(t('Does this repeat?'))}</h2>${repeatPicker(task)}</div><div data-task-step hidden data-task-end-step><h2>${esc(t('When should it end?'))}</h2>${scheduleEndPicker(task)}</div><div data-task-step hidden><h2>${esc(t('Review your task'))}</h2><dl class="field-review">${['Task name', 'Date', 'Time', 'Category', 'Repeat', 'Field', 'Ends'].map((label) => `<div><dt>${esc(t(label))}</dt><dd data-task-review></dd></div>`).join('')}</dl><p class="muted">${esc(t('In-app reminders only. Background alerts are not connected.'))}</p></div><div class="task-sheet-actions"><button type="button" class="button button-secondary" data-task-back hidden>${esc(t('Back'))}</button><button type="button" class="button" data-task-next>${esc(t('Continue'))}</button><button type="submit" class="button" hidden>${esc(t(task ? 'Save changes' : 'Add to schedule'))}</button></div></form></dialog>`;
 
 /** @param {Farm} farm @param {Task} task @returns {string} */
-const renderTask = (farm, task) => `${back(`/farm/${farm.id}/schedule`, t('Land schedule'))}${pageHeading(t(task.category), task.title, farm.name)}<div data-schedule="${esc(farm.id)}"><div class="card card-pad"><div class="stat-grid">${stat('Date', task.dueDate)}${stat('Time', task.time)}${stat('Field', taskAssignment(farm, task))}</div></div><div class="toolbar"><button class="button" data-plan-task>${icon('pencil', 18)} ${esc(t('Edit task'))}</button><button class="button button-secondary" data-action="toggle-task" data-id="${esc(task.id)}" ${canCompleteTask(task) ? '' : 'disabled'}>${esc(t(task.done ? 'Completed' : 'Mark complete'))}</button><button class="button button-secondary land-delete-button" data-action="delete-task" data-id="${esc(task.id)}">${icon('trash', 18)} ${esc(t('Delete task'))}</button></div>${renderTaskSheet(farm, task)}</div>`;
+const renderTask = (farm, task) => {
+  const rows = [['Date', dateLabel(task.dueDate)], ['Time', task.time], ['Field', taskAssignment(farm, task)]];
+  const status = task.done ? `<span class="task-detail-status">${icon('circle-check',16)}${esc(t('Completed'))}</span>` : '';
+  const complete = !task.plotId && farm.plots.length ? farm.plots.map((plot) => renderTaskFieldRow(farm, task, plot)).join('') : task.done ? '' : `<button class="button button-secondary" data-action="toggle-task" data-id="${esc(task.id)}" ${canCompleteTask(task) ? '' : 'disabled'}>${esc(t('Mark complete'))}</button>`;
+  return `<section class="task-detail-page">${back(`/farm/${farm.id}/schedule`, t('Land schedule'))}${pageHeading(t(task.category), task.title, farm.name)}${status}<div data-schedule="${esc(farm.id)}"><dl class="task-detail-list">${rows.map(([label,value]) => `<div><dt>${esc(t(label))}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl><div class="task-detail-actions"><button class="button" data-plan-task>${icon('pencil',18)}${esc(t('Edit task'))}</button>${complete}</div><button class="task-detail-delete" data-action="delete-task" data-id="${esc(task.id)}">${icon('trash',18)}${esc(t('Delete task'))}</button>${renderTaskSheet(farm, task)}</div></section>`;
+};
 
 /** @param {number[]} values @returns {string} */
 const weatherTrend = (values) => {
@@ -229,7 +261,7 @@ const bookingRow = (booking) => `<section class="booking-list-item"><a class="li
 const renderBookings = (state) => `${pageHeading(t('Your plans, together'), t('Bookings'), '')}<div class="toolbar">${link('/services/pilots', `${icon('drone', 18)} ${esc(t('Find a pilot'))}`, 'button')}${link('/learn/courses', `${icon('school', 18)} ${esc(t('Browse courses'))}`)}</div>${state.bookings.length ? `<div class="card list">${state.bookings.map(bookingRow).join('')}</div>` : emptyState('Nothing booked yet', 'Find a pilot for your next job or make time to learn a new technique.', '/services/pilots', 'Explore drone pilots')}`;
 
 /** @param {Booking} booking @returns {string} */
-const rescheduleForm = (booking) => `<form class="form-stack booking-reschedule-form" data-form="reschedule">${hidden('bookingId', booking.id)}<div class="form-grid">${field({ label: 'Preferred date', name: 'date', type: 'date', value: booking.date })}${field({ label: 'Preferred time', name: 'time', type: 'time', value: booking.time })}</div><p class="muted">${esc(t('The agreed time changes only after the provider confirms.'))}</p><button type="submit" class="button button-secondary">${esc(t('Request schedule change'))}</button></form>`;
+const rescheduleForm = (booking) => `<form class="form-stack booking-reschedule-form" data-form="reschedule">${hidden('bookingId', booking.id)}<div class="form-grid">${booking.type === 'pilot' ? `<label class="field">${esc(t('Preferred date'))}<input class="input" type="date" name="date" value="${esc(booking.date)}" min="${pilotBookingDateRange().minimumDate}" max="${pilotBookingDateRange().maximumDate}" required></label>` : field({ label: 'Preferred date', name: 'date', type: 'date', value: booking.date })}${field({ label: 'Preferred time', name: 'time', type: 'time', value: booking.time })}</div><p class="muted">${esc(t('The agreed time changes only after the provider confirms.'))}</p><button type="submit" class="button button-secondary">${esc(t('Request schedule change'))}</button></form>`;
 
 /** @param {Booking} booking @param {AppState} state @returns {string} */
 const renderBooking = (booking, state) => {
@@ -325,30 +357,69 @@ const renderSettings = (state) => `${back('/account', t('My account'))}${pageHea
 
 /** @param {AppState} state @returns {string} */
 /** @param {AppState} state @returns {string} */
-const renderPendingNotifications = (state, tasks = state.tasks.filter((task) => !task.done)) => state.farms.map((farm) => {
-  const groups = new Map();
-  for (const task of tasks.filter((item) => item.farmId === farm.id)) {
-    const key = JSON.stringify([task.title.trim().toLowerCase(),task.category]);
-    if (!groups.has(key)) groups.set(key,[]);
-    groups.get(key).push(task);
-  }
-  const stacks = [...groups.values()].map((tasks) => renderTaskNotificationStack(farm,tasks)).join('');
+const renderPendingNotifications = (state, tasks = state.tasks, isCompleted = false) => state.farms.map((farm) => {
+  const assigned = tasks.filter((task) => task.farmId === farm.id);
+  const groups = isCompleted ? taskScheduleGroups(assigned) : currentTaskRounds(assigned);
+  const stacks = groups.map((group) => renderTaskNotificationStack(farm,group,state.tasks)).join('');
   return stacks ? `<section><div class="section-heading"><h2>${esc(farm.name)}</h2></div>${stacks}</section>` : '';
 }).join('');
 
+const COUNTDOWN_MINUTE_MS = 60_000;
+const COUNTDOWN_HOUR_MINUTES = 60;
+const COUNTDOWN_DAY_MINUTES = 1_440;
+/** @param {Task} task @param {Date} [now] @returns {string} */
+export function taskNextDueLabel(task, now = new Date()) {
+  if (!task.repeat || task.repeat === 'none') return `${dateLabel(task.dueDate)} · ${task.time}`;
+  const next = task.done ? nextTaskOccurrence(task) : task;
+  if (!next) return t('Completed');
+  const remaining = new Date(`${next.dueDate}T${next.time}`).getTime() - now.getTime();
+  if (!Number.isFinite(remaining)) return t('Scheduled');
+  if (remaining < 0) return t('Overdue');
+  if (remaining < COUNTDOWN_MINUTE_MS) return t('Due now');
+  const minutes = Math.ceil(remaining / COUNTDOWN_MINUTE_MS);
+  if (minutes < COUNTDOWN_HOUR_MINUTES) return t(minutes === 1 ? 'Due in 1 minute' : 'Due in {count} minutes', {count:minutes});
+  const hours = Math.floor(minutes / COUNTDOWN_HOUR_MINUTES);
+  if (minutes < COUNTDOWN_DAY_MINUTES) return t(hours === 1 ? 'Due in 1 hour' : 'Due in {count} hours', {count:hours});
+  const days = Math.floor(minutes / COUNTDOWN_DAY_MINUTES);
+  return t(days === 1 ? 'Due in 1 day' : 'Due in {count} days', {count:days});
+}
+
+/** @param {Task} task @returns {string} */
+const taskCompletionLabel = (task) => {
+  const timestamp = task.completedAt ? new Date(task.completedAt) : null;
+  if (!timestamp || !Number.isFinite(timestamp.getTime())) return t('Completed');
+  return `${t('Completed')} · ${timestamp.toLocaleString(getFormatLocale(), {dateStyle:'medium',timeStyle:'short'})}`;
+};
+
+const TASK_FIELDS_PREVIEW_LIMIT = 5;
 /** @param {Farm} farm @param {Task[]} tasks @returns {string} */
-const renderTaskNotificationStack = (farm,tasks) => {
-  const rows = [...tasks].sort((a,b)=>`${a.dueDate}${a.time}`.localeCompare(`${b.dueDate}${b.time}`)).flatMap((task)=>{
-    const fields = task.plotId ? farm.plots.filter((plot)=>plot.id === task.plotId) : farm.plots;
-    return (fields.length ? fields : [{id:'',name:farm.name,crop:farm.crop}]).map((field)=>({task,field}));
+const renderTaskNotificationStack = (farm,tasks,allTasks = tasks) => {
+  const rows = tasks.flatMap((task) => {
+    const fields = task.plotId ? farm.plots.filter((plot) => plot.id === task.plotId) : farm.plots;
+    return (fields.length ? fields : [{id:'',name:farm.name,crop:farm.crop}]).map((field) => ({task,field}));
   });
-  const completed = rows.filter(({task})=>task.done).length;
-  return `<details class="notification-task-stack" data-notification-stack="${esc(JSON.stringify([farm.id,tasks[0].title.trim().toLowerCase(),tasks[0].category]))}"><summary><span class="row-icon">${icon('calendar',20)}</span><span class="row-copy"><strong>${esc(tasks[0].title)}</strong><span class="row-subtitle">${esc(t('{done} of {total} completed',{done:completed,total:rows.length}))}</span></span>${icon('chevron-down',18)}</summary><div class="notification-task-fields">${rows.map(({task,field})=>`<div class="notification-field-row" title="${esc(dateLabel(task.dueDate))} · ${esc(task.time)}"><span class="notification-status-badge is-${notificationTaskStatus(task)}" role="img" aria-label="${esc(t(notificationTaskStatusLabel(task)))}" title="${esc(t(notificationTaskStatusLabel(task)))}">${icon(task.done ? 'check' : 'clock',14)}</span><span class="notification-field-name">${esc(field.name)}</span><button type="button" class="notification-complete" data-action="complete-task-field" data-id="${esc(task.id)}" data-plot-id="${esc(field.id)}" ${task.done || !canCompleteTask(task) ? 'disabled' : ''} aria-label="${esc(t(task.done ? 'Completed {title}' : 'Complete {title}',{title:`${task.title} · ${field.name}`}))}">${esc(t(task.done ? 'Completed' : canCompleteTask(task) ? 'Complete' : 'Scheduled later'))}</button></div>`).join('')}</div></details>`;
+  const schedule = taskScheduleGroups(allTasks).find((group)=>group.some((item)=>item.id === tasks[0].id)) ?? tasks;
+  const cycle = scheduleCycleProgress(schedule,farm.plots);
+  const progress = cycle.total === null ? t('Cycle progress needs an end date') : t('Cycle: {done} of {total} field tasks completed',{done:cycle.done,total:cycle.total});
+  const first = tasks[0];
+  const isCompleted = tasks.every((task) => task.done);
+  const latest = [...tasks].sort((a,b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''))[0];
+  /** @param {{task:Task,field:{id:string,name:string}}[]} items @returns {string} */
+  const renderRows = (items) => items.map(({task,field}) => renderTaskFieldRow(farm,task,field,isCompleted)).join('');
+  return `<details class="notification-task-stack" data-schedule-group data-notification-stack="${esc(JSON.stringify([farm.id,first.scheduleId ?? first.title,first.dueDate,first.time]))}"><summary><span class="row-icon">${icon('calendar',20)}</span><span class="row-copy"><strong>${esc(first.title)}</strong><span class="row-subtitle">${esc(isCompleted ? taskCompletionLabel(latest) : cycle.total === null ? progress : t('{percent}% of cycle complete',{percent:cycle.percent}))}</span>${isCompleted || cycle.total === null ? '' : `<span class="task-progress ${cycle.done === cycle.total ? 'is-complete' : ''}" role="progressbar" aria-label="${esc(first.title)}" aria-valuemin="0" aria-valuemax="${cycle.total}" aria-valuenow="${cycle.done}" aria-valuetext="${esc(progress)}"><span style="width:${cycle.percent}%"></span></span>`}</span>${icon('chevron-down',18)}</summary><div class="notification-task-fields">${isCompleted ? '' : `<p class="task-round-date">${esc(taskNextDueLabel(tasks.find((task) => !task.done) ?? first))}</p>`}${renderRows(rows.slice(0,TASK_FIELDS_PREVIEW_LIMIT))}${rows.length > TASK_FIELDS_PREVIEW_LIMIT ? `<details class="schedule-tree-more"><summary>${esc(t('Show all fields'))}</summary>${renderRows(rows.slice(TASK_FIELDS_PREVIEW_LIMIT))}</details>` : ''}</div></details>`;
+};
+
+/** @param {Farm} farm @param {Task & {isProjected?:boolean}} task @param {{id:string,name:string}} field @returns {string} */
+const renderTaskFieldRow = (farm,task,field,isCompleted = false) => {
+  const canComplete = !task.isProjected && canCompleteTask(task);
+  const status = task.isProjected ? 'upcoming' : notificationTaskStatus(task);
+  const label = task.done ? 'Completed' : canComplete ? 'Complete' : 'Scheduled later';
+  return `<div class="notification-field-row" data-task-date="${esc(task.dueDate)}" data-task-done="${task.done}"><span class="notification-status-badge is-${status}" role="img" aria-label="${esc(t(task.isProjected ? 'Scheduled later' : notificationTaskStatusLabel(task)))}">${icon(task.done ? 'check' : 'clock',14)}</span><a class="notification-field-name" href="/farm/${esc(farm.id)}/tasks/${esc(task.id)}"><span>${esc(field.name)}</span>${isCompleted && task.completedAt ? `<small class="row-subtitle"><time datetime="${esc(task.completedAt)}">${esc(new Date(task.completedAt).toLocaleTimeString(getFormatLocale(),{hour:'2-digit',minute:'2-digit'}))}</time></small>` : ''}</a><button type="button" class="notification-complete" data-action="complete-task-field" data-id="${esc(task.id)}" data-plot-id="${esc(field.id)}" ${canComplete ? '' : 'disabled'} aria-label="${esc(t(task.done ? 'Completed {title}' : 'Complete {title}',{title:`${task.title} · ${field.name}`}))}">${esc(t(label))}</button></div>`;
 };
 
 const renderNotifications = (state) => {
   const pending = renderPendingNotifications(state);
-  const completed = renderPendingNotifications(state, latestCompletedTasks(state.tasks));
+  const completed = renderPendingNotifications(state, latestCompletedTasks(state.tasks), true);
   const pendingReminderIds = new Set(state.tasks.map((task) => `reminder-${task.id}-${task.dueDate}-${task.time}`));
   const notifications = state.notifications.filter((item) => !pendingReminderIds.has(item.id));
   const sortedNotifications = [...notifications].sort((first, second) => second.date.localeCompare(first.date));
@@ -387,7 +458,7 @@ const renderLandSetupComplete = (farm) => `${pageHeading('', t('You’re all set
 /** @param {Farm} farm @param {Task[]} tasks @returns {string} */
 const schedulerLand = (farm, tasks) => {
   const assignedTasks = tasks.filter((task) => task.farmId === farm.id);
-  return `<section class="scheduler-land"><a class="list-row" href="/farm/${esc(farm.id)}/schedule"><span class="row-icon">${icon('calendar')}</span><span class="row-copy"><strong class="row-title">${esc(farm.name)}</strong><span class="row-subtitle">${esc(t(assignedTasks.length === 1 ? '{count} task' : '{count} tasks', { count: assignedTasks.length }))}</span></span>${icon('chevron-right', 18)}</a>${assignedTasks.length ? taskList(farm, assignedTasks) : ''}</section>`;
+  return `<section class="scheduler-land"><a class="list-row" href="/farm/${esc(farm.id)}/schedule"><span class="row-icon">${icon('calendar')}</span><span class="row-copy"><strong class="row-title">${esc(farm.name)}</strong><span class="row-subtitle">${esc(t(assignedTasks.length === 1 ? '{count} task' : '{count} tasks', { count: assignedTasks.length }))}</span></span>${icon('chevron-right', 18)}</a>${scheduleTree(farm,assignedTasks)}${latestCompletedTasks(assignedTasks).length ? `<details class="schedule-completed"><summary>${esc(t('Completed'))} ${icon('chevron-down',18)}</summary>${taskScheduleGroups(latestCompletedTasks(assignedTasks)).map((group) => renderTaskNotificationStack(farm,group,assignedTasks)).join('')}</details>` : ''}</section>`;
 };
 
 /** @param {AppState} state @returns {string} */
@@ -413,6 +484,7 @@ const farmRoute = (parts, state) => {
   if (parts[2] === 'edit' && parts.length === 3) return renderLandEditor(farm);
   if (parts[2] === 'fields' && parts[3] === 'setup') return renderLandSetup(farm);
   if (parts.length === 2) return renderFarm(farm, state);
+  if (parts[2] === 'history' && parts.length === 3) return renderLandHistory(farm,state);
   if (parts[2] === 'schedule' && parts.length === 3) return renderSchedule(farm, state);
   if (parts[2] === 'plots' && parts.length === 4) return renderPlot(farm, parts[3], state);
   if (parts[2] !== 'tasks' || parts.length !== 4) return null;
@@ -515,7 +587,7 @@ export async function requestChatReply(booking, fetchImpl = fetch) {
 /** @param {Booking} booking @param {string} messageId @param {string[]} messages @returns {boolean} */
 export function appendChatReply(booking, messageId, messages) {
   if (booking.conversation.at(-1)?.id !== messageId) return false;
-  booking.conversation.push(...messages.map((text) => ({ id:crypto.randomUUID(), sender:conversationName(booking), text, date:new Date().toISOString() })));
+  booking.conversation.push(...messages.map((text) => ({ id:createRecordId(), sender:conversationName(booking), text, date:new Date().toISOString() })));
   return true;
 }
 
@@ -535,9 +607,11 @@ export function animateChatTyping(indicator, gsap) {
 
 /** @param {HTMLElement} root @returns {void} */
 export function initializeNotificationStacks(root) {
-  root.querySelectorAll('.notification-task-stack').forEach((stack) => {
+  root.querySelectorAll('.notification-task-stack, .schedule-tree, .schedule-completed').forEach((stack) => {
+    if (stack.dataset.motionBound) return;
+    stack.dataset.motionBound = 'true';
     stack.addEventListener('toggle', () => {
-      const content = stack.querySelector('.notification-task-fields');
+      const content = stack.querySelector('.notification-task-fields, .schedule-tree-fields, .schedule-field-list');
       window.gsap?.killTweensOf(content);
       if (stack.open && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         window.gsap?.fromTo(content,{opacity:0,y:-4},{opacity:1,y:0,duration:0.18,ease:'power2.out',clearProps:'opacity,transform'});
@@ -552,3 +626,10 @@ export function notificationTaskStatus(task, now = new Date()) {
 }
 /** @param {Task} task @returns {string} */
 const notificationTaskStatusLabel = (task) => ({completed:'Completed',overdue:'Overdue',soon:'Due within 2 hours',upcoming:'Scheduled later',idle:'Pending'}[notificationTaskStatus(task)]);
+
+/** @param {Farm} farm @param {AppState} state @returns {string} */
+const renderLandHistory = (farm,state) => {
+  const tasks = state.tasks.filter((task)=>task.farmId === farm.id);
+  const records = completedTaskList(farm, tasks);
+  return `${back(`/farm/${farm.id}/schedule`,t('Land schedule'))}${pageHeading('',t('Schedule history'),farm.name)}<a class="button button-secondary" href="/farm/${esc(farm.id)}/schedule">${esc(t('View full calendar'))}${icon('calendar',18)}</a>${records || `<p class="muted">${esc(t('No task history yet.'))}</p>`}`;
+};

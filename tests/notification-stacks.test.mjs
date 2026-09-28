@@ -17,7 +17,7 @@ test('pending and completed fields have separate task stacks',()=>{
   assert.equal((html.match(/<details class="notification-task-stack/g)??[]).length,2);
   assert.match(html,/<h2>Pending<\/h2>/);
   assert.match(html,/<h2>Completed<\/h2>/);
-  assert.match(html,/0 of 1 completed/);
+  assert.match(html,/1 of 2 completed/);
   assert.match(html,/1 of 1 completed/);
   assert.match(html,/Field 1/);
   assert.match(html,/Field 2/);
@@ -76,7 +76,7 @@ test('whole-land completion affects only the selected field and supports stale r
   assert.equal(state.tasks.find((task)=>task.plotId==='field-3').done,true);
   assert.equal(fieldTaskUrgency(state.tasks,'land-test','field-1').urgency,'overdue');
   assert.equal(fieldTaskUrgency(state.tasks,'land-test','field-3').pending,0);
-  assert.match(renderWorkspace('/notifications',state),/0 of 4 completed/);
+  assert.match(renderWorkspace('/notifications',state),/1 of 5 completed/);
   for(const field of ['field-1','field-2','field-4','field-5']) completeTaskField(state,'whole',field);
   assert.equal(state.tasks.filter((task)=>task.done).length,5);
   assert.match(renderWorkspace('/notifications',state),/5 of 5 completed/);

@@ -1,3 +1,4 @@
+import { pilotBookingDateRange } from './booking-dates.mjs';
 import { renderExperts } from './expert-ui.mjs';
 import { renderCalendar } from './schedule.mjs';
 import { renderDealSearch, renderShopOffers } from './shop-deals.mjs';
@@ -197,7 +198,7 @@ const pilotBooking = (id, state) => {
       ${hiddenInput('providerId', pilot.id)}${hiddenInput('type', 'pilot')}${hiddenInput('title', `Drone service with ${pilot.name}`)}${hiddenInput('price', pilot.rate)}
       <label class="field">${esc(t('Your land'))}<select class="input" name="farmId" required>${farms}</select></label>
       <fieldset class="booking-services" data-booking-services><legend>${esc(t('Services'))}</legend>${pilot.services.map((service) => `<label class="booking-service-option"><input type="checkbox" name="service" value="${esc(service)}"><span>${esc(t(service))}</span></label>`).join('')}</fieldset>
-      <div class="form-grid"><section class="field" data-booking-date><span>${esc(t('Preferred date'))}</span><input type="hidden" name="date" value="${today()}"><div data-booking-calendar>${renderCalendar(today(),today().slice(0,7),true,[],false,today())}</div></section><label class="field">${esc(t('Preferred time'))}<input class="input" type="time" name="time" value="09:00" required></label></div>
+      <div class="form-grid"><section class="field" data-booking-date><span>${esc(t('Preferred date'))}</span><input type="hidden" name="date" value="${today()}"><div data-booking-calendar>${renderCalendar(today(),today().slice(0,7),true,[],false,today(),pilotBookingDateRange().maximumDate)}</div><p class="muted booking-date-note">${esc(t('Existing bookings beyond the seven-day window may incur a late fee of RM 30 per day.'))}</p></section><label class="field">${esc(t('Preferred time'))}<input class="input" type="time" name="time" value="09:00" required></label></div>
       <label class="field">${esc(t('Job details'))}<textarea class="input" name="notes" rows="3" maxlength="1000" placeholder="${esc(t('Plot size, crop, access and anything the pilot should know'))}" required></textarea></label>
       <div class="task-sheet-actions"><button class="button button-secondary" type="button" data-booking-back>${esc(t('Back'))}</button><button class="button" type="button" data-booking-next>${esc(t('Continue'))}</button><button class="button" type="submit">${esc(t('Save request'))}${icon('arrow-up-right', 18)}</button></div></form></dialog>`;
 };

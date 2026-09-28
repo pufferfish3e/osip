@@ -5,7 +5,7 @@ import { submitForm, applyAction } from '../src/actions.mjs';
 import { renderWorkspace } from '../src/workspace.mjs';
 
 const FARM = DEMO.farms[0];
-const FIELDS = { farmId: FARM.id, title: 'Water crops', dueDate: '2026-10-02', time: '08:00', category: 'Watering', repeat: 'daily', reminder: 'on', creationKey: 'multi-test' };
+const FIELDS = { farmId: FARM.id, title: 'Water crops', dueDate: '2026-10-02', time: '08:00', category: 'Watering', repeat: 'daily', reminder: 'on', endKind:'date', endDate:'2026-10-09', creationKey: 'multi-test' };
 
 test('selected fields each receive an independent task and resubmission is safe', () => {
   const state = structuredClone(DEMO);
