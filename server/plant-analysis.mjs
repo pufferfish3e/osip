@@ -1,10 +1,11 @@
 import { isIPv4 } from 'node:net';
 
 import { requestSearch } from './plant-search.mjs';
+import { findPlantReferenceImages } from './plant-reference-images.mjs';
 
 import { PLANT_GUIDES } from '../src/plant-guides.mjs';
 
-/** @typedef {{title:string,summary:string,isPlant:boolean,observations:string[],nextSteps:string[],guideSlugs:string[],research?:import('../src/plant-web.mjs').PlantWebResult}} PlantAnalysis */
+/** @typedef {import('../src/plant-photo.mjs').PlantAnalysis} PlantAnalysis */
 /** @typedef {{apiKey?:string,model?:string,trustedOrigin?:string,fetchImpl?:typeof fetch,now?:()=>number,timeoutMs?:number,bodyTimeoutMs?:number}} AnalysisOptions */
 /** @typedef {(request:import('node:http').IncomingMessage,response:import('node:http').ServerResponse)=>Promise<void>} AnalysisHandler */
 
@@ -48,7 +49,7 @@ const ANALYSIS_INSTRUCTIONS = [
   'Separate visible observations from uncertain possibilities; never claim a confirmed pest, disease, species, or nutrient diagnosis from a photo.',
   'Do not identify people or recommend pesticide products, doses, edible plants, or medical treatments.',
   'Write for a farmer reading a compact mobile result: warm, direct and practical, without greetings, hype or repeated information.',
-  'Structure the JSON for these UI components: title is a short descriptive headline (aim for 3–7 words); summary is one plain-language sentence connecting visible evidence with what remains uncertain (aim for at most 30 words). Use similarly concise phrasing in Chinese.',
+  'Structure the JSON for these UI components: title is a short descriptive headline (aim for 3–7 words); summary is one plain-language sentence connecting visible evidence with what remains uncertain (at most 18 words). Use similarly concise phrasing in Chinese.',
   'observations render as non-interactive pills: return up to four distinct, concrete visible features, each a short phrase (aim for 2–6 words), such as yellow leaf edges. Do not put speculative diagnoses, severity ratings or confidence percentages in these pills.',
   'nextSteps render as numbered action cards: return up to three useful low-risk actions, ordered by what to check first. Start each with a verb, include what to inspect or record, and keep each to one short sentence. Do not repeat the observations or invent tasks merely to fill the layout.',
   'Return plain text inside the JSON fields, without HTML, Markdown, emoji, bullet characters, numbering or uppercase labels. The app supplies icons, pills, headings and step numbers.',
@@ -200,7 +201,7 @@ const readJsonBody = (request, timeoutMs) => new Promise((resolveBody, rejectBod
 
 /** @param {string} image @param {string} model @param {string} locale @returns {Record<string,unknown>} */
 const openAiPayload = (image, model, locale) => ({
-  model, store: false, instructions: `${ANALYSIS_INSTRUCTIONS}\nWrite title, summary, observations and nextSteps in ${ANALYSIS_LANGUAGES[locale]}. Keep guideSlugs unchanged.`, max_output_tokens: MAX_OUTPUT_TOKENS,
+  model, store: false, instructions: `${ANALYSIS_INSTRUCTIONS}\nWrite title, summary, observations and nextSteps in ${ANALYSIS_LANGUAGES[locale]}. Every user-visible field must use this requested language, including non-plant and unclear-photo responses. Do not default to English because the examples or guide catalog are English. Keep guideSlugs unchanged.`, max_output_tokens: MAX_OUTPUT_TOKENS,
   input: [{ role: 'user', content: [{ type: 'input_text', text: 'Summarize the plant, crop material or crop-related organism visible in this photo and suggest relevant guides.' }, { type: 'input_image', image_url: image, detail: 'auto' }] }],
   text: { format: { type: 'json_schema', name: 'plant_photo_summary', strict: true, schema: ANALYSIS_SCHEMA } },
 });
@@ -309,6 +310,8 @@ export function createPlantAnalysisHandler(options = {}) {
       if (analysis.isPlant) {
         analysis.research = await requestSearch({ query: `${analysis.title}: ${analysis.observations.join('; ')}`.slice(0, 160), locale }, settings, cancellation.signal);
         analysis.nextSteps = [];
+        const referenceImages = options.fetchImpl ? [] : await findPlantReferenceImages(analysis.guideSlugs[0], fetch, cancellation.signal);
+        if (referenceImages.length) analysis.referenceImages = referenceImages;
       }
       if (!cancellation.signal.aborted && !response.destroyed) sendJson(response, STATUS.ok, analysis);
     } catch (error) {

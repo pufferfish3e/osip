@@ -3,7 +3,7 @@ import { initializeExpertMatcher } from './expert-ui.mjs';
 import { initializeShopDeals } from './shop-deals.mjs';
 import { initializeProfilePicture } from './profile-photo.mjs';
 // import { initializeMixturePlanner } from './mixture-planner.mjs';
-import { initializeArticleReader } from './article-reader.mjs';
+import { initializeArticleReader, initializeArticleTranslation } from './article-reader.mjs';
 import { createFieldCareMotion, initializeFieldCare, renderFieldSchedules } from './field-care.mjs';
 import { initializePilotMatcher } from './pilot-matcher.mjs';
 import { initializeArticleLibrary } from './article-library.mjs';
@@ -16,6 +16,7 @@ import { renderDiscover, renderServiceResults } from './discover.mjs';
 import { clearDraft, readDraft, saveDraft } from './drafts.mjs';
 import { initializeLandMap } from './land-map.mjs';
 import { renderHome } from './home.mjs';
+import { loadArticleCatalogue } from './data.mjs';
 import { getFormatLocale, getLocale, loadLocale, saveLocale, setLocale, t } from './i18n.mjs';
 import { captureFormState, initializeLocalizedValidation, localizeDocument, restoreFormState } from './language.mjs';
 import { initializePlantAction } from './plant-action.mjs';
@@ -25,7 +26,7 @@ import { renderPlantHelp, renderPlantResults } from './plant-help.mjs';
 import { createPlantPhotoController, renderPhotoState } from './plant-photo.mjs';
 import { applyUpdate, initializePwa, installApp } from './pwa.mjs';
 import { initializeBookingCalendar, initializeSchedule } from './schedule.mjs';
-import { renderNotificationBell, renderShell } from './shell.mjs';
+import { renderShell, updateNotificationBell } from './shell.mjs';
 import { createStore } from './store.mjs';
 import { emptyState, escapeHtml as esc, icon } from './ui.mjs';
 import { animateChatTyping, appendChatReply, initializeChatComposer, initializeNotificationStacks, renderScheduledAgenda, renderWorkspace, requestChatReply } from './workspace.mjs';
@@ -54,8 +55,10 @@ let activeFilter = 'all';
 let activeSearch = '';
 let plantQuery = '';
 let plantWebRequest = null;
+let articleRequest = null;
 // let disposeSprayCalculator = () => {};
 let plantCategory = 'all';
+let openTopbarRoute = null;
 
 /** @param {string} message @returns {void} */
 const toast = (message) => {
@@ -117,6 +120,8 @@ const render = (shouldAnimate = false) => {
   const openNotificationStacks = new Set([...MAIN.querySelectorAll('[data-notification-stack][open]')].map((item)=>item.dataset.notificationStack));
   disposeChatTyping();
   plantWebRequest?.abort();
+  articleRequest?.abort();
+  articleRequest = new AbortController();
   const disposePreviousLandMap = disposeLandMap;
   disposeLandMap = () => {};
   disposePreviousLandMap();
@@ -128,6 +133,12 @@ const render = (shouldAnimate = false) => {
   renderShell(path, state);
   localizeDocument(document);
   MAIN.innerHTML = path === '/' ? (state.profile.role === 'pilot' ? renderWorkspace('/pilot', state) : renderHome(state)) : renderPlantHelp(path, plantQuery, plantCategory) ?? renderWorkspace(path, state) ?? renderDiscover(path, state) ?? emptyState('This page is not here', 'Choose a destination from the navigation.', '/', 'Go home');
+  const cataloguePanel = MAIN.querySelector('[data-load-article-catalogue]');
+  if (cataloguePanel) void loadArticleCatalogue().then(() => {
+    if (cataloguePanel.isConnected) render();
+  }).catch((error) => {
+    if (cataloguePanel.isConnected) { cataloguePanel.textContent = t('Could not connect. Check your connection or search the guides.'); reportError(error); }
+  });
   const photoPanel = MAIN.querySelector('[data-plant-camera]');
   if (photoPanel) photoPanel.innerHTML = renderPhotoState(PHOTO.getState());
   const landPanel = MAIN.querySelector('[data-farm-map]');
@@ -150,7 +161,8 @@ const render = (shouldAnimate = false) => {
   initializePilotMatcher(MAIN);
   initializeExpertMatcher(MAIN);
   initializeArticleLibrary(MAIN, state);
-  void initializeArticleReader(MAIN).catch((error) => console.error('Article reader failed.', error));
+  void initializeArticleReader(MAIN, articleRequest.signal).catch((error) => console.error('Article reader failed.', error));
+  void initializeArticleTranslation(MAIN, articleRequest.signal).catch((error) => console.error('Article translation failed.', error));
   initializeKeypadCalculator(MAIN, STORE);
 //   disposeSprayCalculator = initializeMixturePlanner(MAIN, STORE);
   initializeCourseBookingSheet();
@@ -268,9 +280,11 @@ const initializeMobileOnboarding = (path) => {
   showStep();
 };
 
-/** @param {string} path @returns {void} */
-const navigate = (path) => {
-  if (window.location.pathname !== path) history.pushState({}, '', path);
+/** @param {string} path @param {{refresh?:boolean}} options @returns {void} */
+const navigate = (path, { refresh = false } = {}) => {
+  const isCurrentPath = `${window.location.pathname}${window.location.search}` === path;
+  if (isCurrentPath && !refresh) return;
+  if (!isCurrentPath) history.pushState({}, '', path);
   activeSearch = '';
   activeFilter = 'all';
   lastCalculation = null;
@@ -329,13 +343,14 @@ const handlePhotoAction = async (button) => {
   if (action === 'camera' || action === 'library') MAIN.querySelector(`[data-plant-photo="${action}"]`)?.click();
   if (action === 'analyze') await PHOTO.analyze();
   if (action === 'cancel') PHOTO.cancel();
+  if (action === 'translate') await PHOTO.localize();
 };
 /** @param {import('./src/actions.mjs').ActionResult} result @returns {void} */
 const finishAction = (result) => {
   const active = document.activeElement;
   const action = active?.dataset?.action;
   const id = active?.dataset?.id;
-  if (result.redirect) navigate(result.redirect); else render();
+  if (result.redirect) navigate(result.redirect, { refresh: true }); else render();
   if (!result.redirect && action) {
     const selector = `[data-action="${CSS.escape(action)}"]${id ? `[data-id="${CSS.escape(id)}"]` : ''}`;
     MAIN.querySelector(selector)?.focus({ preventScroll: true });
@@ -386,6 +401,20 @@ const onClick = async (event) => {
     const url = new URL(link.href);
     if (url.origin !== location.origin || url.hash) return;
     event.preventDefault();
+    const topbarRoute = link.dataset.topbarToggle;
+    if (topbarRoute) {
+      if (location.pathname === url.pathname) {
+        const openedHere = openTopbarRoute === url.pathname;
+        openTopbarRoute = null;
+        if (openedHere) history.back();
+        else navigate('/');
+      } else {
+        openTopbarRoute = url.pathname;
+        navigate(url.pathname);
+      }
+      return;
+    }
+    openTopbarRoute = null;
     navigate(`${url.pathname}${url.search}`);
   } catch (error) { reportError(error); }
 };
@@ -449,6 +478,7 @@ const changeLanguage = (locale) => {
   catch (error) { persistenceError = error; }
   render();
   restoreFormState(MAIN, snapshot);
+  void PHOTO.localize();
   filterCards();
   renderCalculation();
   window.scrollTo({ top: position, behavior: 'instant' });
@@ -519,10 +549,7 @@ const checkReminders = () => {
   try {
     STORE.update((state) => { state.notifications = draft.notifications; });
     if (location.pathname === '/notifications') render();
-    else {
-      const bell = document.querySelector('.notification-bell');
-      if (bell) bell.outerHTML = renderNotificationBell(STORE.getState());
-    }
+    else updateNotificationBell(STORE.getState(), location.pathname);
     toast('A farm task is due. Check notifications.');
   }
   catch (error) { reportError(error); }
@@ -573,7 +600,7 @@ document.addEventListener('input', (event) => {
   activeSearch = event.target.value.trim().toLowerCase();
   filterCards();
 });
-window.addEventListener('popstate', () => { render(true); (MAIN.querySelector('h1') ?? MAIN).focus(); });
+window.addEventListener('popstate', () => { openTopbarRoute = null; render(true); (MAIN.querySelector('h1') ?? MAIN).focus(); });
 for (const name of ['online', 'offline']) window.addEventListener(name, () => {
   document.querySelector('#connection-status').textContent = t(navigator.onLine ? 'Your field companion' : 'Offline · saved on this device');
   toast(navigator.onLine ? 'You’re back online.' : 'Offline. Your saved workspace is still available.');
@@ -599,7 +626,7 @@ window.setInterval(() => {
   const task = tasks.find((item) => item.id === fieldTask?.dataset.careTask);
   if (task) careSheet.querySelector('[data-care-content]').innerHTML = renderFieldSchedules(tasks, task.farmId, task.plotId);
 }, REMINDER_INTERVAL);
-await initializePwa(toast);
+void initializePwa(toast);
 
 /** @param {import('./store.mjs').Booking | {id:string,name:string,conversation:import('./store.mjs').Message[]}} conversation @returns {Promise<void>} */
 async function replyToConversation(conversation) {

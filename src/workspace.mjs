@@ -576,7 +576,7 @@ export async function requestChatReply(booking, fetchImpl = fetch) {
   if (booking.expertId) return [];
   const response = await fetchImpl('/api/mock-chat', {
     method:'POST', headers:{ 'Content-Type':'application/json' }, signal:AbortSignal.timeout(25000),
-    body:JSON.stringify({ providerId:booking.providerId, name:conversationName(booking), messages:booking.conversation.slice(-12).map(({ sender, text }) => ({ sender, text })) }),
+    body:JSON.stringify({ locale:getLocale(), providerId:booking.providerId, name:conversationName(booking), messages:booking.conversation.slice(-12).map(({ sender, text }) => ({ sender, text })) }),
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload?.error?.message ?? 'Could not get a reply.');
@@ -631,5 +631,6 @@ const notificationTaskStatusLabel = (task) => ({completed:'Completed',overdue:'O
 const renderLandHistory = (farm,state) => {
   const tasks = state.tasks.filter((task)=>task.farmId === farm.id);
   const records = completedTaskList(farm, tasks);
-  return `${back(`/farm/${farm.id}/schedule`,t('Land schedule'))}${pageHeading('',t('Schedule history'),farm.name)}<a class="button button-secondary" href="/farm/${esc(farm.id)}/schedule">${esc(t('View full calendar'))}${icon('calendar',18)}</a>${records || `<p class="muted">${esc(t('No task history yet.'))}</p>`}`;
+  const content = records ? `<section class="schedule-history-list" aria-labelledby="history-completed-title"><h2 id="history-completed-title">${esc(t('Completed'))}</h2>${records}</section>` : `<section class="schedule-history-empty">${icon('circle-check',32)}<h2>${esc(t('No task history yet.'))}</h2><p>${esc(t('Completed tasks will appear here.'))}</p></section>`;
+  return `<div class="schedule-history-page">${back(`/farm/${farm.id}/schedule`,t('Land schedule'))}<div class="schedule-history-header">${pageHeading('',t('Schedule history'),farm.name)}<a class="icon-button history-calendar-shortcut" href="/farm/${esc(farm.id)}/schedule" aria-label="${esc(t('View full calendar'))}" title="${esc(t('View full calendar'))}">${icon('calendar',22)}</a></div>${content}</div>`;
 };

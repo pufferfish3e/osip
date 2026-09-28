@@ -29,7 +29,23 @@ Open http://127.0.0.1:4173. The server serves only an explicit public-file allow
 - Sample wind/weather, pilot comparison, booking requests, proposed schedule changes, and booking-linked local messages.
 - Course requests, shop cart, unpaid orders, and a clearly marked payment simulation inside checkout.
 - Area conversion, planned material costs, gross-margin calculation, and saved results.
-- Installable app shell, cached deep routes and bundled photographs, reduced-motion support, accessible forms and touch targets.
+- Installable app shell, cached deep routes and photographs saved offline when viewed, reduced-motion support, accessible forms and touch targets.
+
+### Mobile loading
+
+Offline installation starts after the visible page has loaded. It caches application code, translations, seed data and installation icons; directory portraits and other photos are cached on demand. Photos that have not been viewed need a connection. The legacy publication catalogue is imported only when its article detail route is opened; existing article links and bookmarks still work.
+
+The static server supplies ETags and Vercel edge-cache headers for public files. Browsers revalidate stable filenames, and `/sw.js` remains uncached at the edge so updates are discoverable. API responses keep their separate caching rules.
+
+Compared with `ba15cc7`, uncompressed source/asset sizes are:
+
+| Loading cost | Before | After |
+| --- | ---: | ---: |
+| Offline install | 129 files / 16.65 MB | 68 files / 2.09 MB |
+| Startup module graph | 1.58 MB | 0.90 MB |
+| Home photos and three large pilot portraits | 8.84 MB | 0.56 MB |
+
+These are file-size measurements, not mobile timing scores. Production also returned 404 for `aura-brand.css`, which was required by the offline install; the server allowlist now includes it.
 
 Records persist on this browser/device using localStorage. Existing checklist records migrate into the farm task list. Writes are validated and committed only after storage succeeds. The application does not collect passwords, credentials, or payment details.
 

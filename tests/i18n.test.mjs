@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 
+import DEMO from '../data/demo.json' with { type: 'json' };
+import { SUPPLEMENTAL_TRANSLATIONS } from '../src/locales/supplemental.mjs';
 import { INITIAL_STATE } from '../src/data.mjs';
 import { renderHome } from '../src/home.mjs';
 import { getFormatLocale, getLocale, LanguagePersistenceError, loadLocale, saveLocale, setLocale, SUPPORTED_LOCALES, t } from '../src/i18n.mjs';
@@ -11,7 +13,7 @@ import { WORKSPACE_TRANSLATIONS } from '../src/locales/workspace.mjs';
 import { renderShell } from '../src/shell.mjs';
 import { escapeHtml, friendlyDate, money, pageHeading } from '../src/ui.mjs';
 
-const DICTIONARIES = [CORE_TRANSLATIONS, WORKSPACE_TRANSLATIONS, DISCOVER_TRANSLATIONS, PLANT_TRANSLATIONS];
+const DICTIONARIES = [CORE_TRANSLATIONS, WORKSPACE_TRANSLATIONS, DISCOVER_TRANSLATIONS, PLANT_TRANSLATIONS, SUPPLEMENTAL_TRANSLATIONS];
 const TEST_DATE = '2026-10-01';
 const UNSAFE_NAME = '<img src=x onerror="alert(1)">';
 
@@ -123,17 +125,21 @@ test('shared English source labels have consistent translations across dictionar
 });
 
 test('home labels change language while names, entered crop text, task titles, and canonical routes stay intact', () => {
-  const state = structuredClone(INITIAL_STATE);
+  const state = structuredClone(DEMO);
   state.profile.name = 'Home';
   state.farms[0].name = 'Home';
-  state.farms[0].crop = 'Services';
+  state.farms[0].crop = 'My custom crop';
+  state.farms[0].plots.forEach((plot) => { plot.crop = 'My custom crop'; });
+  state.profile.role = 'farmer';
+  state.profile.hasChosenRole = true;
+  state.farms[0].isDemo = false;
   state.tasks[0].title = 'Learn';
   for (const [locale, label] of [['ms', 'Kawasan tanaman anda'], ['zh-Hans', '你的种植面积']]) {
     setLocale(locale);
     const html = renderHome(state);
     assert.ok(html.includes(label));
     assert.match(html, /Home/);
-    assert.match(html, /·<\/span> Services/);
+    assert.match(html, /·<\/span> My custom crop/);
     assert.match(html, /class="row-title">Learn<\/strong>/);
     assert.match(html, /href="\/learn\/courses"/);
     assert.match(html, /href="\/farm"/);
@@ -142,12 +148,12 @@ test('home labels change language while names, entered crop text, task titles, a
 });
 
 test('translated shell keeps four destinations and its centre action, accessible selection, and unmodified account names', () => {
-  const state = structuredClone(INITIAL_STATE);
+  const state = structuredClone(DEMO);
   state.profile.name = 'Home';
   setLocale('zh-Hans');
   const html = renderNavigation(state);
   assert.match(html['#sidebar'].innerHTML, /<strong>Home<\/strong>/);
-  assert.deepEqual([...html['#bottom-nav'].innerHTML.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((match) => match[1]), ['/', '/farm', '/services', '/tools']);
+  assert.deepEqual([...html['#bottom-nav'].innerHTML.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((match) => match[1]), ['/', '/farm', '/schedule', '/learn']);
   assert.match(html['#bottom-nav'].innerHTML, /相机。长按切换为搜索。/);
   assert.match(html['#sidebar'].innerHTML, /<span>学习<\/span>/);
   assert.match(html['#topbar'].innerHTML, /<span class="sr-only">切换语言<\/span><select data-language-select>/);
@@ -157,7 +163,7 @@ test('translated shell keeps four destinations and its centre action, accessible
 test('translation interpolation remains plaintext and user data is escaped at render boundaries', () => {
   setLocale('ms');
   assert.ok(t('Good morning, {name}', { name: UNSAFE_NAME }).includes(UNSAFE_NAME));
-  const state = structuredClone(INITIAL_STATE);
+  const state = structuredClone(DEMO);
   state.farms[0].name = UNSAFE_NAME;
   const html = renderHome(state);
   assert.ok(html.includes(escapeHtml(UNSAFE_NAME)));

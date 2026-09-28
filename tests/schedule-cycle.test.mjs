@@ -118,3 +118,17 @@ test('completed rows separate the field title from its secondary completion time
   assert.match(html, /class="notification-field-name"[^>]*><span>Field 1<\/span><small class="row-subtitle"><time datetime="2030-01-01T09:30:00\+08:00">[^<]+<\/time><\/small><\/a>/);
  }
 });
+
+
+test('history has a compact accessible calendar shortcut and borderless completed layout',()=>{
+ const state={...structuredClone(DEMO),farms:[FARM],tasks:[TASK]};
+ const html=renderWorkspace('/farm/land/history',state);
+ assert.match(html,/class="schedule-history-page"/);
+ assert.match(html,/class="icon-button history-calendar-shortcut" href="\/farm\/land\/schedule" aria-label="View full calendar"/);
+ assert.match(html,/<section class="schedule-history-list" aria-labelledby="history-completed-title"><h2 id="history-completed-title">Completed<\/h2>/);
+ assert.doesNotMatch(html,/class="(?:card|button button-secondary)/);
+ state.tasks=[];
+ const empty=renderWorkspace('/farm/land/history',state);
+ assert.match(empty,/class="schedule-history-empty"/);
+ assert.match(empty,/Completed tasks will appear here\./);
+});

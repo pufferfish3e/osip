@@ -2,7 +2,6 @@ import { OPEN_ARTICLES } from './open-articles.mjs';
 import { MALAYSIA_ARTICLES, MALAYSIA_CONTEXT } from './malaysia-articles.mjs';
 import { PLANT_GUIDES } from './plant-guides.mjs';
 import { EXTENSION_ARTICLES } from './extension-articles.mjs';
-import { ARTICLE_CATALOGUE } from './article-catalogue.mjs';
 import { EVERYDAY_PRODUCTS, REAL_PRODUCTS } from './real-products.mjs';
 const TODAY = new Date();
 const DATE_OFFSET_DAYS = { tomorrow: 1, course: 6, workshop: 12, nextCourse: 18 };
@@ -29,7 +28,6 @@ export const ARTICLES = [
   ...MALAYSIA_ARTICLES,
   ...OPEN_ARTICLES,
   ...EXTENSION_ARTICLES,
-  ...ARTICLE_CATALOGUE,
   {
     id: 'soil-check', slug: 'getting-to-know-your-soil', title: 'Start with your soil',
     category: 'Soil', crop: 'All crops', readTime: 4, image: '/assets/learn-soil.jpg', thumbnail: '/assets/learn-soil-thumb.jpg',
@@ -75,6 +73,18 @@ export const ARTICLES = [
     ],
   },
 ];
+
+let articleCataloguePromise = null;
+let articleCatalogueLoaded = false;
+export const isArticleCatalogueLoaded = () => articleCatalogueLoaded;
+/** Load the legacy publication catalogue only when a detail route needs it. */
+export function loadArticleCatalogue() {
+  if (!articleCataloguePromise) articleCataloguePromise = import('./article-catalogue.mjs').then(({ ARTICLE_CATALOGUE }) => {
+    ARTICLES.splice(PLANT_GUIDES.length + MALAYSIA_ARTICLES.length + OPEN_ARTICLES.length + EXTENSION_ARTICLES.length, 0, ...ARTICLE_CATALOGUE);
+    articleCatalogueLoaded = true;
+  }).catch((error) => { articleCataloguePromise = null; throw error; });
+  return articleCataloguePromise;
+}
 
 export const COURSES = [
   {
@@ -539,17 +549,17 @@ export const COURSES = [
 
 export const PILOTS = [
   {
-    id: 'azlan', reviews: ['Clear field maps and a helpful handover.', 'Arrived on time and explained the survey clearly.'], portrait: '/assets/pilot-azlan.png', name: 'Azlan Ibrahim', initials: 'AI', serviceArea: 'Perak', services: ['Mapping', 'Crop survey'],
+    id: 'azlan', reviews: ['Clear field maps and a helpful handover.', 'Arrived on time and explained the survey clearly.'], portrait: '/assets/pilot-azlan.webp', name: 'Azlan Ibrahim', initials: 'AI', serviceArea: 'Perak', services: ['Mapping', 'Crop survey'],
     equipment: 'Multispectral survey drone', rating: 4.9, reviewCount: 28, rate: 65, rateUnit: 'ha', available: dateAfter(DATE_OFFSET_DAYS.tomorrow),
     status: 'Profile', bio: 'Example mapping service for farmers who want organised plot imagery and a clear record of field observations.', isDemo: true,
   },
   {
-    id: 'maya', reviews: ['Explained the plan before starting work.', 'Easy to coordinate the visit and field access.'], portrait: '/assets/pilot-maya.png', name: 'Maya Tan', initials: 'MT', serviceArea: 'Perak & Kedah', services: ['Mapping', 'Spraying'],
+    id: 'maya', reviews: ['Explained the plan before starting work.', 'Easy to coordinate the visit and field access.'], portrait: '/assets/pilot-maya.webp', name: 'Maya Tan', initials: 'MT', serviceArea: 'Perak & Kedah', services: ['Mapping', 'Spraying'],
     equipment: 'Agricultural application drone', rating: 4.8, reviewCount: 19, rate: 75, rateUnit: 'ha', available: dateAfter(DATE_OFFSET_DAYS.tomorrow),
     status: 'Profile', bio: 'Example agricultural service profile. Job scope, permissions, site conditions, and any application details require professional review.', isDemo: true,
   },
   {
-    id: 'daniel', reviews: ['Useful crop photos with clear notes.', 'Careful survey and an organised handover.'], portrait: '/assets/pilot-daniel.png', name: 'Daniel Lee', initials: 'DL', serviceArea: 'Kedah', services: ['Crop survey', 'Mapping'],
+    id: 'daniel', reviews: ['Useful crop photos with clear notes.', 'Careful survey and an organised handover.'], portrait: '/assets/pilot-daniel.webp', name: 'Daniel Lee', initials: 'DL', serviceArea: 'Kedah', services: ['Crop survey', 'Mapping'],
     equipment: 'Survey drone with RGB camera', rating: 4.9, reviewCount: 34, rate: 60, rateUnit: 'ha', available: dateAfter(DATE_OFFSET_DAYS.course),
     status: 'Profile', bio: 'Example survey service for comparing field photographs and documenting plot boundaries supplied by the farmer.', isDemo: true,
   },

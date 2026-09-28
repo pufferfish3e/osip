@@ -1,9 +1,10 @@
 const CACHE_PREFIX = 'osip-shell-';
 // The build fingerprints shell content so browsers discover asset updates.
-const CACHE_NAME = `${CACHE_PREFIX}v3-2ec689d523b01c40`;
+const CACHE_NAME = `${CACHE_PREFIX}v3-0563fb0ea7ba5026`;
 const SHELL_FILES = [
   '/src/booking-dates.mjs',
   '/src/record-id.mjs',
+  '/src/translation.mjs', '/src/locales/supplemental.mjs',
   '/src/task-history.mjs',
   '/src/shop-deals.mjs',
   '/data/active.json', '/data/demo.json', '/data/newuser.json', '/src/storage-seed.mjs',
@@ -17,7 +18,7 @@ const SHELL_FILES = [
   '/src/home.mjs', '/src/workspace.mjs', '/src/discover.mjs', '/src/pilot-matcher.mjs', '/src/expert-data.mjs', '/src/expert-ui.mjs', '/src/keypad-calculator.mjs', '/src/actions.mjs', '/src/pwa.mjs', '/src/drafts.mjs',
   '/src/land-editor.mjs', '/src/land-records.mjs', '/src/land-grid.mjs', '/src/land-setup.mjs', '/src/field-boundary.mjs', '/src/land-boundary.mjs', '/src/land-map.mjs', '/src/field-care.mjs', '/src/schedule.mjs', '/src/plant-web.mjs', '/src/plant-action.mjs', '/src/plant-guides.mjs', '/src/plant-help.mjs', '/src/plant-photo.mjs',
   '/src/i18n.mjs', '/src/language.mjs', '/src/locales/core.mjs', '/src/locales/workspace.mjs', '/src/locales/discover.mjs', '/src/locales/plant.mjs',
-  '/assets/vendor/leaflet.js', '/assets/vendor/leaflet.css', '/assets/app.css', '/assets/vendor/gsap.min.js', '/assets/icons.svg', '/assets/mark.svg', '/assets/avatar-default.svg',
+  '/assets/vendor/leaflet.js', '/assets/vendor/leaflet.css', '/assets/app.css', '/assets/aura-brand.css', '/assets/vendor/gsap.min.js', '/assets/icons.svg', '/assets/mark.svg', '/assets/avatar-default.svg',
   '/assets/expert-farid.jpg',
   '/assets/expert-aisyah.jpg',
   '/assets/expert-hafiz.jpg',
@@ -51,11 +52,15 @@ const SHELL_FILES = [
   '/assets/pilot-joanne.jpg',
   '/assets/pilot-nabil.jpg',
   '/assets/pilot-izzat.jpg',
-  '/assets/pilot-azlan.png', '/assets/pilot-maya.png', '/assets/pilot-daniel.png', '/assets/profile-ahmad.jpg', '/assets/farm.jpg', '/assets/crops.jpg', '/assets/drone.jpg', '/assets/course.jpg',
+  '/assets/pilot-azlan.webp', '/assets/pilot-maya.webp', '/assets/pilot-daniel.webp', '/assets/profile-ahmad.jpg', '/assets/farm.jpg', '/assets/crops.jpg', '/assets/drone.jpg', '/assets/course.jpg',
+  '/assets/pilot-azlan.png', '/assets/pilot-maya.png', '/assets/pilot-daniel.png',
   '/assets/learn-soil.jpg', '/assets/learn-soil-thumb.jpg', '/assets/learn-water.jpg', '/assets/learn-water-thumb.jpg', '/assets/learn-scouting.jpg', '/assets/learn-scouting-thumb.jpg', '/assets/learn-harvest.jpg', '/assets/learn-harvest-thumb.jpg',
   '/assets/icon-192.png', '/assets/icon-512.png', '/assets/icon-maskable.png',
 ];
 const SHELL_PATHS = new Set(SHELL_FILES);
+// Photos are cached when viewed, rather than downloading every directory portrait
+// and article illustration during first launch or every application update.
+const INSTALL_FILES = SHELL_FILES.filter((path) => !/\.(?:jpg|png|webp)$/.test(path) || path.startsWith('/assets/icon-'));
 const APP_ROUTES = ['/schedule', '/farm', '/learn', '/services', '/tools', '/weather', '/onboarding', '/auth', '/account', '/notifications', '/bookings', '/messages', '/pilot', '/shop', '/checkout', '/orders', '/news', '/plant-help'];
 
 /** @param {string} pathname @returns {boolean} */
@@ -66,7 +71,7 @@ const isAppRoute = (pathname) => pathname === '/' || pathname === '/index.html'
 const installShell = async () => {
   try {
     const cache = await caches.open(CACHE_NAME);
-    await cache.addAll(SHELL_FILES);
+    await cache.addAll(INSTALL_FILES);
   } catch (error) {
     console.error('Aura offline installation failed.', error);
     throw error;
@@ -104,7 +109,13 @@ const respondFromShell = async (request) => {
   try {
     const cache = await caches.open(CACHE_NAME);
     const cached = await cache.match(request, { ignoreSearch: true });
-    return cached ?? await fetch(request);
+    if (cached) return cached;
+    const response = await fetch(request);
+    if (response.ok) {
+      try { await cache.put(request, response.clone()); }
+      catch (error) { console.warn('Aura asset could not be saved offline.', error); }
+    }
+    return response;
   } catch (error) {
     console.warn('Aura asset is unavailable offline.', error);
     return new Response('Asset unavailable offline.', { status: 503 });
@@ -158,6 +169,10 @@ self.addEventListener('install', (event) => { event.waitUntil(installShell()); }
 self.addEventListener('activate', (event) => { event.waitUntil(activateShell()); });
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') event.waitUntil(applyUpdate());
+  if (event.data?.type === 'CACHE_VIEWED_PHOTOS' && Array.isArray(event.data.paths)) {
+    const photos = [...new Set(event.data.paths)].filter((path) => SHELL_PATHS.has(path) && /\.(?:jpg|webp|png)$/.test(path)).slice(0, 40);
+    event.waitUntil(Promise.all(photos.map((path) => respondFromShell(new Request(new URL(path, self.location.origin))))));
+  }
 });
 self.addEventListener('fetch', (event) => {
   const request = event.request;

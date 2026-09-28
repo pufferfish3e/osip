@@ -37,7 +37,7 @@ test('task creation and repeat completion work without native randomUUID',()=>{
   Object.defineProperty(globalThis,'crypto',{configurable:true,value:{getRandomValues:(bytes)=>webcrypto.getRandomValues(bytes)}});
   try {
     const state = structuredClone(DEMO);
-    submitForm(state,'task',{farmId:state.farms[0].id,title:'Check crops',dueDate:'2030-01-01',time:'08:00',category:'General',repeat:'daily',endKind:'date',endDate:'2030-01-02'});
+    submitForm(state,'task',{farmId:state.farms[0].id,plotId:state.farms[0].plots[0].id,title:'Check crops',dueDate:'2030-01-01',time:'08:00',category:'General',repeat:'daily',endKind:'date',endDate:'2030-01-02'});
     assert.match(state.tasks.at(-1).id,/^task-[0-9a-f]{8}-/);
     assert.match(state.tasks.at(-1).scheduleId,/^schedule-[0-9a-f]{8}-/);
     applyAction(state,'toggle-task',state.tasks.at(-1).id);
