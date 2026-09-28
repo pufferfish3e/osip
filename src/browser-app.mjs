@@ -55,6 +55,7 @@ let plantQuery = '';
 let plantWebRequest = null;
 // let disposeSprayCalculator = () => {};
 let plantCategory = 'all';
+let openTopbarRoute = null;
 
 /** @param {string} message @returns {void} */
 const toast = (message) => {
@@ -383,6 +384,20 @@ const onClick = async (event) => {
     const url = new URL(link.href);
     if (url.origin !== location.origin || url.hash) return;
     event.preventDefault();
+    const topbarRoute = link.dataset.topbarToggle;
+    if (topbarRoute) {
+      if (location.pathname === url.pathname) {
+        const openedHere = openTopbarRoute === url.pathname;
+        openTopbarRoute = null;
+        if (openedHere) history.back();
+        else navigate('/');
+      } else {
+        openTopbarRoute = url.pathname;
+        navigate(url.pathname);
+      }
+      return;
+    }
+    openTopbarRoute = null;
     navigate(`${url.pathname}${url.search}`);
   } catch (error) { reportError(error); }
 };
@@ -518,7 +533,7 @@ const checkReminders = () => {
     if (location.pathname === '/notifications') render();
     else {
       const bell = document.querySelector('.notification-bell');
-      if (bell) bell.outerHTML = renderNotificationBell(STORE.getState());
+      if (bell) bell.outerHTML = renderNotificationBell(STORE.getState(), location.pathname);
     }
     toast('A farm task is due. Check notifications.');
   }
@@ -570,7 +585,7 @@ document.addEventListener('input', (event) => {
   activeSearch = event.target.value.trim().toLowerCase();
   filterCards();
 });
-window.addEventListener('popstate', () => { render(true); (MAIN.querySelector('h1') ?? MAIN).focus(); });
+window.addEventListener('popstate', () => { openTopbarRoute = null; render(true); (MAIN.querySelector('h1') ?? MAIN).focus(); });
 for (const name of ['online', 'offline']) window.addEventListener(name, () => {
   document.querySelector('#connection-status').textContent = t(navigator.onLine ? 'Your field companion' : 'Offline · saved on this device');
   toast(navigator.onLine ? 'You’re back online.' : 'Offline. Your saved workspace is still available.');
