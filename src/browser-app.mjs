@@ -2,7 +2,7 @@ import { initializeExpertMatcher } from './expert-ui.mjs';
 import { initializeShopDeals } from './shop-deals.mjs';
 import { initializeProfilePicture } from './profile-photo.mjs';
 // import { initializeMixturePlanner } from './mixture-planner.mjs';
-import { initializeArticleReader } from './article-reader.mjs';
+import { initializeArticleReader, initializeArticleTranslation } from './article-reader.mjs';
 import { createFieldCareMotion, initializeFieldCare, renderFieldSchedules } from './field-care.mjs';
 import { initializePilotMatcher } from './pilot-matcher.mjs';
 import { initializeArticleLibrary } from './article-library.mjs';
@@ -54,6 +54,7 @@ let activeFilter = 'all';
 let activeSearch = '';
 let plantQuery = '';
 let plantWebRequest = null;
+let articleRequest = null;
 // let disposeSprayCalculator = () => {};
 let plantCategory = 'all';
 let openTopbarRoute = null;
@@ -118,6 +119,8 @@ const render = (shouldAnimate = false) => {
   const openNotificationStacks = new Set([...MAIN.querySelectorAll('[data-notification-stack][open]')].map((item)=>item.dataset.notificationStack));
   disposeChatTyping();
   plantWebRequest?.abort();
+  articleRequest?.abort();
+  articleRequest = new AbortController();
   const disposePreviousLandMap = disposeLandMap;
   disposeLandMap = () => {};
   disposePreviousLandMap();
@@ -155,7 +158,8 @@ const render = (shouldAnimate = false) => {
   initializePilotMatcher(MAIN);
   initializeExpertMatcher(MAIN);
   initializeArticleLibrary(MAIN, state);
-  void initializeArticleReader(MAIN).catch((error) => console.error('Article reader failed.', error));
+  void initializeArticleReader(MAIN, articleRequest.signal).catch((error) => console.error('Article reader failed.', error));
+  void initializeArticleTranslation(MAIN, articleRequest.signal).catch((error) => console.error('Article translation failed.', error));
   initializeKeypadCalculator(MAIN, STORE);
 //   disposeSprayCalculator = initializeMixturePlanner(MAIN, STORE);
   initializeCourseBookingSheet();
@@ -336,6 +340,7 @@ const handlePhotoAction = async (button) => {
   if (action === 'camera' || action === 'library') MAIN.querySelector(`[data-plant-photo="${action}"]`)?.click();
   if (action === 'analyze') await PHOTO.analyze();
   if (action === 'cancel') PHOTO.cancel();
+  if (action === 'translate') await PHOTO.localize();
 };
 /** @param {import('./src/actions.mjs').ActionResult} result @returns {void} */
 const finishAction = (result) => {
@@ -470,6 +475,7 @@ const changeLanguage = (locale) => {
   catch (error) { persistenceError = error; }
   render();
   restoreFormState(MAIN, snapshot);
+  void PHOTO.localize();
   filterCards();
   renderCalculation();
   window.scrollTo({ top: position, behavior: 'instant' });

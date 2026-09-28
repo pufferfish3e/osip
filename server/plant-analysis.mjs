@@ -201,7 +201,7 @@ const readJsonBody = (request, timeoutMs) => new Promise((resolveBody, rejectBod
 
 /** @param {string} image @param {string} model @param {string} locale @returns {Record<string,unknown>} */
 const openAiPayload = (image, model, locale) => ({
-  model, store: false, instructions: `${ANALYSIS_INSTRUCTIONS}\nWrite title, summary, observations and nextSteps in ${ANALYSIS_LANGUAGES[locale]}. Keep guideSlugs unchanged.`, max_output_tokens: MAX_OUTPUT_TOKENS,
+  model, store: false, instructions: `${ANALYSIS_INSTRUCTIONS}\nWrite title, summary, observations and nextSteps in ${ANALYSIS_LANGUAGES[locale]}. Every user-visible field must use this requested language, including non-plant and unclear-photo responses. Do not default to English because the examples or guide catalog are English. Keep guideSlugs unchanged.`, max_output_tokens: MAX_OUTPUT_TOKENS,
   input: [{ role: 'user', content: [{ type: 'input_text', text: 'Summarize the plant, crop material or crop-related organism visible in this photo and suggest relevant guides.' }, { type: 'input_image', image_url: image, detail: 'auto' }] }],
   text: { format: { type: 'json_schema', name: 'plant_photo_summary', strict: true, schema: ANALYSIS_SCHEMA } },
 });

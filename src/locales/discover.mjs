@@ -94,7 +94,7 @@ export const DISCOVER_TRANSLATIONS = {
     "Article figure": "Rajah artikel",
     "Open figure": "Buka rajah",
 
-    "Practical guide": "Panduan praktikal", "Practical guides": "Panduan praktikal", "Research sources": "Sumber penyelidikan",
+    "Practical guide": "Panduan praktikal", "Practical guides": "Panduan praktikal", "Research sources": "Sumber kajian",
     "View course": "Lihat kursus",
     "Read guide": "Baca panduan",
     "Drones": "Dron",
@@ -819,7 +819,7 @@ export const DISCOVER_TRANSLATIONS = {
     "Online": "线上",
     "Start with your soil": "从认识土壤开始",
     "A simple field notebook can help you ask better questions about your soil.": "简单的田间笔记能帮助您更准确地提出土壤问题。",
-    "Aura editorial": "Aura 编辑内容",
+    "Aura editorial": "Aura 编辑部",
     "Guide · awaiting agricultural review": "指南 · 待农业专业审核",
     "Give each plot a name": "为每块田命名",
     "Keep observations linked to the same plot. Record the date, recent weather, and where you looked so you can compare notes over time.": "将观察记录对应到同一地块。记录日期、近期天气和观察位置，以便持续比较。",
@@ -905,7 +905,7 @@ export const DISCOVER_TRANSLATIONS = {
     "From Aura": "来自 Aura",
     "Try the schedule and keep your next field visit organised.": "试用日程，有序安排下一次田间巡查。",
     "Create a task, choose a plot, and add a date. The prototype saves records on this device so you can explore the daily workflow. These are product notes, not a live agricultural news feed.": "创建任务、选择地块并添加日期。原型将记录保存在此设备上，方便您体验日常流程。这是产品内容，并非实时农业新闻。",
-    "Aura editorial": "Aura 编辑内容",
+    "Aura editorial": "Aura 编辑部",
     "Make room to learn something new": "为学习新知识留点时间",
     "Explore sample workshops on mapping, soil reports, and working with pilots.": "浏览测绘、土壤报告及飞手协作的示例课程。",
     "The sample course catalogue shows how farmers could compare topics, formats, and dates. All courses are free. All instructors, venues, seats, and enrollments in this prototype are illustrative.": "示例课程目录展示农民如何比较主题、形式和日期。所有课程均免费。此原型中的讲师、场地、名额和报名均为示意内容。"

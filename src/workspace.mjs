@@ -504,7 +504,7 @@ export async function requestChatReply(booking, fetchImpl = fetch) {
   if (booking.expertId) return [];
   const response = await fetchImpl('/api/mock-chat', {
     method:'POST', headers:{ 'Content-Type':'application/json' }, signal:AbortSignal.timeout(25000),
-    body:JSON.stringify({ providerId:booking.providerId, name:conversationName(booking), messages:booking.conversation.slice(-12).map(({ sender, text }) => ({ sender, text })) }),
+    body:JSON.stringify({ locale:getLocale(), providerId:booking.providerId, name:conversationName(booking), messages:booking.conversation.slice(-12).map(({ sender, text }) => ({ sender, text })) }),
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload?.error?.message ?? 'Could not get a reply.');
