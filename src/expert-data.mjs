@@ -1,8 +1,8 @@
 /** Demo identities are not verified professionals or connected chat recipients. */
 export const EXPERTS = [
-  {id:'expert-azlan',name:'Azlan Ibrahim',portrait:'/assets/pilot-azlan.png',crops:['Rice'],topics:['Pests','Soil','Water'],area:'Kedah',languages:['Bahasa Melayu','English']},
-  {id:'expert-maya',name:'Maya Tan',portrait:'/assets/pilot-maya.png',crops:['Vegetables','Chilli'],topics:['Pests','Disease','Soil'],area:'Perak',languages:['Bahasa Melayu','English','中文']},
-  {id:'expert-daniel',name:'Daniel Lim',portrait:'/assets/pilot-daniel.png',crops:['Durian','Guava'],topics:['Disease','Water','Harvest'],area:'Johor',languages:['English','中文']},
+  {id:'expert-azlan',name:'Azlan Ibrahim',portrait:'/assets/pilot-azlan.png',crops:['Rice'],topics:['Pests','Soil','Water'],area:'Kedah',languages:['Bahasa Melayu','English'],isDemo:true},
+  {id:'expert-maya',name:'Maya Tan',portrait:'/assets/pilot-maya.png',crops:['Vegetables','Chilli'],topics:['Pests','Disease','Soil'],area:'Perak',languages:['Bahasa Melayu','English','中文'],isDemo:true},
+  {id:'expert-daniel',name:'Daniel Lim',portrait:'/assets/pilot-daniel.png',crops:['Durian','Guava'],topics:['Disease','Water','Harvest'],area:'Johor',languages:['English','中文'],isDemo:true},
   {"id":"expert-farid","name":"Farid Hassan","portrait":"/assets/expert-farid.jpg","crops":["Rice"],"topics":["Pests","Water"],"area":"Perak","languages":["Bahasa Melayu","English"],"isDemo":true},
   {"id":"expert-aisyah","name":"Aisyah Rahman","portrait":"/assets/expert-aisyah.jpg","crops":["Rice","Vegetables"],"topics":["Soil","Harvest"],"area":"Kedah","languages":["Bahasa Melayu","English"],"isDemo":true},
   {"id":"expert-weiling","name":"Tan Wei Ling","portrait":"/assets/expert-weiling.jpg","crops":["Vegetables","Chilli"],"topics":["Disease","Water"],"area":"Perak","languages":["English","中文"],"isDemo":true},
@@ -28,13 +28,25 @@ export const EXPERTS = [
   {"id":"expert-kavitha","name":"Kavitha Nair","portrait":"/assets/expert-kavitha.jpg","crops":["Vegetables","Guava"],"topics":["Soil","Harvest"],"area":"Selangor","languages":["English","Bahasa Melayu"],"isDemo":true},
   {"id":"expert-kamal","name":"Kamal Shahrin","portrait":"/assets/expert-kamal.jpg","crops":["Rice","Durian"],"topics":["Disease","Water"],"area":"Johor","languages":["Bahasa Melayu","English"],"isDemo":true},
   {"id":"expert-diana","name":"Diana Chong","portrait":"/assets/expert-diana.jpg","crops":["Durian","Chilli"],"topics":["Soil","Pests"],"area":"Sarawak","languages":["English","中文"],"isDemo":true},
+  {id:'expert-oil-palm',name:'Halim Rahman',portrait:'/assets/expert-faizal.jpg',crops:['Oil palm'],topics:['Pests','Fertilizer'],area:'Pahang',languages:['Bahasa Melayu','English'],isDemo:true},
+  {id:'expert-rubber',name:'Devi Nair',portrait:'/assets/expert-nirmala.jpg',crops:['Rubber'],topics:['Disease','Harvest'],area:'Negeri Sembilan',languages:['Bahasa Melayu','English'],isDemo:true},
+  {id:'expert-coconut',name:'Amira Yusof',portrait:'/assets/expert-salmah.jpg',crops:['Coconut'],topics:['Pests','Water'],area:'Melaka',languages:['Bahasa Melayu','English'],isDemo:true},
+  {id:'expert-banana',name:'Jason Lee',portrait:'/assets/expert-liang.jpg',crops:['Banana'],topics:['Disease','Soil'],area:'Penang',languages:['Bahasa Melayu','English'],isDemo:true},
+  {id:'expert-pineapple',name:'Siti Amina',portrait:'/assets/expert-roshani.jpg',crops:['Pineapple'],topics:['Fertilizer','Harvest'],area:'Terengganu',languages:['Bahasa Melayu','English'],isDemo:true},
+  {id:'expert-cocoa',name:'Idris Salleh',portrait:'/assets/expert-azhar.jpg',crops:['Cocoa'],topics:['Pests','Pruning'],area:'Kelantan',languages:['Bahasa Melayu','English'],isDemo:true},
+  {id:'expert-pepper',name:'Harith Zain',portrait:'/assets/expert-kamal.jpg',crops:['Pepper'],topics:['Disease','Planting'],area:'Perlis',languages:['Bahasa Melayu','English'],isDemo:true},
+  {id:'expert-drone-north',name:'Firdaus Omar',portrait:'/assets/expert-hafiz.jpg',crops:["Rice","Oil palm","Rubber","Coconut","Durian","Banana","Pineapple","Guava","Vegetables","Chilli","Cocoa","Pepper"],topics:['Drone operations'],area:'Northern Malaysia',areas:["Kedah","Penang","Perlis","Perak"],languages:['Bahasa Melayu','English'],isDemo:true},
+  {id:'expert-drone-central',name:'Mei Chen',portrait:'/assets/expert-weiling.jpg',crops:["Rice","Oil palm","Rubber","Coconut","Durian","Banana","Pineapple","Guava","Vegetables","Chilli","Cocoa","Pepper"],topics:['Drone operations'],area:'Central Malaysia',areas:["Selangor","Negeri Sembilan","Melaka"],languages:['Bahasa Melayu','English'],isDemo:true},
+  {id:'expert-drone-east',name:'Ismail Yusof',portrait:'/assets/expert-farid.jpg',crops:["Rice","Oil palm","Rubber","Coconut","Durian","Banana","Pineapple","Guava","Vegetables","Chilli","Cocoa","Pepper"],topics:['Drone operations'],area:'East Coast Malaysia',areas:["Pahang","Kelantan","Terengganu"],languages:['Bahasa Melayu','English'],isDemo:true},
+  {id:'expert-drone-south',name:'Adrian Lim',portrait:'/assets/expert-chong.jpg',crops:["Rice","Oil palm","Rubber","Coconut","Durian","Banana","Pineapple","Guava","Vegetables","Chilli","Cocoa","Pepper"],topics:['Drone operations'],area:'Southern Malaysia',areas:["Johor"],languages:['Bahasa Melayu','English'],isDemo:true},
+  {id:'expert-drone-borneo',name:'Farah Binti Ali',portrait:'/assets/expert-lina.jpg',crops:["Rice","Oil palm","Rubber","Coconut","Durian","Banana","Pineapple","Guava","Vegetables","Chilli","Cocoa","Pepper"],topics:['Drone operations'],area:'East Malaysia',areas:["Sabah","Sarawak"],languages:['Bahasa Melayu','English'],isDemo:true},
 ];
 const MATCH_WEIGHTS = {crop:40,topic:30,area:20,language:10};
 /** @typedef {{crop:string,topic:string,area:string,language:string}} ExpertPreferences */
 /** @param {ExpertPreferences} preferences @returns {{expert:(typeof EXPERTS)[number],score:number,reasons:string[]}[]} */
 export function matchExperts(preferences) {
   return EXPERTS.map((expert) => {
-    const matches = {crop:expert.crops.some((crop)=>crop.toLowerCase() === preferences.crop.trim().toLowerCase()),topic:expert.topics.some((topic)=>topic.toLowerCase() === preferences.topic.trim().toLowerCase()),area:expert.area === preferences.area,language:expert.languages.includes(preferences.language)};
+    const matches = {crop:expert.crops.some((crop)=>crop.toLowerCase() === preferences.crop.trim().toLowerCase()),topic:expert.topics.some((topic)=>topic.toLowerCase() === preferences.topic.trim().toLowerCase()),area:expert.area === preferences.area || expert.areas?.includes(preferences.area) === true,language:expert.languages.includes(preferences.language)};
     const reasons = Object.keys(matches).filter((key) => matches[key]).map((key) => preferences[key]);
     const score = Object.keys(matches).reduce((sum,key) => sum + (matches[key] ? MATCH_WEIGHTS[key] : 0),0);
     return {expert,score,reasons};
