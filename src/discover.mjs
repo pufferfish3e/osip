@@ -6,7 +6,7 @@ import { renderDealSearch, renderShopOffers } from './shop-deals.mjs';
 import { renderPilotMatcher, renderPilotReviews } from './pilot-matcher.mjs';
 import { renderArticleLibrary, renderLearningArticleCard, localizeLearningArticle } from './article-library.mjs';
 import { ARTICLES, COURSES, NEWS, PILOTS, PRODUCTS, isArticleCatalogueLoaded } from './data.mjs';
-import { getFormatLocale, t } from './i18n.mjs';
+import { getFormatLocale, getLocale, t } from './i18n.mjs';
 import { emptyState, escapeHtml as esc, localizeDemoState, icon, pageHeading } from './ui.mjs';
 
 /** @typedef {import('./store.mjs').AppState} AppState */
@@ -81,10 +81,11 @@ const knowledgeList = (_state, isSavedOnly) => renderArticleLibrary(isSavedOnly)
 export function renderPublicationArticle(article, isSaved) {
   article = localizeLearningArticle(article);
   const hasBody = article.sections.length > 0 || Boolean(article.contentPath);
-  const body = article.contentPath ? `<div class="article-full-text" data-article-content="${esc(article.contentPath)}"><p role="status">${esc(t('Loading article…'))}</p></div>` : article.sections.map((section) => `<section><h2>${esc(t(section.title))}</h2><p>${esc(t(section.body))}</p></section>`).join('');
-  return `${backLink('/learn/knowledge', 'Farming knowledge')}<article class="detail-content">${pageHeading(t(article.category), t(article.title), t(article.summary))}
+  const needsTranslation = !article.copies && !article.plantGuideSlug;
+  const body = article.contentPath ? `<div class="article-full-text" data-article-content="${esc(article.contentPath)}"><p role="status">${esc(t('Loading article…'))}</p></div>` : article.sections.map((section) => `<section data-article-section><h2>${esc(t(section.title))}</h2><p>${esc(t(section.body))}</p></section>`).join('');
+  return `${backLink('/learn/knowledge', 'Farming knowledge')}<article class="detail-content" data-article-translate="${needsTranslation}">${pageHeading(t(article.category), t(article.title), t(article.summary))}
     <div class="toolbar"><button class="button button-secondary" data-action="save-article" data-id="${esc(article.id)}" aria-pressed="${isSaved}">${esc(t(isSaved ? 'Saved' : 'Save guide'))}</button>${hasBody ? `<span class="muted">${esc(t('{minutes} min read', {minutes: article.readTime}))}</span>` : ''}</div>
-    ${article.region === 'MY' && article.image ? `<figure class="article-figure">${photo(article.image, '')}<figcaption>${esc(t('Illustrative field image'))}</figcaption></figure>` : ''}${article.contentPath ? `<p class="muted">${esc(t('Original article in English'))}</p>` : ''}${body}<aside class="card card-pad"><p>${esc(article.author)}</p><p class="muted">${esc(article.source)}${article.publishedYear ? ` · ${article.publishedYear}` : ''}</p>
+    ${needsTranslation && getLocale() !== 'en' ? `<div class="toolbar"><button class="button button-secondary" data-translate-article-intro>${esc(t('Translate summary'))}</button><p class="muted" role="status" data-article-translation-status></p></div>` : ''}${article.region === 'MY' && article.image ? `<figure class="article-figure">${photo(article.image, '')}<figcaption>${esc(t('Illustrative field image'))}</figcaption></figure>` : ''}${article.contentPath ? `<p class="muted">${esc(t('Original article in English'))}</p>` : ''}${body}<aside class="card card-pad"><p>${esc(t(article.author))}</p><p class="muted">${esc(article.source)}${article.publishedYear ? ` · ${article.publishedYear}` : ''}</p>
     ${article.malaysiaSourceUrl ? `<p>${sourceReference('Malaysian guidance', article.malaysiaSourceUrl)}</p>` : ''}
     ${!hasBody ? `<p class="muted">${esc(t('The full article is hosted by its publisher; access may require a subscription.'))}</p>` : ''}${article.copyright ? `<p class="muted">${esc(article.copyright)}</p>` : ''}${sourceReference('Read original', article.sourceUrl)}${article.licenseUrl ? `<p>${sourceReference('Creative Commons licence', article.licenseUrl)}</p><p class="muted">${esc(t('Text and figures reproduced with attribution. Formatting adapted for this reader.'))} ${esc(t('Source: Europe PMC and NLM PMC. Imported {date}; later updates may exist.', {date: article.checkedAt}))}</p>` : ''}</aside></article>`;
 }
@@ -101,7 +102,7 @@ const articleDetail = (slug, state) => {
     <div class="toolbar"><span class="muted">${esc(t('{minutes} min read', { minutes: article.readTime }))} · ${esc(t(article.crop))}</span>
       <button class="button button-secondary button-small" type="button" data-action="save-article" data-id="${esc(article.id)}" aria-pressed="${isSaved}">${icon(isSaved ? 'check' : 'bookmark', 18)}${esc(t(isSaved ? 'Saved' : 'Save guide'))}</button></div>
     <div class="detail-hero">${photo(article.image, article.title)}</div>
-    ${article.sections.map((section) => `<section><h2>${esc(t(section.title))}</h2><p>${esc(t(section.body))}</p></section>`).join('')}
+    ${article.sections.map((section) => `<section data-article-section><h2>${esc(t(section.title))}</h2><p>${esc(t(section.body))}</p></section>`).join('')}
     <aside class="notice"><p>${esc(t('Sample guide · Agricultural review pending.'))}</p>
       <p class="muted">${esc(t(article.author))}${article.reviewedAt ? ` · ${esc(t('Reviewed {date}', { date: dateLabel(article.reviewedAt) }))}` : ''}</p>
       ${sourceReference(article.source, article.sourceUrl)}</aside></article>`;

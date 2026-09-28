@@ -104,7 +104,7 @@ export const WORKSPACE_TRANSLATIONS = {
     "Saving photo…": "Menyimpan gambar…",
     "Photo saved on this device.": "Gambar disimpan pada peranti ini.",
     "Choose a JPEG, PNG or WebP photo.": "Pilih gambar JPEG, PNG atau WebP.",
-    "Choose a photo smaller than 15 MB.": "Pilih gambar kurang daripada 15 MB.",
+    "Choose a photo smaller than 15 MB.": "Pilih foto kurang daripada 15 MB.",
     "Choose a smaller photo.": "Pilih gambar yang lebih kecil.",
     "Could not prepare this photo.": "Tidak dapat menyediakan gambar ini.",
     "Could not save this photo.": "Tidak dapat menyimpan gambar ini.",

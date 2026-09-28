@@ -1,4 +1,5 @@
-import { t } from './i18n.mjs';
+import { getLocale, t } from './i18n.mjs';
+import { translateTexts } from './translation.mjs';
 import { escapeHtml as esc } from './ui.mjs';
 
 const ARTICLE_PATH = /^\/content\/articles\/PMC\d+\.json$/;
@@ -46,29 +47,94 @@ export function validateArticleContent(payload) {
 }
 
 /** @param {string} path @param {typeof fetch} fetcher @returns {Promise<ArticleBlock[]>} */
-export async function loadArticleContent(path, fetcher = fetch) {
+export async function loadArticleContent(path, fetcher = fetch, signal) {
   if (!ARTICLE_PATH.test(path)) throw new Error('Invalid article path.');
-  const response = await fetcher(path);
+  const response = await fetcher(path, { signal });
   if (!response.ok) throw new Error(`Article request failed: ${response.status}`);
   return validateArticleContent(await response.json());
 }
 
-/** @param {HTMLElement} root @returns {Promise<void>} */
-export async function initializeArticleReader(root) {
+export async function translateArticleBlocks(blocks, locale, signal, translate = translateTexts) {
+  const copy = structuredClone(blocks), slots = [];
+  const add = (object, key) => { if (typeof object[key] === 'string' && /\p{L}/u.test(object[key])) slots.push([object, key]); };
+  for (const block of copy) {
+    if (block.type === 'equation') continue;
+    for (const key of ['text', 'label', 'caption', 'footnote']) add(block, key);
+    block.items?.forEach((_, index) => add(block.items, index));
+    block.rows?.forEach((row) => row.forEach((cell, index) => typeof cell === 'string' ? add(row, index) : add(cell, 'text')));
+  }
+  const translated = await translate(slots.map(([object, key]) => object[key]), locale, signal);
+  slots.forEach(([object, key], index) => { object[key] = translated[index]; });
+  return copy;
+}
+
+const articleMarkup = (blocks) => {
+  const contents = blocks.map((block, index) => block.type === 'heading' ? `<li><a href="#article-section-${index}">${esc(block.text ?? '')}</a></li>` : '').join('');
+  return `<details class="article-contents"><summary>${esc(t('In this article'))}</summary><ul>${contents}</ul></details>${blocks.map(renderArticleBlock).join('')}`;
+};
+
+// Metadata is small; full research papers translate only when the reader asks.
+export async function initializeArticleTranslation(root, signal) {
+  const article = root.querySelector('[data-article-translate="true"]');
+  const locale = getLocale();
+  if (!article || locale === 'en') return;
+  const nodes = [...article.querySelectorAll('.page-title, .page-description, [data-article-section] h2, [data-article-section] p')];
+  const notice = article.querySelector('[data-article-translation-status]');
+  const button = article.querySelector('[data-translate-article-intro]');
+  const original = nodes.map((node) => node.textContent);
+  let translated = null, showingOriginal = true;
+  const translate = async () => {
+    button.disabled = true; notice.textContent = t('Translating…');
+    try {
+      translated ??= await translateTexts(original, locale, signal);
+      if (signal?.aborted || !article.isConnected || getLocale() !== locale) return;
+      nodes.forEach((node, index) => { node.textContent = translated[index]; node.lang = locale; });
+      showingOriginal = false; button.textContent = t('Show original'); notice.textContent = t('Translated with AI. Check the original for technical details.');
+    } catch (error) { if (!signal?.aborted && article.isConnected) notice.textContent = t('Translation unavailable. Showing the original text.'); }
+    finally { button.disabled = false; }
+  };
+  button.addEventListener('click', () => {
+    if (showingOriginal) void translate();
+    else { nodes.forEach((node, index) => { node.textContent = original[index]; node.lang = 'en'; }); showingOriginal = true; button.textContent = t('Translate summary'); notice.textContent = t('Original article in English'); }
+  });
+  await translate();
+}
+
+/** @param {HTMLElement} root @param {AbortSignal} [signal] @returns {Promise<void>} */
+export async function initializeArticleReader(root, signal) {
   const container = root.querySelector('[data-article-content]');
   if (!container || container.dataset.loading === 'true') return;
   container.dataset.loading = 'true';
   container.setAttribute('aria-busy', 'true');
   try {
-    const blocks = await loadArticleContent(container.dataset.articleContent);
+    const blocks = await loadArticleContent(container.dataset.articleContent, fetch, signal);
     if (!container.isConnected) return;
-    const contents = blocks.map((block, index) => block.type === 'heading' ? `<li><a href="#article-section-${index}">${esc(block.text ?? '')}</a></li>` : '').join('');
-    container.innerHTML = `<details class="article-contents"><summary>${esc(t('In this article'))}</summary><ul>${contents}</ul></details>${blocks.map(renderArticleBlock).join('')}`;
+    const locale = getLocale();
+    container.innerHTML = `${locale !== 'en' ? `<div class="toolbar"><button class="button button-secondary" data-translate-article>${esc(t('Translate article'))}</button><p class="muted" role="status" data-article-body-status>${esc(t('Original article in English'))}</p></div>` : ''}<div data-article-blocks lang="en">${articleMarkup(blocks)}</div>`;
+    const button = container.querySelector('[data-translate-article]');
+    let translated = null, showingOriginal = true;
+    button?.addEventListener('click', async () => {
+      const status = container.querySelector('[data-article-body-status]');
+      const body = container.querySelector('[data-article-blocks]');
+      if (!showingOriginal) {
+        body.innerHTML = articleMarkup(blocks); body.lang = 'en'; showingOriginal = true;
+        button.textContent = t('Translate article'); status.textContent = t('Original article in English'); return;
+      }
+      button.disabled = true; status.textContent = t('Translating…');
+      try {
+        translated ??= await translateArticleBlocks(blocks, locale, signal);
+        if (signal?.aborted || !container.isConnected || getLocale() !== locale) return;
+        body.innerHTML = articleMarkup(translated); body.lang = locale; showingOriginal = false;
+        button.textContent = t('Show original'); status.textContent = t('Translated with AI. Check the original for technical details.');
+      } catch (error) { if (!signal?.aborted && container.isConnected) status.textContent = t('Translation unavailable. Showing the original text.'); }
+      finally { button.disabled = false; }
+    });
   } catch (error) {
+    if (signal?.aborted || !container.isConnected) return;
     console.error('Article could not load.', error);
     container.innerHTML = `<p role="alert">${esc(t('This article could not load. Reconnect and try again.'))}</p><button class="button button-secondary" data-retry-article>${esc(t('Try again'))}</button>`;
     container.querySelector('[data-retry-article]')?.addEventListener('click', () => {
-      void initializeArticleReader(root).catch((retryError) => console.error('Article retry failed.', retryError));
+      void initializeArticleReader(root, signal).catch((retryError) => console.error('Article retry failed.', retryError));
     }, {once: true});
   } finally {
     container.dataset.loading = 'false';
