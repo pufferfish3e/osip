@@ -17,7 +17,7 @@ import { createAppServer } from '../server.mjs';
 const TEST_KEY = 'mock-key-for-unit-tests';
 const IMAGE_BYTES = Buffer.from([255, 216, 255, 224, 0, 0, 0, 0, 0, 0, 255, 217]);
 const IMAGE_URL = `data:image/jpeg;base64,${IMAGE_BYTES.toString('base64')}`;
-const VALID_ANALYSIS = { title: 'Leaf discoloration', summary: 'The leaves show patches of yellow. A photo alone cannot confirm the cause.', isPlant: true, observations: ['Yellow areas on leaves.'], nextSteps: ['Check soil moisture.'], guideSlugs: ['yellow-leaves'] };
+const VALID_ANALYSIS = { title: 'Leaf discoloration', summary: 'The leaves show patches of yellow. A photo alone cannot confirm the cause.', isPlant: true, observations: ['Yellow areas on leaves.'], possibleCauses: ['Water stress may explain patchy yellowing.'], confirmationChecks: ['Check soil moisture below the surface.'], nextSteps: ['Compare affected and healthy plants.'], guideSlugs: ['yellow-leaves'] };
 
 /** @param {unknown} analysis @returns {Response} */
 const providerResponse = (analysis = VALID_ANALYSIS) => Response.json({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(analysis) }] }] });
@@ -241,7 +241,8 @@ test('an unfinished upload times out without a provider request', async () => {
 test('malformed, incomplete and schema-invalid provider outputs are rejected', async () => {
   const invalidAnalyses = [null, { ...VALID_ANALYSIS, extra: 'unrequested' }, { ...VALID_ANALYSIS, guideSlugs: ['made-up-pest'] },
     { ...VALID_ANALYSIS, title: '' }, { ...VALID_ANALYSIS, observations: [42] }, { ...VALID_ANALYSIS, guideSlugs: ['aphids', 'aphids'] },
-    { ...VALID_ANALYSIS, isPlant: false }, { ...VALID_ANALYSIS, observations: Array(5).fill('Too many.') }];
+    { ...VALID_ANALYSIS, isPlant: false }, { ...VALID_ANALYSIS, isPlant: false, guideSlugs: [], possibleCauses: ['Unfounded guess.'] },
+    { ...VALID_ANALYSIS, possibleCauses: Array(3).fill('Too many.') }, { ...VALID_ANALYSIS, observations: Array(5).fill('Too many.') }];
   for (const analysis of invalidAnalyses) {
     assert.equal((await requestAnalysis(makeHandler({ fetchImpl: async () => providerResponse(analysis) }))).status, 502);
   }
@@ -257,7 +258,7 @@ test('a model refusal gives a concise retry message without leaking refusal cont
 });
 
 test('a non-plant photo returns its explanation without inventing related plant guides', async () => {
-  const analysis = { ...VALID_ANALYSIS, title: 'No plant visible', isPlant: false, guideSlugs: [] };
+  const analysis = { ...VALID_ANALYSIS, title: 'No plant visible', isPlant: false, guideSlugs: [], possibleCauses: [], confirmationChecks: [] };
   assert.deepEqual((await requestAnalysis(makeHandler({ fetchImpl: async () => providerResponse(analysis) }))).body, analysis);
 });
 
@@ -319,7 +320,7 @@ test('photo summaries request only an allowlisted language and keep guide IDs ca
   for (const [locale, label] of [['ms','Bahasa Melayu'],['zh-Hans','Simplified Chinese']]) {
     const handler = makeHandler({ fetchImpl: async (_url, options) => {
       const sent = JSON.parse(options.body);
-      assert.ok(sent.instructions.includes(`in ${label}. Keep guideSlugs unchanged.`));
+      assert.ok(sent.instructions.includes(`in ${label}. Every user-visible field`));
       return providerResponse();
     } });
     const response = await requestAnalysis(handler, { body: JSON.stringify({ image: IMAGE_URL, locale }) });
@@ -353,7 +354,7 @@ test('photo recommendations come from a completed search with retrieved citation
   const result = await requestAnalysis(handler);
   assert.equal(result.status, 200);
   assert.deepEqual(result.body.research, research);
-  assert.deepEqual(result.body.nextSteps, []);
+  assert.deepEqual(result.body.nextSteps, VALID_ANALYSIS.nextSteps);
 });
 
 test('photo analysis fails closed when online recommendations have no citations', async () => {
@@ -366,7 +367,7 @@ test('photo analysis fails closed when online recommendations have no citations'
 
 test('production photo analysis accepts only the approved HTTPS origin', async () => {
   const host = 'aurafarming-eight.vercel.app';
-  const handler = makeHandler({ fetchImpl: async () => providerResponse({ ...VALID_ANALYSIS, isPlant: false, guideSlugs: [] }) });
+  const handler = makeHandler({ fetchImpl: async () => providerResponse({ ...VALID_ANALYSIS, isPlant: false, guideSlugs: [], possibleCauses: [], confirmationChecks: [] }) });
   const allowed = await requestAnalysis(handler, { headers: { host, origin: `https://${host}` } });
   assert.equal(allowed.status, 200);
   for (const headers of [

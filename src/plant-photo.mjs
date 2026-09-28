@@ -5,7 +5,7 @@ import { findPlantGuide } from './plant-guides.mjs';
 import { renderPlantAnalysis } from './plant-help.mjs';
 import { escapeHtml as esc, icon } from './ui.mjs';
 
-/** @typedef {{title:string,summary:string,isPlant:boolean,observations:string[],nextSteps:string[],guideSlugs:string[],research?:import('./plant-web.mjs').PlantWebResult,referenceImages?:{url:string,source:string,title:string,credit:string}[]}} PlantAnalysis */
+/** @typedef {{title:string,summary:string,isPlant:boolean,observations:string[],possibleCauses?:string[],confirmationChecks?:string[],nextSteps:string[],guideSlugs:string[],research?:import('./plant-web.mjs').PlantWebResult,referenceImages?:{url:string,source:string,title:string,credit:string}[]}} PlantAnalysis */
 /** @typedef {{status:'idle'|'preparing'|'ready'|'analyzing'|'success'|'error'|'translating',resultLocale:string,image:string,result:PlantAnalysis|null,error:string}} PhotoState */
 const MAX_FILE_BYTES = 15 * 1024 * 1024;
 const MAX_IMAGE_CHARACTERS = Math.ceil(4 * 1024 * 1024 / 3) * 4 + 40;
@@ -61,14 +61,14 @@ const isTextList = (value, limit) => Array.isArray(value) && value.length <= lim
 
 /** @param {unknown} value @returns {PlantAnalysis} */
 export function parsePlantAnalysis(value) {
-  if (!isObject(value) || typeof value.title !== 'string' || !value.title.trim() || value.title.length > 200 || typeof value.summary !== 'string' || !value.summary.trim() || value.summary.length > 3000 || typeof value.isPlant !== 'boolean' || !isTextList(value.observations, 6) || !isTextList(value.nextSteps, 6) || !isTextList(value.guideSlugs, 3) || value.guideSlugs.some((slug) => !findPlantGuide(slug))) throw new Error('The photo summary was incomplete. Please try again.');
+  if (!isObject(value) || typeof value.title !== 'string' || !value.title.trim() || value.title.length > 200 || typeof value.summary !== 'string' || !value.summary.trim() || value.summary.length > 3000 || typeof value.isPlant !== 'boolean' || !isTextList(value.observations, 6) || (value.possibleCauses !== undefined && !isTextList(value.possibleCauses, 2)) || (value.confirmationChecks !== undefined && !isTextList(value.confirmationChecks, 3)) || !isTextList(value.nextSteps, 6) || !isTextList(value.guideSlugs, 3) || value.guideSlugs.some((slug) => !findPlantGuide(slug)) || (!value.isPlant && (value.possibleCauses?.length || value.confirmationChecks?.length))) throw new Error('The photo summary was incomplete. Please try again.');
   const references = value.referenceImages;
   if (references !== undefined && (!Array.isArray(references) || references.length > 3 || references.some((item) => {
     if (!isObject(item) || typeof item.title !== 'string' || item.title.length > 180 || typeof item.credit !== 'string' || item.credit.length > 180) return true;
     try { return new URL(item.url).hostname !== 'upload.wikimedia.org' || new URL(item.url).protocol !== 'https:' || new URL(item.source).hostname !== 'commons.wikimedia.org' || new URL(item.source).protocol !== 'https:'; }
     catch { return true; }
   }))) throw new Error('The photo references could not be read.');
-  return { title: value.title, summary: value.summary, isPlant: value.isPlant, observations: value.observations, nextSteps: value.nextSteps, guideSlugs: value.isPlant ? [...new Set(value.guideSlugs)] : [], ...(value.research ? { research: validateWebResult(value.research) } : {}), ...(value.isPlant && references ? { referenceImages: references } : {}) };
+  return { title: value.title, summary: value.summary, isPlant: value.isPlant, observations: value.observations, ...(value.possibleCauses ? { possibleCauses: value.possibleCauses } : {}), ...(value.confirmationChecks ? { confirmationChecks: value.confirmationChecks } : {}), nextSteps: value.nextSteps, guideSlugs: value.isPlant ? [...new Set(value.guideSlugs)] : [], ...(value.isPlant && value.research ? { research: validateWebResult(value.research) } : {}), ...(value.isPlant && references ? { referenceImages: references } : {}) };
 }
 
 /** @param {string} image @param {AbortSignal} signal @param {typeof fetch} fetcher @returns {Promise<PlantAnalysis>} */

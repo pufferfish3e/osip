@@ -21,7 +21,7 @@ const BODY_TIMEOUT_MS = 15_000;
 const RATE_WINDOW_MS = 60_000;
 const MAX_REQUESTS_PER_WINDOW = 6;
 const MAX_CONCURRENT_REQUESTS = 2;
-const MAX_OUTPUT_TOKENS = 900;
+const MAX_OUTPUT_TOKENS = 1250;
 const MAX_TITLE_LENGTH = 100;
 const MAX_SUMMARY_LENGTH = 800;
 const MAX_ITEM_LENGTH = 300;
@@ -32,13 +32,15 @@ const MAX_PORT = 65535;
 const PRIVATE_IPV4_RANGES = [[10, 0, 255], [172, 16, 31], [192, 168, 168]];
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 const GUIDE_SLUGS = PLANT_GUIDES.map((guide) => guide.slug);
-const ANALYSIS_KEYS = ['title', 'summary', 'isPlant', 'observations', 'nextSteps', 'guideSlugs'];
+const ANALYSIS_KEYS = ['title', 'summary', 'isPlant', 'observations', 'possibleCauses', 'confirmationChecks', 'nextSteps', 'guideSlugs'];
 const STATUS = { ok: 200, invalid: 400, forbidden: 403, method: 405, tooLarge: 413, unsupported: 415, refused: 422, rate: 429, upstream: 502, unavailable: 503, timeout: 504 };
 const ANALYSIS_SCHEMA = {
   type: 'object', additionalProperties: false, required: ANALYSIS_KEYS,
   properties: {
     title: { type: 'string' }, summary: { type: 'string' }, isPlant: { type: 'boolean' },
     observations: { type: 'array', items: { type: 'string' }, maxItems: MAX_LIST_ITEMS },
+    possibleCauses: { type: 'array', items: { type: 'string' }, maxItems: 2 },
+    confirmationChecks: { type: 'array', items: { type: 'string' }, maxItems: 3 },
     nextSteps: { type: 'array', items: { type: 'string' }, maxItems: MAX_LIST_ITEMS },
     guideSlugs: { type: 'array', items: { type: 'string', enum: GUIDE_SLUGS }, maxItems: MAX_GUIDE_ITEMS },
   },
@@ -51,12 +53,14 @@ const ANALYSIS_INSTRUCTIONS = [
   'Write for a farmer reading a compact mobile result: warm, direct and practical, without greetings, hype or repeated information.',
   'Structure the JSON for these UI components: title is a short descriptive headline (aim for 3–7 words); summary is one plain-language sentence connecting visible evidence with what remains uncertain (at most 18 words). Use similarly concise phrasing in Chinese.',
   'observations render as non-interactive pills: return up to four distinct, concrete visible features, each a short phrase (aim for 2–6 words), such as yellow leaf edges. Do not put speculative diagnoses, severity ratings or confidence percentages in these pills.',
+  'possibleCauses: give at most two plausible causes with one visible clue for each. Phrase them as possibilities, not diagnoses. If the photo lacks a useful clue, return an empty array; never infer an organism or cause from a generic symptom alone.',
+  'confirmationChecks: give up to two concrete field observations that could distinguish those possibilities, such as checking leaf undersides for living insects or examining several plants. Do not repeat observations already visible in the photo. If no plant or crop-related pest is visible, return empty possibleCauses and confirmationChecks.',
   'nextSteps render as numbered action cards: return up to three useful low-risk actions, ordered by what to check first. Start each with a verb, include what to inspect or record, and keep each to one short sentence. Do not repeat the observations or invent tasks merely to fill the layout.',
   'Return plain text inside the JSON fields, without HTML, Markdown, emoji, bullet characters, numbering or uppercase labels. The app supplies icons, pills, headings and step numbers.',
-  'The title must be at most 100 characters; summary at most 800; each list item at most 300.',
+  'The title must be at most 100 characters; summary at most 800; each list item at most 300. Keep possibleCauses and confirmationChecks distinct from nextSteps.',
   'Set isPlant true for a plant, crop material or a visible organism clearly relevant to a crop problem, including an agricultural pest photographed on its own; ordinary non-agricultural images are false. Do not claim species certainty.',
   'When isPlant is false, explain briefly and return no guideSlugs.',
-  'For an unclear image, say what cannot be assessed and suggest a clearer close-up; do not invent symptoms.',
+  'For an unclear image, say what cannot be assessed and suggest a clearer close-up; do not invent symptoms or possible causes.',
   'Select at most three genuinely relevant guideSlugs from the supplied catalog, or none when no guide is relevant. Guides are related reading, not a diagnosis.',
   `Guide catalog: ${JSON.stringify(PLANT_GUIDES.map(({ slug, title, summary }) => ({ slug, title, summary })))}`,
 ].join('\n');
@@ -87,10 +91,11 @@ const validateAnalysis = (value) => {
     && ANALYSIS_KEYS.every((key) => Object.hasOwn(value, key))
     && isText(value.title, MAX_TITLE_LENGTH) && isText(value.summary, MAX_SUMMARY_LENGTH)
     && typeof value.isPlant === 'boolean' && isTextList(value.observations, MAX_LIST_ITEMS)
+    && isTextList(value.possibleCauses, 2) && isTextList(value.confirmationChecks, 3)
     && isTextList(value.nextSteps, MAX_LIST_ITEMS) && isTextList(value.guideSlugs, MAX_GUIDE_ITEMS)
     && value.guideSlugs.every((slug) => GUIDE_SLUGS.includes(slug))
     && new Set(value.guideSlugs).size === value.guideSlugs.length
-    && (value.isPlant || value.guideSlugs.length === 0);
+    && (value.isPlant || (value.guideSlugs.length === 0 && value.possibleCauses.length === 0 && value.confirmationChecks.length === 0));
   if (!isValid) throw new PlantAnalysisError(STATUS.upstream, 'invalid_analysis', 'The photo summary was incomplete. Please try again.');
   return /** @type {PlantAnalysis} */ (value);
 };
@@ -201,7 +206,7 @@ const readJsonBody = (request, timeoutMs) => new Promise((resolveBody, rejectBod
 
 /** @param {string} image @param {string} model @param {string} locale @returns {Record<string,unknown>} */
 const openAiPayload = (image, model, locale) => ({
-  model, store: false, instructions: `${ANALYSIS_INSTRUCTIONS}\nWrite title, summary, observations and nextSteps in ${ANALYSIS_LANGUAGES[locale]}. Every user-visible field must use this requested language, including non-plant and unclear-photo responses. Do not default to English because the examples or guide catalog are English. Keep guideSlugs unchanged.`, max_output_tokens: MAX_OUTPUT_TOKENS,
+  model, store: false, instructions: `${ANALYSIS_INSTRUCTIONS}\nWrite title, summary, observations, possibleCauses, confirmationChecks and nextSteps in ${ANALYSIS_LANGUAGES[locale]}. Every user-visible field must use this requested language, including non-plant and unclear-photo responses. Do not default to English because the examples or guide catalog are English. Keep guideSlugs unchanged.`, max_output_tokens: MAX_OUTPUT_TOKENS,
   input: [{ role: 'user', content: [{ type: 'input_text', text: 'Summarize the plant, crop material or crop-related organism visible in this photo and suggest relevant guides.' }, { type: 'input_image', image_url: image, detail: 'auto' }] }],
   text: { format: { type: 'json_schema', name: 'plant_photo_summary', strict: true, schema: ANALYSIS_SCHEMA } },
 });
@@ -309,7 +314,6 @@ export function createPlantAnalysisHandler(options = {}) {
       const analysis = await analyzePhoto(image, settings, cancellation.signal, locale);
       if (analysis.isPlant) {
         analysis.research = await requestSearch({ query: `${analysis.title}: ${analysis.observations.join('; ')}`.slice(0, 160), locale }, settings, cancellation.signal);
-        analysis.nextSteps = [];
         const referenceImages = options.fetchImpl ? [] : await findPlantReferenceImages(analysis.guideSlugs[0], fetch, cancellation.signal);
         if (referenceImages.length) analysis.referenceImages = referenceImages;
       }

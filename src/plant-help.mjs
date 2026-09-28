@@ -1,4 +1,4 @@
-import { renderPlantWebResult } from './plant-web.mjs';
+import { renderPlantWebResult, validateWebResult } from './plant-web.mjs';
 import { getLocale, t } from './i18n.mjs';
 import { localizePlantGuide, findPlantGuide, searchPlantGuides } from './plant-guides.mjs';
 import { emptyState, escapeHtml as esc, icon, pageHeading } from './ui.mjs';
@@ -40,22 +40,28 @@ export function renderPlantHelp(path, query = '', category = 'all') {
 /** @param {import('./plant-photo.mjs').PlantAnalysis} result @returns {string} */
 export function renderPlantAnalysis(result) {
   const guides = result.isPlant ? result.guideSlugs.map(findPlantGuide).filter(Boolean) : [];
-  // Each researched paragraph carries its own retrieved citation. Keep its link beside the action.
-  const researchedSteps = result.research ? [...result.research.text.matchAll(/[^\n]+(?:\n(?!\n)[^\n]+)*/g)].map((match) => {
+  // Retain the photo checks; each separate web recommendation shows its own retrieved sources.
+  const research = result.isPlant && result.research ? validateWebResult(result.research) : null;
+  const researchedSteps = research ? [...research.text.matchAll(/[^\n]+(?:\n(?!\n)[^\n]+)*/g)].map((match) => {
     const start = match.index;
-    const citation = result.research.citations.find((source) => source.start >= start && source.end <= start + match[0].length);
-    if (!citation) return null;
-    return { text: `${result.research.text.slice(start, citation.start)}${result.research.text.slice(citation.end, start + match[0].length)}`.trim(), source: citation };
+    const sources = research.citations.filter((source) => source.start >= start && source.end <= start + match[0].length);
+    if (!sources.length) return null;
+    let text = match[0];
+    for (const source of [...sources].reverse()) text = `${text.slice(0, source.start - start)}${text.slice(source.end - start)}`;
+    return { text: text.trim(), sources };
   }).filter(Boolean).slice(0, 3) : [];
-  const steps = result.research ? researchedSteps : result.nextSteps.map((text) => ({ text }));
   const referenceImages = result.isPlant ? (result.referenceImages ?? []) : [];
   return `<section class="plant-analysis" aria-labelledby="plant-summary-title">
     <header class="plant-summary-card card"><div class="plant-summary-label">${icon('leaf', 20)}<span>${esc(t('Photo summary'))}</span></div><h2 id="plant-summary-title" tabindex="-1">${esc(result.title)}</h2><p class="plant-summary-copy">${esc(result.summary)}</p>
       ${result.observations.length ? `<div class="plant-observation-group"><h3>${esc(t('What’s visible'))}</h3><ul class="plant-observations" role="list">${result.observations.map((item) => `<li>${esc(item)}</li>`).join('')}</ul></div>` : ''}
+      ${result.isPlant && result.possibleCauses?.length ? `<div class="plant-evidence-group"><h3>${esc(t('Possible causes'))}</h3><ul>${result.possibleCauses.map((item) => `<li>${esc(item)}</li>`).join('')}</ul></div>` : ''}
+      ${result.isPlant && result.confirmationChecks?.length ? `<div class="plant-evidence-group"><h3>${esc(t('What to check to confirm'))}</h3><ul>${result.confirmationChecks.map((item) => `<li>${esc(item)}</li>`).join('')}</ul></div>` : ''}
+      ${result.isPlant ? `<p class="plant-evidence-note">${esc(t('Possible causes are based on the photo. The linked sources support field guidance, not a confirmed diagnosis.'))}</p>` : ''}
     </header>
     ${referenceImages.length ? `<section class="plant-references" aria-labelledby="plant-references-title"><h3 id="plant-references-title">${esc(t('Photos to compare'))}</h3><p class="muted">${esc(t('Examples, not a diagnosis of your photo.'))}</p><div class="plant-reference-strip" role="list">${referenceImages.map((item) => `<a class="plant-reference-card" role="listitem" href="${esc(item.source)}" target="_blank" rel="noopener noreferrer"><img src="${esc(item.url)}" alt="${esc(item.title)}" loading="lazy" referrerpolicy="no-referrer"><span><strong>${esc(item.title)}</strong><small>${esc(item.credit)} · Wikimedia Commons ${icon('arrow-up-right', 14)}</small></span></a>`).join('')}</div></section>` : ''}
-    ${steps.length ? `<section class="plant-next-steps" aria-labelledby="plant-steps-title"><h3 id="plant-steps-title">${esc(t('Next steps'))}</h3><ol class="plant-action-cards" role="list">${steps.map((item, index) => `<li><span class="plant-step-number" aria-hidden="true">${index + 1}</span><div><p>${esc(item.text)}</p>${item.source ? `<a href="${esc(item.source.url)}" target="_blank" rel="noopener noreferrer">${esc(t('Read article'))} ${icon('arrow-up-right', 16)}</a>` : ''}</div></li>`).join('')}</ol></section>` : ''}
-    ${result.research ? `<details class="plant-research-sources"><summary>${esc(t('Research sources'))}</summary>${renderPlantWebResult(result.research)}</details>` : ''}
+    ${result.nextSteps.length ? `<section class="plant-next-steps" aria-labelledby="plant-steps-title"><h3 id="plant-steps-title">${esc(t('Next steps'))}</h3><ol class="plant-action-cards" role="list">${result.nextSteps.map((item, index) => `<li><span class="plant-step-number" aria-hidden="true">${index + 1}</span><div><p>${esc(item)}</p></div></li>`).join('')}</ol></section>` : ''}
+    ${researchedSteps.length ? `<section class="plant-next-steps plant-published-guidance" aria-labelledby="plant-guidance-title"><h3 id="plant-guidance-title">${esc(t('Advice from published sources'))}</h3><p class="muted">${esc(t('Check whether each source applies to your crop and region.'))}</p><ul class="plant-action-cards" role="list">${researchedSteps.map((item) => `<li><div><p>${esc(item.text)}</p><div class="plant-source-links">${item.sources.map((source) => `<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(t('Read source: {title}', { title: source.title }))}"><span>${esc(source.title)}</span><small>${esc(new URL(source.url).hostname)}</small>${icon('arrow-up-right', 16)}</a>`).join('')}</div></div></li>`).join('')}</ul></section>` : ''}
+    ${research ? `<details class="plant-research-sources"><summary>${esc(t('All research sources'))}</summary>${renderPlantWebResult(research)}</details>` : ''}
     <p class="plant-analysis-note">${icon('info-circle', 18)}<span>${esc(t('AI-generated observations, not a confirmed diagnosis.'))}</span></p>
     ${guides.length ? `<div class="section-heading"><h2>${esc(t('Guides to compare'))}</h2></div><div class="plant-guide-list card">${guides.map(guideCard).join('')}</div>` : `<p class="muted">${esc(t(result.isPlant ? 'No close guide match. Search the symptoms you can see.' : 'Try a clear photo of a plant, leaf or pest.'))}</p>`}
     <a class="button button-secondary" href="/plant-help">${icon('search', 19)} ${esc(t('Search all problems'))}</a>

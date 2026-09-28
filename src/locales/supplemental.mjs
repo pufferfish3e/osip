@@ -1,6 +1,13 @@
 // Authored interface copy. User records and source attribution stay unchanged.
 export const SUPPLEMENTAL_TRANSLATIONS = {
   "ms": {
+    "Possible causes": "Punca yang mungkin",
+    "What to check to confirm": "Perkara yang perlu diperiksa untuk mengesahkan",
+    "Possible causes are based on the photo. The linked sources support field guidance, not a confirmed diagnosis.": "Punca yang mungkin berdasarkan foto. Sumber terpaut menyokong panduan lapangan, bukan diagnosis yang disahkan.",
+    "Advice from published sources": "Panduan daripada sumber yang diterbitkan",
+    "Check whether each source applies to your crop and region.": "Semak sama ada setiap sumber sesuai untuk tanaman dan kawasan anda.",
+    "Read source: {title}": "Baca sumber: {title}",
+    "All research sources": "Semua sumber kajian",
     "Similar": "Serupa",
     "Used": "Terpakai",
     "Add your land first": "Tambah tanah anda dahulu",
@@ -73,6 +80,13 @@ export const SUPPLEMENTAL_TRANSLATIONS = {
     "Spray mixture and product quantities from your land area.": "Campuran semburan dan kuantiti produk berdasarkan keluasan tanah anda."
   },
   "zh-Hans": {
+    "Possible causes": "可能的原因",
+    "What to check to confirm": "需要检查什么来确认",
+    "Possible causes are based on the photo. The linked sources support field guidance, not a confirmed diagnosis.": "可能的原因根据照片推测。所附来源支持田间指导，并不代表已确诊。",
+    "Advice from published sources": "已发表来源的建议",
+    "Check whether each source applies to your crop and region.": "请核对每个来源是否适用于您的作物和地区。",
+    "Read source: {title}": "阅读来源：{title}",
+    "All research sources": "所有研究来源",
     "Similar": "相似",
     "Used": "二手",
     "Add your land first": "请先添加土地",

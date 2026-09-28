@@ -431,6 +431,11 @@ summary {cursor:pointer;min-height:44px;}
 .plant-observation-group h3,.plant-next-steps h3 { font-size:16px; font-weight:600; }
 .plant-observations { display:flex; flex-wrap:wrap; gap:8px; list-style:none; padding:0; margin:0; }
 .plant-observations li { max-width:100%; padding:9px 13px; border-radius:20px; background:#e5eedf; color:#35502d; font-size:14px; line-height:1.4; overflow-wrap:anywhere; }
+.plant-evidence-group { display:grid; gap:8px; border-top:1px solid var(--line); padding-top:14px; }
+.plant-evidence-group h3 { font-size:16px; font-weight:600; }
+.plant-evidence-group ul { display:grid; gap:8px; padding:0 0 0 18px; margin:0; list-style:disc; }
+.plant-evidence-group li { font-size:15px; line-height:1.5; overflow-wrap:anywhere; }
+.plant-evidence-note { color:var(--muted); font-size:13px; line-height:1.5; }
 .plant-next-steps { display:grid; gap:12px; }
 .plant-action-cards { display:grid; gap:10px; padding:0; margin:0; list-style:none; }
 .plant-action-cards li { display:flex; align-items:flex-start; gap:14px; padding:18px; border-radius:20px; background:rgba(255,255,255,.78); }
@@ -449,6 +454,12 @@ summary {cursor:pointer;min-height:44px;}
 .plant-action-cards li { background:#fff; box-shadow:0 5px 20px #17251f0d; }
 .plant-action-cards li>div { min-width:0; }
 .plant-action-cards li a { display:inline-flex; align-items:center; gap:5px; margin-top:12px; color:var(--blue); font-weight:600; text-decoration:none; min-height:36px; }
+.plant-published-guidance>.muted { margin:-6px 0 0; font-size:14px; }
+.plant-source-links { display:grid; gap:4px; margin-top:8px; }
+.plant-source-links a { display:flex; flex-wrap:wrap; gap:4px 8px; width:fit-content; max-width:100%; margin:0; padding:7px 0; min-height:44px; text-decoration:underline; text-underline-offset:3px; }
+.plant-source-links span { overflow-wrap:anywhere; }
+.plant-source-links small { color:var(--muted); font-size:12px; font-weight:400; overflow-wrap:anywhere; }
+.plant-source-links svg { flex:none; }
 .plant-reference-strip { display:flex; gap:12px; overflow-x:auto; overscroll-behavior-inline:contain; scroll-snap-type:x mandatory; padding:3px 4px 12px; scrollbar-width:thin; }
 .plant-reference-card { flex:0 0 min(74vw,245px); scroll-snap-align:start; overflow:hidden; border-radius:23px; background:#fff; color:var(--ink); text-decoration:none; box-shadow:0 5px 20px #17251f14; }
 .plant-reference-card img { width:100%; height:175px; display:block; object-fit:cover; background:#dce7d7; }

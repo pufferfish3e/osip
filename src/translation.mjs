@@ -45,7 +45,7 @@ export async function translateAnalysis(result, locale, signal, translate = tran
   const copy = structuredClone(result), slots = [];
   const add = (object, key) => { if (typeof object[key] === 'string') slots.push([object, key]); };
   add(copy, 'title'); add(copy, 'summary');
-  for (const key of ['observations', 'nextSteps']) copy[key].forEach((_, index) => add(copy[key], index));
+  for (const key of ['observations', 'possibleCauses', 'confirmationChecks', 'nextSteps']) copy[key]?.forEach((_, index) => add(copy[key], index));
   for (const image of copy.referenceImages ?? []) add(image, 'title');
   const segments = [];
   if (copy.research) {
