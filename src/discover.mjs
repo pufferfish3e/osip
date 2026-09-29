@@ -125,7 +125,7 @@ const courseDetail = (id) => {
     <aside class="card card-pad form-stack"><span class="badge badge-blue">${esc(t('Sample course'))} · ${esc(t(course.format))}</span><h2>${esc(t('Free'))}</h2>
       <div class="list"><div class="list-row">${icon('calendar')}<span>${esc(dateLabel(course.date))} · ${esc(course.time)}</span></div>
       <div class="list-row">${icon('clock')}<span>${esc(t(course.duration))}</span></div><div class="list-row">${icon('map-pin')}<span>${esc(t(course.location))}</span></div></div>
-      <p>${esc(t('With {name}', { name: t(course.instructor) }))}</p><p class="muted">${esc(t('{count} places · Illustrative availability', { count: course.seats }))}</p>
+      <section class="course-instructor" aria-label="${esc(t('Instructor'))}"><div class="course-instructor-heading">${course.instructorPortrait ? `<img src="${esc(course.instructorPortrait)}" alt="${esc(course.instructor)}" width="56" height="56" loading="lazy">` : `<span class="course-instructor-avatar" aria-hidden="true">${icon('user')}</span>`}<div><span class="muted">${esc(t('Instructor'))}</span><h3>${esc(t(course.instructor))}</h3></div></div><p>${esc(t(course.instructorBackground ?? 'The Aura editorial team creates practical learning guides on crop care, field records, and everyday farming decisions.'))}</p></section><p class="muted">${esc(t('{count} places · Illustrative availability', { count: course.seats }))}</p>
       <a class="button" href="/learn/courses/${esc(course.id)}/book">${esc(t('Book this course'))}${icon('arrow-up-right', 18)}</a>
     </aside></div>`;
 };
@@ -143,6 +143,7 @@ const courseBooking = (id) => {
       <p class="muted">${esc(dateLabel(course.date))} · ${esc(course.time)}<br>${esc(t(course.location))}</p>
       <label class="field">${esc(t('Notes for the instructor'))}<textarea class="input" name="notes" rows="3" maxlength="1000" placeholder="${esc(t('Experience, access needs, or something you want to learn'))}"></textarea></label>
       <div class="toolbar"><span>${esc(t('Course fee'))}</span><strong>${esc(t('Free'))}</strong></div>
+      <p class="form-error" data-booking-error role="alert" tabindex="-1" hidden></p>
       <button class="button" type="submit">${esc(t('Save booking request'))}${icon('arrow-up-right', 18)}</button>
     </form></dialog>`;
 };
@@ -200,9 +201,9 @@ const pilotBooking = (id, state) => {
       ${hiddenInput('providerId', pilot.id)}${hiddenInput('type', 'pilot')}${hiddenInput('title', `Drone service with ${pilot.name}`)}${hiddenInput('price', pilot.rate)}
       <label class="field">${esc(t('Your land'))}<select class="input" name="farmId" required>${farms}</select></label>
       <fieldset class="booking-services" data-booking-services><legend>${esc(t('Services'))}</legend>${pilot.services.map((service) => `<label class="booking-service-option"><input type="checkbox" name="service" value="${esc(service)}"><span>${esc(t(service))}</span></label>`).join('')}</fieldset>
-      <div class="form-grid"><section class="field" data-booking-date><span>${esc(t('Preferred date'))}</span><input type="hidden" name="date" value="${today()}"><div data-booking-calendar>${renderCalendar(today(),today().slice(0,7),true,[],false,today(),pilotBookingDateRange().maximumDate)}</div><p class="muted booking-date-note">${esc(t('Existing bookings beyond the seven-day window may incur a late fee of RM 30 per day.'))}</p></section><label class="field">${esc(t('Preferred time'))}<input class="input" type="time" name="time" value="09:00" required></label></div>
+      <div class="form-grid"><section class="field" data-booking-date><span>${esc(t('Preferred date'))}</span><input type="hidden" name="date" value="${pilotBookingDateRange().minimumDate}"><div data-booking-calendar>${renderCalendar(pilotBookingDateRange().minimumDate,pilotBookingDateRange().minimumDate.slice(0,7),true,[],false,pilotBookingDateRange().minimumDate,pilotBookingDateRange().maximumDate)}</div><p class="muted booking-date-note">${esc(t('Existing bookings beyond the seven-day window may incur a late fee of RM 30 per day.'))}</p></section><label class="field">${esc(t('Preferred time'))}<input class="input" type="time" name="time" value="09:00" required></label></div>
       <label class="field">${esc(t('Job details'))}<textarea class="input" name="notes" rows="3" maxlength="1000" placeholder="${esc(t('Plot size, crop, access and anything the pilot should know'))}" required></textarea></label>
-      <div class="task-sheet-actions"><button class="button button-secondary" type="button" data-booking-back>${esc(t('Back'))}</button><button class="button" type="button" data-booking-next>${esc(t('Continue'))}</button><button class="button" type="submit">${esc(t('Save request'))}${icon('arrow-up-right', 18)}</button></div></form></dialog>`;
+      <p class="form-error" data-booking-error role="alert" tabindex="-1" hidden></p><div class="task-sheet-actions"><button class="button button-secondary" type="button" data-booking-back>${esc(t('Back'))}</button><button class="button" type="button" data-booking-next>${esc(t('Continue'))}</button><button class="button" type="submit">${esc(t('Save request'))}${icon('arrow-up-right', 18)}</button></div></form></dialog>`;
 };
 
 /** @param {Product} product @returns {string} */

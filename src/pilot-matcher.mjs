@@ -20,6 +20,13 @@ export function demoPilotMatch(preferences, previous = '', random = Math.random)
   return selected ? { ...selected, score:DEMO_SCORE_MIN + Math.floor(random() * DEMO_SCORE_RANGE), isDemoScore:true } : undefined;
 }
 
+/** @param {string[]} selected @param {string} value @param {string} [exclusive] @returns {string[]} */
+export function togglePilotPreference(selected, value, exclusive = '') {
+  if (selected.includes(value)) return selected.filter((item) => item !== value);
+  if (value === exclusive) return [value];
+  return [...selected.filter((item) => item !== exclusive), value];
+}
+
 /** @param {HTMLDialogElement} dialog @param {ReturnType<typeof demoPilotMatch>} match @param {()=>Promise<void>} wait @returns {Promise<void>} */
 export async function revealPilotMatch(dialog, match, wait = () => new Promise((resolve) => setTimeout(resolve, MATCH_DELAY_MS))) {
   let motion;
@@ -35,14 +42,19 @@ export async function revealPilotMatch(dialog, match, wait = () => new Promise((
     motion?.kill();
   }
 }
-/** @typedef {{service:string,area:string,date:string,budget:number}} Preferences */
+/** @typedef {{service:string|string[],area:string|string[],date:string|string[],budget:number|number[]}} Preferences */
 /** @param {Preferences} preferences @returns {Array<{pilot:(typeof PILOTS)[number],score:number,dateMatches:boolean,budgetMatches:boolean}>} */
 export function matchPilots(preferences) {
-  return PILOTS.filter((pilot) => pilot.services.includes(preferences.service) && pilot.serviceArea.split(' & ').includes(preferences.area)).map((pilot) => {
-    const dateMatches = !preferences.date || pilot.available <= preferences.date;
-    const budgetMatches = !preferences.budget || pilot.rate <= preferences.budget;
-    const possible = MATCH_WEIGHTS.service + MATCH_WEIGHTS.area + (preferences.date ? MATCH_WEIGHTS.date : 0) + (preferences.budget ? MATCH_WEIGHTS.budget : 0);
-    const earned = MATCH_WEIGHTS.service + MATCH_WEIGHTS.area + (preferences.date && dateMatches ? MATCH_WEIGHTS.date : 0) + (preferences.budget && budgetMatches ? MATCH_WEIGHTS.budget : 0);
+  const services = [].concat(preferences.service).filter(Boolean);
+  const areas = [].concat(preferences.area).filter(Boolean);
+  const dates = [].concat(preferences.date).filter(Boolean);
+  const budgets = [].concat(preferences.budget);
+  const budget = budgets.includes(0) ? 0 : Math.max(0, ...budgets);
+  return PILOTS.filter((pilot) => services.length && areas.length && services.every((service) => pilot.services.includes(service)) && areas.some((area) => pilot.serviceArea.split(' & ').includes(area))).map((pilot) => {
+    const dateMatches = !dates.length || dates.some((date) => pilot.available <= date);
+    const budgetMatches = !budget || pilot.rate <= budget;
+    const possible = MATCH_WEIGHTS.service + MATCH_WEIGHTS.area + (dates.length ? MATCH_WEIGHTS.date : 0) + (budget ? MATCH_WEIGHTS.budget : 0);
+    const earned = MATCH_WEIGHTS.service + MATCH_WEIGHTS.area + (dates.length && dateMatches ? MATCH_WEIGHTS.date : 0) + (budget && budgetMatches ? MATCH_WEIGHTS.budget : 0);
     return { pilot, score: Math.round(earned / possible * 100), dateMatches, budgetMatches };
   }).sort((a, b) => b.score - a.score || a.pilot.rate - b.pilot.rate || a.pilot.id.localeCompare(b.pilot.id));
 }
@@ -72,25 +84,27 @@ export function renderPilotMatch(match) {
 export function initializePilotDatePicker(wizard, input, today = calendarDate(new Date())) {
   const picker = wizard.querySelector('[data-pilot-date-picker]');
   const flexible = wizard.querySelector('[data-pilot-flexible]');
-  const { maximumDate } = pilotBookingDateRange(new Date(`${today}T12:00:00`));
-  let month = (input.value || today).slice(0, 7);
+  const { minimumDate, maximumDate } = pilotBookingDateRange(new Date(`${today}T12:00:00`));
+  let selectedDates = input.value.split(',').filter(Boolean);
+  let month = (selectedDates[0] || today).slice(0, 7);
   let isExpanded = true;
   const draw = () => {
-    picker.innerHTML = renderCalendar(input.value, month, isExpanded, [], true, today, maximumDate);
-    picker.querySelectorAll('[data-calendar-date]').forEach((button) => { button.disabled = (button.dataset.calendarDate < today || button.dataset.calendarDate > maximumDate); });
+    picker.innerHTML = renderCalendar(selectedDates[0] || '', month, isExpanded, [], true, minimumDate, maximumDate);
+    picker.querySelectorAll('[data-calendar-date]').forEach((button) => { button.disabled = (button.dataset.calendarDate < minimumDate || button.dataset.calendarDate > maximumDate); button.setAttribute('aria-pressed', String(selectedDates.includes(button.dataset.calendarDate))); });
     flexible.setAttribute('aria-pressed', String(!input.value));
   };
   picker.addEventListener('click', (event) => {
     const button = event.target.closest('button');
     if (!button || button.disabled) return;
-    if (button.dataset.calendarDate && (button.dataset.calendarDate < today || button.dataset.calendarDate > maximumDate)) return;
-    const next = nextCalendarView({ selected:input.value, month, isExpanded }, { ...button.dataset, shouldToggle:button.hasAttribute('data-calendar-expand') }, today);
-    input.value = next.selected; month = next.month; isExpanded = next.isExpanded;
+    if (button.dataset.calendarDate && (button.dataset.calendarDate < minimumDate || button.dataset.calendarDate > maximumDate)) return;
+    const next = nextCalendarView({ selected:selectedDates[0] || '', month, isExpanded }, { ...button.dataset, shouldToggle:button.hasAttribute('data-calendar-expand') }, today);
+    if (button.dataset.calendarDate) selectedDates = togglePilotPreference(selectedDates, button.dataset.calendarDate);
+    input.value = selectedDates.join(','); month = next.month; isExpanded = next.isExpanded;
     draw();
     const selector = button.hasAttribute('data-calendar-expand') ? '[data-calendar-expand]' : button.dataset.calendarDate ? `[data-calendar-date="${button.dataset.calendarDate}"]` : `[data-calendar-move="${button.dataset.calendarMove}"]`;
     picker.querySelector(selector)?.focus({ preventScroll:true });
   });
-  flexible.addEventListener('click', () => { input.value = ''; draw(); });
+  flexible.addEventListener('click', () => { selectedDates = []; input.value = ''; draw(); });
   draw();
 }
 
@@ -101,9 +115,8 @@ export function initializePilotMatcher(root) {
   const result = root.querySelector('[data-pilot-match]');
   const form = wizard.querySelector('form');
   const headings = ['What do you need help with?', 'Where is your land?', 'When do you need a pilot?', 'Budget per hectare (RM)'];
-  const preferences = { service: '', area: '', date: '', budget: 0 };
+  const preferences = { service: [], area: [], date: [], budget: [] };
   let step = 0;
-  let hasBudget = false;
   const update = () => {
     wizard.querySelectorAll('[data-match-step]').forEach((element) => { element.hidden = Number(element.dataset.matchStep) !== step; });
     wizard.querySelector('[data-match-heading]').textContent = t(headings[step]);
@@ -123,18 +136,18 @@ export function initializePilotMatcher(root) {
     if (button.hasAttribute('data-match-back')) { step = Math.max(0, step - 1); update(); }
     if (button.dataset.preference) {
       const key = button.dataset.preference;
-      preferences[key] = key === 'budget' ? Number(button.dataset.value) || 0 : button.dataset.value;
-      if (key === 'budget') hasBudget = true;
-      wizard.querySelectorAll(`[data-preference="${key}"]`).forEach((choice) => choice.setAttribute('aria-pressed', String(choice === button)));
+      const value = button.dataset.value;
+      preferences[key] = togglePilotPreference(preferences[key], value, key === 'budget' ? 'Any budget' : '');
+      wizard.querySelectorAll(`[data-preference="${key}"]`).forEach((choice) => choice.setAttribute('aria-pressed', String(preferences[key].includes(choice.dataset.value))));
     }
   });
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!wizard.open) return;
-    if ((step === 0 && !preferences.service) || (step === 1 && !preferences.area) || (step === 3 && !hasBudget)) { wizard.querySelector('[data-match-error]').textContent = t('Choose an option to continue.'); return; }
+    if ((step === 0 && !preferences.service.length) || (step === 1 && !preferences.area.length) || (step === 3 && !preferences.budget.length)) { wizard.querySelector('[data-match-error]').textContent = t('Choose an option to continue.'); return; }
     if (step < 3) { step += 1; update(); return; }
-    preferences.date = form.elements.date.value;
-    const match = demoPilotMatch(preferences, previousPilotId);
+    preferences.date = form.elements.date.value.split(',').filter(Boolean);
+    const match = demoPilotMatch({...preferences, budget: preferences.budget.map((value) => Number(value) || 0)}, previousPilotId);
     previousPilotId = match?.pilot.id ?? previousPilotId;
     wizard.close();
     try { await revealPilotMatch(result, match); }

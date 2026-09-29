@@ -3,7 +3,7 @@ import { renderCalendar } from '../src/schedule.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { submitForm } from '../src/actions.mjs';
-import { INITIAL_STATE, PILOTS } from '../src/data.mjs';
+import { INITIAL_STATE, PILOTS, COURSES } from '../src/data.mjs';
 import { renderDiscover } from '../src/discover.mjs';
 import { renderWorkspace } from '../src/workspace.mjs';
 import { createStore } from '../src/store.mjs';
@@ -77,4 +77,16 @@ test('booking calendar shows the late-fee notice within its guided date step', (
   const dateStep = html.match(/<section class="field" data-booking-date>[\s\S]*?<\/section>/)?.[0];
   assert.ok(dateStep);
   assert.match(dateStep, /data-booking-calendar[\s\S]*<p class="muted booking-date-note">Existing bookings beyond the seven-day window may incur a late fee of RM 30 per day\.<\/p>/);
+});
+
+test('pilot booking errors have an accessible target inside the modal',()=>{
+ const state=structuredClone(INITIAL_STATE);
+ state.farms=[LAND];
+ const html=renderDiscover(`/services/pilots/${PILOTS[0].id}/book`,state);
+ assert.match(html,/<p[^>]*data-booking-error[^>]*role="alert"[^>]*tabindex="-1"[^>]*hidden/);
+});
+
+test('course booking errors remain visible inside the sheet',()=>{
+ const html=renderDiscover(`/learn/courses/${COURSES[0].id}/book`,INITIAL_STATE);
+ assert.match(html,/<p[^>]*data-booking-error[^>]*role="alert"/);
 });

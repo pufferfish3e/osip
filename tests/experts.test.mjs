@@ -3,10 +3,10 @@ import { test } from 'node:test';
 import { submitForm } from '../src/actions.mjs';
 import { INITIAL_STATE } from '../src/data.mjs';
 import { EXPERTS, matchExperts, startExpertChat } from '../src/expert-data.mjs';
-import { renderExperts } from '../src/expert-ui.mjs';
+import { renderExpertMatch, renderExperts } from '../src/expert-ui.mjs';
 import { renderHome } from '../src/home.mjs';
 import { setLocale } from '../src/i18n.mjs';
-import { requestChatReply } from '../src/workspace.mjs';
+import { renderWorkspace, requestChatReply } from '../src/workspace.mjs';
 
 test('expert matching is deterministic and explains preference score', () => {
   const preferences = {crop:'Rice',topic:'Pests',area:'Kedah',language:'Bahasa Melayu'};
@@ -70,4 +70,36 @@ test('every listed crop has a matching specialist and every state has a drone sp
   assert.match(page,/Demo profiles/);
   assert.match(page,/Drone operations/);
   assert.match(page,/Negeri Sembilan/);
+});
+
+test('expert match is a single portrait surface with reviews and a direct chat action', () => {
+  const html = renderExpertMatch(matchExperts({crop:'Rice',topic:'Pests',area:'Kedah',language:'English'})[0]);
+  assert.equal((html.match(/<article/g) ?? []).length, 1);
+  assert.match(html, /expert-result-card/);
+  assert.match(html, /data-expert-result-close/);
+  assert.match(html, /expert-rating/);
+  assert.doesNotMatch(html, />Mock rating</);
+  assert.match(html, /expert-bio/);
+  assert.doesNotMatch(html, /<details/);
+  assert.match(html, /data-form="expert-chat"/);
+  assert.doesNotMatch(html, /pilot-catalog-card|task-sheet-heading|expert-match-reasons/);
+});
+
+test('expert chat keeps the composer without the demo notice', () => {
+  const state = structuredClone(INITIAL_STATE);
+  startExpertChat(state, 'expert-maya');
+  const chat = state.chats.find((item) => item.expertId === 'expert-maya');
+  const html = renderWorkspace(`/messages/${chat.id}`, state);
+  assert.match(html, /chat-composer/);
+  assert.doesNotMatch(html, /Demo chat|Messages stay on this device/);
+});
+
+test('view expert opens a detailed profile instead of another catalogue card', () => {
+  const html = renderExperts('expert-maya');
+  assert.match(html, /expert-detail/);
+  assert.match(html, /What I can help with/);
+  assert.match(html, /Languages/);
+  assert.match(html, /expert-detail-action/);
+  assert.match(html, /expert-bio/);
+  assert.doesNotMatch(html, /pilot-catalog-card|pilot-portrait-card/);
 });

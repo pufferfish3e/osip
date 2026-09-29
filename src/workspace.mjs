@@ -1,6 +1,6 @@
 import { pilotBookingDateRange } from './booking-dates.mjs';
 import { createRecordId } from './record-id.mjs';
-import { scheduleCycleProgress, nextTaskOccurrence, currentTaskRounds, taskScheduleGroups, tasksOnCalendarDate, latestCompletedTasks } from './task-history.mjs';
+import { scheduleCycleProgress, nextTaskOccurrence, currentTaskRounds, taskScheduleGroups, tasksOnCalendarDate, completedTaskRounds } from './task-history.mjs';
 import { EXPERTS } from './expert-data.mjs';
 import { canCompleteTask } from './actions.mjs';
 import { renderFieldCareSheet } from './field-care.mjs';
@@ -97,13 +97,10 @@ const scheduleTree = (farm, tasks) => currentTaskRounds(tasks).map((round) => re
 
 /** @param {Farm} farm @param {Task[]} tasks @param {string} date @param {number} [limit] @returns {string} */
 export function renderScheduledAgenda(farm,tasks,date,limit = AGENDA_PAGE_SIZE) {
-  const rounds = taskScheduleGroups(tasksOnCalendarDate(tasks,date)).flatMap((group) => {
-    const roundsByTime = new Map();
-    for (const task of group) {
-      if (!roundsByTime.has(task.time)) roundsByTime.set(task.time,[]);
-      roundsByTime.get(task.time).push(task);
-    }
-    return [...roundsByTime.values()];
+  const rounds = taskScheduleGroups(tasksOnCalendarDate(tasks,date)).map((group) => {
+    const ordered = [...group].sort((first,second) => first.time.localeCompare(second.time));
+    const active = ordered.find((task) => !task.done) ?? ordered[ordered.length - 1];
+    return ordered.filter((task) => task.time === active.time);
   }).sort((a,b) => a[0].time.localeCompare(b[0].time));
   const visible = rounds.slice(0,limit).map((round) => renderTaskNotificationStack(farm,round,tasks)).join('');
   return visible + (rounds.length > limit ? `<button type="button" class="button button-secondary" data-schedule-more>${esc(t('Show more rounds'))}</button>` : '');
@@ -128,13 +125,13 @@ const plotsList = (farm, tasks) => {
 
 const LAND_COMPLETED_PREVIEW_LIMIT = 4;
 /** @param {Farm} farm @param {Task[]} tasks @param {number} [limit] @returns {string} */
-const completedTaskList = (farm, tasks, limit = Infinity) => taskScheduleGroups(latestCompletedTasks(tasks))
+const completedTaskList = (farm, tasks, limit = Infinity) => completedTaskRounds(tasks)
   .slice(0, limit).map((group) => renderTaskNotificationStack(farm, group, tasks)).join('');
 
 /** @param {Farm} farm @param {AppState} state @returns {string} */
 const renderFarm = (farm, state) => {
   const tasks = state.tasks.filter((task) => task.farmId === farm.id);
-  const completedTasks = latestCompletedTasks(tasks);
+  const completedTasks = tasks.filter((task) => task.done);
   const isSetupComplete = farm.plots.length > 0 && farm.plots.every((plot) => isLandBoundary(plot.boundary) && plot.crop?.trim());
   const landView = isSetupComplete ? renderLandOverview(farm) : renderLandEditor(farm, true);
   return `${back('/farm', t('All land'))}${pageHeading(farm.location, farm.name, `${farm.crop}${farm.isDemo || farm.id === 'farm-1' ? ` · ${t('Land')}` : ''}`)}<div data-schedule="${esc(farm.id)}"><div class="toolbar land-task-actions"><button type="button" class="button" data-plan-task>${icon('plus', 18)} ${esc(t('Schedule task'))}</button>${link(`/farm/${farm.id}/schedule`, esc(t('Open schedule')), 'button button-secondary')}</div>${renderTaskSheet(farm)}${renderFieldCareSheet()}</div>${landView}<div class="card card-pad land-summary"><div class="stat-grid">${stat('Total area', `${farm.area} ${t(farm.unit ?? 'ha')}`)}${stat('Fields', String(farm.plots.length))}${stat('Crop types', String(new Set(farm.plots.map((plot) => plot.crop.trim().toLowerCase()).filter(Boolean)).size))}</div><div class="toolbar">${link(`/weather`, `${icon('cloud', 18)} ${esc(t('Local weather'))}`)}</div></div>${section('Your fields', `<div class="section-stack">${plotsList(farm, tasks)}</div>`)}${section('Next on your land', `<div class="land-task-preview">${scheduleTree(farm, tasks) || `<p class="muted">${esc(t('Your schedule is clear'))}</p>`}</div>`, link(`/farm/${farm.id}/schedule`, esc(t('View all')), 'link'))}${completedTasks.length ? section('Completed', `<div class="land-task-preview">${completedTaskList(farm, tasks, LAND_COMPLETED_PREVIEW_LIMIT)}</div>`, link(`/farm/${farm.id}/history`, esc(t('View all')), 'link')) : ''}`;
@@ -286,7 +283,7 @@ const conversationAvatar = (booking) => {
 const renderChat = (booking) => {
   const name = conversationName(booking);
   const messages = booking.conversation ?? [];
-  return `<section class="chat-screen" data-chat-id="${esc(booking.id)}"><header class="chat-header"><a class="icon-button" href="/messages" aria-label="${esc(t('Messages'))}">${icon('arrow-left',22)}</a>${conversationAvatar(booking)}<div class="row-copy"><h1>${esc(name)}</h1></div>${booking.name ? '' : `<a class="icon-button" href="/bookings/${esc(booking.id)}" aria-label="${esc(t('Booking details'))}">${icon('calendar',22)}</a>`}</header>${booking.expertId ? `<p class="muted">${esc(t('Demo chat · Messages stay on this device.'))}</p>` : ''}<div class="message-list chat-history" role="log" aria-label="${esc(t('Conversation'))}" aria-live="polite">${messages.length ? messages.map((message) => `<article class="message-bubble ${message.sender === 'you' ? 'message-own' : 'message-received'}"><span class="sr-only">${esc(message.sender === 'you' ? t('You') : message.sender)}</span><p>${esc(message.text)}</p><time datetime="${esc(message.date)}">${esc(dateLabel(message.date))}</time></article>`).join('') : `<div class="empty-state">${icon('message-circle',40)}<h2>${esc(t('Start a conversation'))}</h2></div>`}<div class="chat-typing message-bubble message-received" data-chat-typing role="status" hidden><span class="chat-typing-dots" aria-hidden="true"><span></span><span></span><span></span></span><span class="sr-only">${esc(name)} ${esc(t('is typing'))}</span></div></div><form class="chat-composer" data-form="message">${hidden(booking.name ? 'chatId' : 'bookingId', booking.id)}<label class="sr-only" for="chat-message">${esc(t('Your message'))}</label><textarea id="chat-message" name="message" rows="1" maxlength="2000" required placeholder="${esc(t('Your message'))}"></textarea><button class="icon-button" type="submit" aria-label="${esc(t('Save message'))}">${icon('arrow-up',22)}</button></form></section>`;
+  return `<section class="chat-screen" data-chat-id="${esc(booking.id)}"><header class="chat-header"><a class="icon-button" href="/messages" aria-label="${esc(t('Messages'))}">${icon('arrow-left',22)}</a>${conversationAvatar(booking)}<div class="row-copy"><h1>${esc(name)}</h1></div>${booking.name ? '' : `<a class="icon-button" href="/bookings/${esc(booking.id)}" aria-label="${esc(t('Booking details'))}">${icon('calendar',22)}</a>`}</header><div class="message-list chat-history" role="log" aria-label="${esc(t('Conversation'))}" aria-live="polite">${messages.length ? messages.map((message) => `<article class="message-bubble ${message.sender === 'you' ? 'message-own' : 'message-received'}"><span class="sr-only">${esc(message.sender === 'you' ? t('You') : message.sender)}</span><p>${esc(message.text)}</p><time datetime="${esc(message.date)}">${esc(dateLabel(message.date))}</time></article>`).join('') : `<div class="empty-state">${icon('message-circle',40)}<h2>${esc(t('Start a conversation'))}</h2></div>`}<div class="chat-typing message-bubble message-received" data-chat-typing role="status" hidden><span class="chat-typing-dots" aria-hidden="true"><span></span><span></span><span></span></span><span class="sr-only">${esc(name)} ${esc(t('is typing'))}</span></div></div><form class="chat-composer" data-form="message">${hidden(booking.name ? 'chatId' : 'bookingId', booking.id)}<label class="sr-only" for="chat-message">${esc(t('Your message'))}</label><textarea id="chat-message" name="message" rows="1" maxlength="2000" required placeholder="${esc(t('Your message'))}"></textarea><button class="icon-button" type="submit" aria-label="${esc(t('Save message'))}">${icon('arrow-up',22)}</button></form></section>`;
 };
 /** @param {AppState} state @returns {string} */
 const renderMessages = (state) => {
@@ -359,7 +356,7 @@ const renderSettings = (state) => `${back('/account', t('My account'))}${pageHea
 /** @param {AppState} state @returns {string} */
 const renderPendingNotifications = (state, tasks = state.tasks, isCompleted = false) => state.farms.map((farm) => {
   const assigned = tasks.filter((task) => task.farmId === farm.id);
-  const groups = isCompleted ? taskScheduleGroups(assigned) : currentTaskRounds(assigned);
+  const groups = isCompleted ? completedTaskRounds(assigned) : currentTaskRounds(assigned);
   const stacks = groups.map((group) => renderTaskNotificationStack(farm,group,state.tasks)).join('');
   return stacks ? `<section><div class="section-heading"><h2>${esc(farm.name)}</h2></div>${stacks}</section>` : '';
 }).join('');
@@ -419,7 +416,7 @@ const renderTaskFieldRow = (farm,task,field,isCompleted = false) => {
 
 const renderNotifications = (state) => {
   const pending = renderPendingNotifications(state);
-  const completed = renderPendingNotifications(state, latestCompletedTasks(state.tasks), true);
+  const completed = renderPendingNotifications(state, state.tasks.filter((task) => task.done), true);
   const pendingReminderIds = new Set(state.tasks.map((task) => `reminder-${task.id}-${task.dueDate}-${task.time}`));
   const notifications = state.notifications.filter((item) => !pendingReminderIds.has(item.id));
   const sortedNotifications = [...notifications].sort((first, second) => second.date.localeCompare(first.date));
@@ -458,7 +455,7 @@ const renderLandSetupComplete = (farm) => `${pageHeading('', t('You’re all set
 /** @param {Farm} farm @param {Task[]} tasks @returns {string} */
 const schedulerLand = (farm, tasks) => {
   const assignedTasks = tasks.filter((task) => task.farmId === farm.id);
-  return `<section class="scheduler-land"><a class="list-row" href="/farm/${esc(farm.id)}/schedule"><span class="row-icon">${icon('calendar')}</span><span class="row-copy"><strong class="row-title">${esc(farm.name)}</strong><span class="row-subtitle">${esc(t(assignedTasks.length === 1 ? '{count} task' : '{count} tasks', { count: assignedTasks.length }))}</span></span>${icon('chevron-right', 18)}</a>${scheduleTree(farm,assignedTasks)}${latestCompletedTasks(assignedTasks).length ? `<details class="schedule-completed"><summary>${esc(t('Completed'))} ${icon('chevron-down',18)}</summary>${taskScheduleGroups(latestCompletedTasks(assignedTasks)).map((group) => renderTaskNotificationStack(farm,group,assignedTasks)).join('')}</details>` : ''}</section>`;
+  return `<section class="scheduler-land"><a class="list-row" href="/farm/${esc(farm.id)}/schedule"><span class="row-icon">${icon('calendar')}</span><span class="row-copy"><strong class="row-title">${esc(farm.name)}</strong><span class="row-subtitle">${esc(t(assignedTasks.length === 1 ? '{count} task' : '{count} tasks', { count: assignedTasks.length }))}</span></span>${icon('chevron-right', 18)}</a>${scheduleTree(farm,assignedTasks)}${assignedTasks.some((task) => task.done) ? `<details class="schedule-completed"><summary>${esc(t('Completed'))} ${icon('chevron-down',18)}</summary>${completedTaskRounds(assignedTasks).map((group) => renderTaskNotificationStack(farm,group,assignedTasks)).join('')}</details>` : ''}</section>`;
 };
 
 /** @param {AppState} state @returns {string} */

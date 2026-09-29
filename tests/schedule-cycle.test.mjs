@@ -16,7 +16,7 @@ test('cycle progress includes all fields and future occurrences through the end 
  assert.match(renderWorkspace('/notifications',state),/aria-valuemax="6" aria-valuenow="1"/);
  assert.match(renderScheduledAgenda(FARM,tasks,'2030-01-03'),/aria-valuemax="6" aria-valuenow="1"/);
 });
-test('history uses the land Completed view and keeps only the latest completion per field',()=>{
+test('history logs every completed occurrence per field, newest first',()=>{
  const latest={...TASK,id:'second',dueDate:'2030-01-02',completedAt:'2030-01-02T10:30:00+08:00',repeatFromId:'a'};
  const pending={...TASK,id:'next',done:false,dueDate:'2030-01-03',completedAt:undefined,repeatFromId:'second'};
  const otherField={...TASK,id:'other-field',plotId:'f2'};
@@ -24,10 +24,12 @@ test('history uses the land Completed view and keeps only the latest completion 
  const state={...structuredClone(DEMO),farms:[{...FARM,area:2,location:'Perak'}],tasks:[TASK,latest,pending,otherField,unrelated]};
  const before=JSON.stringify(state.tasks);
  const html=renderWorkspace('/farm/land/history',state);
- assert.equal((html.match(/class="notification-field-row"/g)??[]).length,2);
+ assert.equal((html.match(/class="notification-field-row"/g)??[]).length,3);
  assert.match(html,/data-id="second"/);
+ assert.match(html,/data-id="a"/);
+ assert.ok(html.indexOf('data-id="second"') < html.indexOf('data-id="a"'));
  assert.match(html,/data-id="other-field"/);
- assert.doesNotMatch(html,/data-id="a"|data-id="next"|Other land task|data-task-done="false"|schedule-history-record|task-round-date/);
+ assert.doesNotMatch(html,/data-id="next"|Other land task|data-task-done="false"|schedule-history-record|task-round-date/);
  assert.match(html,/View full calendar/);
  assert.match(html,/Completed ·/);
  const land=renderWorkspace('/farm/land',state);

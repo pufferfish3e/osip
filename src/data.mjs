@@ -89,18 +89,21 @@ export function loadArticleCatalogue() {
 export const COURSES = [
   {
     id: 'field-mapping', title: 'Your first digital field map', category: 'Technology', instructor: 'Nadia Rahman',
+    instructorPortrait: '/assets/expert-nadia.jpg', instructorBackground: 'Focuses on practical field mapping, organising crop records, and helping farmers prepare clear mapping requests.',
     format: 'In person', location: 'Perak', date: dateAfter(DATE_OFFSET_DAYS.course), time: '09:00', duration: '3 hours',
     price: 0, seats: 8, image: '/assets/course.jpg', summary: 'Practice turning field observations into a simple map and a useful plot record.',
     topics: ['Organising plot records', 'Reading a sample field map', 'Planning a mapping request'], isDemo: true,
   },
   {
     id: 'soil-basics', title: 'Read your soil report', category: 'Soil', instructor: 'Amir Lim',
+    instructorPortrait: '/assets/pilot-amir.jpg', instructorBackground: 'Focuses on soil-report literacy, keeping useful sample records, and helping farmers discuss results with local advisers.',
     format: 'Online', location: 'Online classroom', date: dateAfter(DATE_OFFSET_DAYS.workshop), time: '14:00', duration: '90 minutes',
     price: 0, seats: 16, image: '/assets/crops.jpg', summary: 'Learn the vocabulary used in a sample soil report and prepare questions for your adviser.',
     topics: ['Report terminology', 'Keeping sample records', 'Questions for a local specialist'], isDemo: true,
   },
   {
     id: 'drone-intro', title: 'Working with a drone pilot', category: 'Technology', instructor: 'Maya Tan',
+    instructorPortrait: '/assets/pilot-maya.png', instructorBackground: 'A Perak drone pilot who helps farmers prepare field information, choose services, and agree a clear scope for agricultural drone work.',
     format: 'In person', location: 'Perak', date: dateAfter(DATE_OFFSET_DAYS.nextCourse), time: '10:00', duration: '2 hours',
     price: 0, seats: 12, image: '/assets/drone.jpg', summary: 'Prepare a clear service brief, share plot information, and understand the booking process.',
     topics: ['Choosing a service', 'Sharing field requirements', 'Agreeing scope and schedule'], isDemo: true,

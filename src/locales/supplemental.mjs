@@ -1,6 +1,7 @@
 // Authored interface copy. User records and source attribution stay unchanged.
 export const SUPPLEMENTAL_TRANSLATIONS = {
   "ms": {
+    "Completed {title}": "Selesai: {title}",
     "Similar": "Serupa",
     "Used": "Terpakai",
     "Add your land first": "Tambah tanah anda dahulu",
@@ -73,6 +74,7 @@ export const SUPPLEMENTAL_TRANSLATIONS = {
     "Spray mixture and product quantities from your land area.": "Campuran semburan dan kuantiti produk berdasarkan keluasan tanah anda."
   },
   "zh-Hans": {
+    "Completed {title}": "已完成：{title}",
     "Similar": "相似",
     "Used": "二手",
     "Add your land first": "请先添加土地",

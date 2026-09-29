@@ -101,6 +101,11 @@ const initializePilotBookingSheet = () => {
     form.querySelector('[type="submit"]').hidden = step !== fields.length - 1;
     fields[step].querySelector('input:not([type="hidden"]),select,textarea,button[aria-pressed="true"]')?.focus({ preventScroll:true });
   };
+  form.addEventListener('invalid', (event) => {
+    const index = fields.findIndex((field) => field.contains(event.target));
+    if (index >= 0) { step = index; showStep(); }
+  }, true);
+  form.addEventListener('input', () => { form.querySelector('[data-booking-error]').hidden = true; });
   const close = () => motion.close(() => navigate(`/services/pilots/${encodeURIComponent(sheet.dataset.pilotId)}`));
   form.querySelector('[data-booking-close]').addEventListener('click', close);
   sheet.addEventListener('cancel', (event) => { event.preventDefault(); close(); });
@@ -502,7 +507,7 @@ const onSubmit = async (event) => {
   if (!(form instanceof HTMLFormElement) || !form.dataset.form) return;
   event.preventDefault();
   if (form.dataset.submitted === 'true' || !form.isConnected || !form.reportValidity()) return;
-  if (form.dataset.form === 'task') {
+  if (['task', 'pilot-booking', 'course-booking'].includes(form.dataset.form)) {
     form.dataset.submitted = 'true';
     form.querySelector('[type="submit"]').disabled = true;
   }
@@ -538,6 +543,12 @@ const onSubmit = async (event) => {
     delete form.dataset.submitted;
     const submit = form.querySelector('[type="submit"]');
     if (submit) submit.disabled = false;
+    const bookingError = form.querySelector('[data-booking-error]');
+    if (bookingError) {
+      bookingError.textContent = t(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
+      bookingError.hidden = false;
+      bookingError.focus();
+    }
     reportError(error);
   }
 };

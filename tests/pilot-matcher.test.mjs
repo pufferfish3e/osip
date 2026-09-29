@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { demoPilotMatch, initializePilotDatePicker, matchPilots, renderPilotMatcher, renderPilotMatch, revealPilotMatch } from '../src/pilot-matcher.mjs';
+import { togglePilotPreference, demoPilotMatch, initializePilotDatePicker, matchPilots, renderPilotMatcher, renderPilotMatch, revealPilotMatch } from '../src/pilot-matcher.mjs';
 import { PILOTS } from '../src/data.mjs';
 const PREFERENCES = {service:'Mapping',area:'Perak',date:'',budget:75};
 test('demo matching rotates eligible pilots and gives an explicitly illustrative score below 100', () => {
@@ -61,7 +61,7 @@ test('pilot calendar preserves selection while navigating and supports flexible 
   const listeners = new Map();
   let cells = [];
   const picker = {
-    set innerHTML(html) { cells = [...html.matchAll(/data-calendar-date="([^"]+)"/g)].map((match) => ({ dataset:{ calendarDate:match[1] }, disabled:false })); },
+    set innerHTML(html) { cells = [...html.matchAll(/data-calendar-date="([^"]+)"/g)].map((match) => ({ dataset:{ calendarDate:match[1] }, disabled:false, setAttribute:() => {} })); },
     querySelectorAll:() => cells,
     querySelector:() => ({ focus:() => {} }),
     addEventListener:(name, handler) => listeners.set(name, handler),
@@ -79,15 +79,15 @@ test('pilot calendar preserves selection while navigating and supports flexible 
   click({ calendarDate:'2026-10-05' });
   assert.equal(input.value, '2026-09-28');
   click({ calendarDate:'2026-10-04' });
-  assert.equal(input.value, '2026-10-04');
+  assert.equal(input.value, '2026-09-28,2026-10-04');
   click({ calendarDate:'2026-09-28' });
   click({ calendarDate:'2026-09-01' });
-  assert.equal(input.value, '2026-09-28');
+  assert.equal(input.value, '2026-10-04');
   click({ shouldToggle:true });
   assert.equal(cells.length, 7);
   click({ shouldToggle:true });
   assert.ok(cells.length > 7);
-  assert.equal(input.value, '2026-09-28');
+  assert.equal(input.value, '2026-10-04');
   listeners.get('flexible')();
   assert.equal(input.value, '');
 });
@@ -106,4 +106,14 @@ test('matched card uses each pilot portrait, shows rating and explains demo revi
   assert.ok(html.includes(`/services/pilots/${pilot.id}`));
  }
  assert.match(renderPilotMatch(undefined), /No pilot fits/);
+});
+
+test('pilot preferences toggle independently and any budget is exclusive', () => {
+  assert.deepEqual(togglePilotPreference(['Mapping'], 'Spraying'), ['Mapping', 'Spraying']);
+  assert.deepEqual(togglePilotPreference(['Mapping', 'Spraying'], 'Mapping'), ['Spraying']);
+  assert.deepEqual(togglePilotPreference(['60', '75'], 'Any budget', 'Any budget'), ['Any budget']);
+  assert.deepEqual(togglePilotPreference(['Any budget'], '100', 'Any budget'), ['100']);
+  const matches = matchPilots({service:['Mapping'], area:['Perak','Kedah'], date:[], budget:[60,100]});
+  assert.ok(matches.length);
+  for (const {pilot} of matches) assert.ok(pilot.services.includes('Mapping'));
 });

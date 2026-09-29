@@ -7,9 +7,9 @@ import { calendarDate, renderCalendar } from '../src/schedule.mjs';
 import { renderWorkspace } from '../src/workspace.mjs';
 
 test('one-week booking window uses local calendar days across month and year boundaries', () => {
-  assert.deepEqual(pilotBookingDateRange(new Date('2026-09-28T23:59:00')), { minimumDate:'2026-09-28', maximumDate:'2026-10-05' });
-  assert.deepEqual(pilotBookingDateRange(new Date('2026-12-28T00:01:00')), { minimumDate:'2026-12-28', maximumDate:'2027-01-04' });
-  assert.deepEqual(pilotBookingDateRange(new Date('2028-02-25T12:00:00')), { minimumDate:'2028-02-25', maximumDate:'2028-03-03' });
+  assert.deepEqual(pilotBookingDateRange(new Date('2026-09-28T23:59:00')), { minimumDate:'2026-09-29', maximumDate:'2026-10-05' });
+  assert.deepEqual(pilotBookingDateRange(new Date('2026-12-28T00:01:00')), { minimumDate:'2026-12-29', maximumDate:'2027-01-04' });
+  assert.deepEqual(pilotBookingDateRange(new Date('2028-02-25T12:00:00')), { minimumDate:'2028-02-26', maximumDate:'2028-03-03' });
 });
 
 test('shared calendar enables the inclusive last day and disables dates outside the booking window', () => {
@@ -40,4 +40,17 @@ test('pilot booking and rescheduling reject day eight without modifying saved re
   assert.equal(booking.rescheduleRequest.date, maximumDate);
   const receipt = renderWorkspace(`/bookings/${booking.id}`, state);
   assert.ok(receipt.includes(`min="${minimumDate}" max="${maximumDate}"`));
+});
+
+test('same-day pilot booking and rescheduling are rejected, tomorrow is accepted', () => {
+  const state = structuredClone(INITIAL_STATE);
+  state.farms = [{id:'notice-land',name:'Land',area:1,crop:'Rice',plots:[]}];
+  state.bookings = [];
+  const fields = {providerId:PILOTS[0].id,farmId:'notice-land',date:calendarDate(new Date()),time:'23:59'};
+  assert.throws(() => submitForm(state,'pilot-booking',fields), /tomorrow/);
+  assert.equal(state.bookings.length,0);
+  submitForm(state,'pilot-booking',{...fields,date:pilotBookingDateRange().minimumDate});
+  const booking = state.bookings[0];
+  assert.throws(() => submitForm(state,'reschedule',{...fields,bookingId:booking.id}), /tomorrow/);
+  assert.equal(booking.rescheduleRequest,undefined);
 });

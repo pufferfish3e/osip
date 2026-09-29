@@ -145,6 +145,7 @@ const saveBooking = (state, fields, isCourse) => {
   const time = isCourse ? provider.time : text(fields, 'time');
   validateSchedule(date, time);
   if (new Date(`${date}T${time}`) < new Date()) throw new ActionError('Choose a future booking time.');
+  if (!isCourse && date < pilotBookingDateRange().minimumDate) throw new ActionError('Pilot bookings start from tomorrow.');
   if (!isCourse && date > pilotBookingDateRange().maximumDate) throw new ActionError('Choose a pilot booking date within the next seven days.');
   const farmId = isCourse ? '' : text(fields, 'farmId');
   const farm = isCourse ? null : find(state.farms, (item) => item.id === farmId, 'Farm');
@@ -184,6 +185,7 @@ const requestReschedule = (state, fields) => {
   const time = text(fields, 'time');
   validateSchedule(date, time);
   if (new Date(`${date}T${time}`) < new Date()) throw new ActionError('Choose a future booking time.');
+  if (booking.type === 'pilot' && date < pilotBookingDateRange().minimumDate) throw new ActionError('Pilot bookings start from tomorrow.');
   if (booking.type === 'pilot' && date > pilotBookingDateRange().maximumDate) throw new ActionError('Choose a pilot booking date within the next seven days.');
   booking.rescheduleRequest = { date, time };
   notify(state, 'Schedule change saved', 'Your original booking time stays unchanged until confirmed.');

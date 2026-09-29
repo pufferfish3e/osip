@@ -1531,3 +1531,59 @@ body:has(.chat-screen) { overflow:hidden; }
 .schedule-history-empty > svg { color:#147544; }
 .schedule-history-empty h2 { margin:0; font-size:20px; }
 .schedule-history-empty p { margin:0; color:var(--muted); font-size:14px; }
+
+@media (max-width:359px) {
+  .topbar { padding-inline:12px; gap:4px; }
+  .topbar .mobile-brand { font-size:25px; gap:3px; }
+  .topbar .mobile-brand img { width:24px; height:24px; }
+  .topbar .language-current { width:68px; padding-inline:2px; }
+}
+
+/* Match results use one portrait surface, without catalogue-card spacing. */
+.expert-result-card { min-height:480px; padding-top:210px; border-radius:0; }
+.expert-result-heading { position:absolute; inset:16px 16px auto; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.expert-result-heading > span { padding:8px 12px; border-radius:999px; background:#17251fcc; font-size:13px; line-height:1.3; }
+.expert-result-heading .icon-button { background:#17251fcc; color:#fff; flex-shrink:0; }
+.expert-result-card .pilot-match-body { padding:24px; }
+.expert-result-card .pilot-match-footer { margin-top:16px; }
+.expert-result-card .pilot-review-preview { font-size:14px; }
+.expert-result-card .pilot-review-preview summary { min-height:44px; display:flex; align-items:center; cursor:pointer; }
+.expert-result-card .pilot-match-footer form, .expert-result-card .pilot-match-footer .button { width:100%; }
+.chat-header { border-bottom:0; }
+.chat-history > .empty-state { margin:auto; padding:24px 16px; text-align:center; }
+.chat-history > .empty-state > svg { width:32px; height:32px; margin:0 auto 12px; color:var(--muted); }
+.chat-history > .empty-state h2 { margin:0; font-size:20px; line-height:1.3; letter-spacing:-.4px; }
+
+.course-instructor { padding: 16px; border-radius: 20px; background: var(--surface, #fff); min-width: 0; }
+.course-instructor-heading { display: flex; align-items: center; gap: 12px; }
+.course-instructor-heading img, .course-instructor-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.course-instructor-avatar { display: grid; place-items: center; background: #e9efea; }
+.course-instructor-heading h3 { margin: 4px 0 0; font-size: 18px; line-height: 1.25; }
+.course-instructor-heading .muted { font-size: 13px; }
+.course-instructor > p { margin: 12px 0 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
+
+.pilot-match-body .expert-bio { font-size:14px; line-height:1.5; color:#ffffffe0; max-width:32ch; }
+.pilot-match-body .expert-rating { display:flex; align-items:center; gap:7px; margin-top:14px; font-size:14px; }
+.expert-rating > svg { color:#f6cf65; fill:currentColor; flex-shrink:0; }
+.expert-rating strong { font-weight:600; }
+.expert-rating strong span, .expert-rating > span { color:#ffffffb8; font-weight:400; }
+.expert-rating > span { margin-left:5px; font-size:12px; }
+
+.expert-detail { max-width:520px; margin:24px auto 0; }
+.expert-detail-heading { text-align:center; }
+.expert-detail-heading > img { width:112px; height:112px; object-fit:cover; object-position:center 25%; border-radius:50%; }
+.expert-detail-heading h1 { margin:16px 0 8px; font-size:28px; line-height:1.15; letter-spacing:-.8px; }
+.expert-detail-heading > p { display:flex; align-items:center; justify-content:center; gap:6px; margin:0; color:var(--muted); font-size:14px; }
+.expert-detail-summary { text-align:center; margin:20px auto 28px; max-width:36ch; }
+.expert-detail-summary .expert-bio { font-size:15px; line-height:1.5; color:var(--muted); }
+.expert-detail-summary .expert-rating { display:flex; align-items:center; justify-content:center; gap:6px; font-size:14px; }
+.expert-detail-summary .expert-rating strong span { color:var(--muted); }
+.expert-detail-section h2 { margin:0 0 12px; font-size:18px; letter-spacing:-.3px; }
+.expert-detail-topics { display:flex; flex-wrap:wrap; gap:8px; }
+.expert-detail-topics > span { padding:9px 14px; border-radius:999px; background:#ffffffa6; font-size:14px; }
+.expert-detail-facts { margin:24px 0; }
+.expert-detail-facts > div { padding:12px 0; display:grid; grid-template-columns:90px minmax(0,1fr); gap:16px; font-size:14px; line-height:1.5; }
+.expert-detail-facts dt { color:var(--muted); }
+.expert-detail-facts dd { margin:0; text-align:right; overflow-wrap:anywhere; }
+.expert-detail-action { padding:8px 0 16px; }
+.expert-detail-action .button { width:100%; min-height:54px; }

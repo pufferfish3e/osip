@@ -65,6 +65,19 @@ export function taskScheduleGroups(tasks) {
 }
 
 /** @param {import('./store.mjs').Task[]} tasks @returns {import('./store.mjs').Task[][]} */
+export function completedTaskRounds(tasks) {
+  return taskScheduleGroups(tasks).flatMap((schedule) => {
+    const rounds = new Map();
+    for (const task of schedule.filter((item) => item.done)) {
+      const key = JSON.stringify([task.dueDate, task.time]);
+      if (!rounds.has(key)) rounds.set(key, []);
+      rounds.get(key).push(task);
+    }
+    return [...rounds.values()].map((round) => round.sort((a,b) => completionTime(b).localeCompare(completionTime(a))));
+  }).sort((a,b) => completionTime(b[0]).localeCompare(completionTime(a[0])));
+}
+
+/** @param {import('./store.mjs').Task[]} tasks @returns {import('./store.mjs').Task[][]} */
 export function currentTaskRounds(tasks) {
   return taskScheduleGroups(tasks).flatMap((group) => {
     const pending = group.filter((task) => !task.done).sort((a,b) => `${a.dueDate}${a.time}`.localeCompare(`${b.dueDate}${b.time}`));

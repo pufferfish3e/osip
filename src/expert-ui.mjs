@@ -11,12 +11,41 @@ const STEPS = [
 ];
 /** @param {(typeof EXPERTS)[number]} expert @returns {string} */
 const chatButton = (expert) => `<form data-form="expert-chat"><input type="hidden" name="expertId" value="${esc(expert.id)}"><button class="button" type="submit">${esc(t('Chat with expert'))}${icon('message-circle',18)}</button></form>`;
+const MOCK_RATINGS = [4.8, 4.9, 4.7, 4.6];
+/** @param {(typeof EXPERTS)[number]} expert @returns {string} */
+const expertSummary = (expert) => {
+  const rating = MOCK_RATINGS[Math.max(0, EXPERTS.findIndex((item) => item.id === expert.id)) % MOCK_RATINGS.length];
+  const description = expert.topics.includes('Drone operations')
+    ? t('A practical guide to using drones on your land.')
+    : t('Helps growers with {topic} and everyday crop care.', {topic: t(expert.topics[0]).toLocaleLowerCase()});
+  return `<p class="expert-bio">${esc(description)}</p><p class="expert-rating" aria-label="${esc(t('{rating} out of 5 · Mock rating', {rating: rating.toFixed(1)}))}">${icon('star',16)}<strong>${rating.toFixed(1)} <span>/ 5</span></strong></p>`;
+};
 /** @param {(typeof EXPERTS)[number]} expert @param {boolean} [isDetail] @returns {string} */
-const expertCard = (expert, isDetail = false) => `<article class="pilot-portrait-card pilot-catalog-card" data-search-item data-search-text="${esc([expert.name,expert.area,...(expert.areas ?? []),...expert.crops,...expert.topics,...expert.languages].flatMap((value)=>[value,t(value)]).join(' ').toLowerCase())}"><img class="pilot-match-cover" src="${esc(expert.portrait)}" alt="" width="1086" height="1448" loading="lazy"><div class="pilot-match-body"><h2>${esc(expert.name)}</h2><p class="pilot-match-specialty">${esc(t(expert.area))} · ${expert.topics.includes('Drone operations') ? esc(t('Drone operations')) : expert.crops.map((crop)=>esc(t(crop))).join(' · ')}</p>${isDetail ? `<p>${expert.topics.map((topic)=>esc(t(topic))).join(' · ')}</p><p>${expert.languages.map(esc).join(' · ')}</p><details class="pilot-review-preview"><summary>${esc(t('Reviews'))}</summary><p>${esc(t('No reviews yet.'))}</p></details>` : ''}<div class="pilot-match-footer">${isDetail ? chatButton(expert) : `<a class="button" href="/services/experts/${esc(expert.id)}">${esc(t('View expert'))}${icon('arrow-up-right',18)}</a>`}</div></div></article>`;
+const expertCard = (expert, isDetail = false) => `<article class="pilot-portrait-card pilot-catalog-card" data-search-item data-search-text="${esc([expert.name,expert.area,...(expert.areas ?? []),...expert.crops,...expert.topics,...expert.languages].flatMap((value)=>[value,t(value)]).join(' ').toLowerCase())}"><img class="pilot-match-cover" src="${esc(expert.portrait)}" alt="" width="1086" height="1448" loading="lazy"><div class="pilot-match-body"><h2>${esc(expert.name)}</h2><p class="pilot-match-specialty">${esc(t(expert.area))} · ${expert.topics.includes('Drone operations') ? esc(t('Drone operations')) : expert.crops.map((crop)=>esc(t(crop))).join(' · ')}</p>${expertSummary(expert)}<div class="pilot-match-footer">${isDetail ? chatButton(expert) : `<a class="button" href="/services/experts/${esc(expert.id)}">${esc(t('View expert'))}${icon('arrow-up-right',18)}</a>`}</div></div></article>`;
+/** @param {ReturnType<typeof matchExperts>[number]} match @returns {string} */
+export function renderExpertMatch(match) {
+  const { expert, score } = match;
+  return `<article class="pilot-portrait-card expert-result-card">
+    <img class="pilot-match-cover" src="${esc(expert.portrait)}" alt="" width="1086" height="1448">
+    <div class="expert-result-heading"><span>${score}% ${esc(t('Preference match'))}</span><button type="button" class="icon-button" data-expert-result-close aria-label="${esc(t('Close'))}">${icon('x')}</button></div>
+    <div class="pilot-match-body"><h2>${esc(expert.name)}</h2>
+      <p class="pilot-match-specialty">${esc(t(expert.area))} · ${expert.crops.map((crop)=>esc(t(crop))).join(' · ')}</p>
+      ${expertSummary(expert)}
+      <div class="pilot-match-footer">${chatButton(expert)}</div>
+    </div></article>`;
+}
+/** @param {(typeof EXPERTS)[number]} expert @returns {string} */
+const expertProfile = (expert) => `<article class="expert-detail">
+  <header class="expert-detail-heading"><img src="${esc(expert.portrait)}" alt="" width="112" height="112"><h1>${esc(expert.name)}</h1><p>${icon('map-pin',16)}${esc(t(expert.area))}</p></header>
+  <div class="expert-detail-summary">${expertSummary(expert)}</div>
+  <section class="expert-detail-section"><h2>${esc(t('What I can help with'))}</h2><div class="expert-detail-topics">${expert.topics.map((topic)=>`<span>${esc(t(topic))}</span>`).join('')}</div></section>
+  <dl class="expert-detail-facts"><div><dt>${esc(t('Crops'))}</dt><dd>${expert.crops.map((crop)=>esc(t(crop))).join(' · ')}</dd></div><div><dt>${esc(t('Languages'))}</dt><dd>${expert.languages.map(esc).join(' · ')}</dd></div></dl>
+  <footer class="expert-detail-action">${chatButton(expert)}</footer>
+</article>`;
 /** @param {string|undefined} id @returns {string} */
 export function renderExperts(id) {
   const expert = EXPERTS.find((item)=>item.id === id);
-  if (id) return `<a class="link" href="/services/experts">${icon('arrow-left',18)}${esc(t('Find an expert'))}</a>${expert ? `${pageHeading('',expert.name)}<div class="expert-profile">${expertCard(expert,true)}</div>` : pageHeading('',t('Expert not found'))}`;
+  if (id) return `<a class="link" href="/services/experts">${icon('arrow-left',18)}${esc(t('Find an expert'))}</a>${expert ? expertProfile(expert) : pageHeading('',t('Expert not found'))}`;
   return `${pageHeading('',t('Find an expert'))}<p class="muted">${esc(t('Demo profiles · Chats stay on this device.'))}</p><div class="search-field">${icon('search')}<input type="search" data-search="experts" aria-label="${esc(t('Search experts'))}" placeholder="${esc(t('Search experts'))}"><button class="icon-button" type="button" data-expert-match-open aria-label="${esc(t('Match me'))}">${icon('adjustments-horizontal',20)}</button></div><div class="card-grid">${EXPERTS.map((item)=>expertCard(item)).join('')}</div><p class="muted" data-search-empty hidden>${esc(t('No matching experts.'))}</p>${renderExpertWizard()}`;
 }
 /** @returns {string} */
@@ -46,7 +75,7 @@ export function initializeExpertMatcher(root) {
   };
   const showResult = () => {
     const match = matchExperts(resolveExpertPreferences(preferences))[0];
-    result.innerHTML = `<div class="task-sheet-heading"><span>${match.score}% ${esc(t('Preference match'))} · ${esc(t('Demo match'))}</span><button type="button" class="icon-button" data-expert-result-close aria-label="${esc(t('Close'))}">${icon('x')}</button></div>${expertCard(match.expert,true)}<p class="muted">${esc(t('Demo profiles · Chats stay on this device.'))}</p><p class="expert-match-reasons">${match.reasons.map((reason)=>esc(t(reason))).join(' · ')}</p>`;
+    result.innerHTML = renderExpertMatch(match);
     motion.close(()=>resultMotion.open());
   };
   bindExpertWizard(wizard,motion,preferences,()=>step,(next)=>{step=next;update();wizard.querySelector('h2').focus();},showResult);

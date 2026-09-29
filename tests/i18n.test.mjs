@@ -188,3 +188,10 @@ test('date and currency formatting follow the active locale', () => {
   }
   assert.equal(friendlyDate('invalid'), '日期待定');
 });
+
+test('completed task accessibility labels are translated',()=>{
+ setLocale('ms');
+ assert.equal(t('Completed {title}',{title:'Water'}),'Selesai: Water');
+ setLocale('zh-Hans');
+ assert.equal(t('Completed {title}',{title:'Water'}),'已完成：Water');
+});
