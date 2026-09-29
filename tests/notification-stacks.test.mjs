@@ -14,7 +14,7 @@ const createState = () => {
 };
 test('pending and completed fields have separate task stacks',()=>{
   const html=renderWorkspace('/notifications',createState());
-  assert.equal((html.match(/<details class="notification-task-stack/g)??[]).length,2);
+  assert.equal((html.match(/<details class="notification-task-stack" data-schedule-group/g)??[]).length,2);
   assert.match(html,/<h2>Pending<\/h2>/);
   assert.match(html,/<h2>Completed<\/h2>/);
   assert.match(html,/1 of 2 completed/);

@@ -1335,15 +1335,16 @@ body:has(.pilot-booking-sheet[open]) { overflow:hidden; }
 .notification-section-header h2, .notification-pending > h2 { font-size:20px; margin:0; }
 .notification-read-action { min-height:44px; padding:0; background:none; border:0; color:var(--blue); font-size:13px; }
 .notification-read-action:disabled { color:var(--muted); }
-.notification-list { background:#fff; border-radius:20px; padding:0 16px; }
-.notification-item { display:flex; align-items:flex-start; gap:12px; padding:20px 0; }
-.notification-item + .notification-item { border-top:1px solid var(--line); }
-.notification-icon { display:flex; align-items:center; justify-content:center; flex:0 0 40px; height:40px; border-radius:50%; background:#f1f3f5; color:var(--muted); }
-.notification-item.is-unread .notification-icon { color:var(--blue); background:#edf3ff; }
-.notification-copy { flex:1; min-width:0; overflow-wrap:anywhere; }
-.notification-copy h3 { font-size:15px; font-weight:600; line-height:1.35; margin:0 0 5px; }
-.notification-copy p { font-size:14px; line-height:1.45; color:var(--muted); margin:0 0 8px; }
-.notification-copy time { font-size:12px; color:var(--muted); }
+.notification-list { display:grid; }
+.notification-list .notification-update-stack { margin:0; border-bottom:1px solid var(--line); }
+.notification-list .notification-update-stack:last-child { border-bottom:0; }
+.notification-update-stack > summary { min-height:72px; }
+.notification-update-stack .row-icon { width:40px; height:40px; flex:0 0 40px; border:0; box-shadow:none; background:#e8effa; }
+.notification-update-stack.is-unread .row-icon { color:var(--blue); }
+.notification-update-stack .notification-unread { margin:0; }
+.notification-task-fields.notification-update-fields { padding:0 0 16px 52px; color:var(--muted); }
+.notification-update-fields p { margin:0; font-size:14px; line-height:1.5; overflow-wrap:anywhere; }
+.notification-update-fields .notification-read-action { margin-top:8px; }
 .notification-unread { width:8px; height:8px; flex:0 0 8px; margin-top:7px; border-radius:50%; background:var(--blue); }
 .notification-pending { margin-bottom:28px; }
 .notification-pending .section-heading, .notification-completed .section-heading { margin:16px 0 8px; }
@@ -1381,6 +1382,7 @@ body:has(.pilot-booking-sheet[open]) { overflow:hidden; }
 .notification-task-stack a:focus-visible, .notification-task-stack summary:focus-visible { outline:2px solid var(--blue); outline-offset:3px; }
 @media (max-width:420px) {
  .notification-task-fields { padding-left:0; }
+ .notification-task-fields.notification-update-fields { padding-left:52px; }
  .notification-complete { max-width:42%; padding-inline:10px; }
 }
 .notification-field-status { display:flex; align-items:center; gap:5px; color:var(--muted); font-size:13px; }
@@ -1401,7 +1403,6 @@ body:has(.pilot-booking-sheet[open]) { overflow:hidden; }
 .notification-complete:disabled { background:transparent; color:var(--muted); cursor:default; }
 .notification-complete:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
 
-.notification-mark-read { flex:none; color:var(--blue); min-width:44px; min-height:44px; }
 
 body:has(.chat-screen) { overflow:hidden; }
 #main:has(.chat-screen) { position:fixed; inset:78px 0 0; max-width:none; min-height:0; margin:0; padding:0 20px max(12px, env(safe-area-inset-bottom)); overflow:hidden; }
