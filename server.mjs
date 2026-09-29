@@ -1,3 +1,4 @@
+import { createTranslationHandler } from './server/translate.mjs';
 import { createMockChatHandler } from './server/mock-chat.mjs';
 import { createSprayConfigHandler } from './server/spray-config.mjs';
 import { readFile, realpath, stat } from 'node:fs/promises';
@@ -16,6 +17,9 @@ const DEFAULT_PORT = 4173;
 const MAX_PORT = 65535;
 const ROUTE_PREFIXES = ['/schedule', '/farm', '/learn', '/services', '/tools', '/weather', '/onboarding', '/auth', '/account', '/notifications', '/bookings', '/messages', '/pilot', '/shop', '/checkout', '/orders', '/news', '/plant-help'];
 const PUBLIC_FILES = new Set([
+  '/src/booking-dates.mjs',
+  '/src/record-id.mjs',
+  '/src/translation.mjs', '/src/locales/supplemental.mjs',
   '/src/task-history.mjs',
   '/src/shop-deals.mjs',
   '/data/active.json', '/data/demo.json', '/data/newuser.json', '/src/storage-seed.mjs',
@@ -178,8 +182,10 @@ export function createAppServer(root = ROOT, analysisOptions = {}) {
   const handlePlantAnalysis = createPlantAnalysisHandler(analysisOptions);
   const handleSprayConfig = createSprayConfigHandler(analysisOptions);
   const handlePlantSearch = createPlantSearchHandler(analysisOptions);
+  const handleTranslation = createTranslationHandler(analysisOptions);
   return createServer(async (request, response) => {
     try {
+      if (request.url?.split('?')[0] === '/api/translate') { await handleTranslation(request, response); return; }
       if (request.url?.split('?')[0] === '/api/mock-chat') { await handleMockChat(request, response); return; }
       if (request.url?.split('?')[0] === '/api/spray-config') { await handleSprayConfig(request, response); return; }
       if (request.url?.split('?')[0] === '/api/plant-search') {

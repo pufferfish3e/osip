@@ -403,11 +403,23 @@ summary {cursor:pointer;min-height:44px;}
 .plant-guide-row strong { font-size:17px; line-height:1.2; font-weight:600; letter-spacing:-.025em; }
 .plant-guide-category { font-size:13px; color:var(--muted); }
 .plant-guide-summary { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:14px; line-height:1.45; color:var(--muted); }
-.plant-camera-card { max-width:660px; }
-.plant-photo-preview { position:relative; aspect-ratio:6/5; max-height:420px; background:#dce7d7; overflow:hidden; }
+.plant-camera-card { width:100%; max-width:660px; margin-inline:auto; }
+.schedule-tree { border-bottom:1px solid var(--line); }
+.schedule-tree>summary { display:flex; align-items:center; gap:14px; padding:20px 0; cursor:pointer; list-style:none; min-height:64px; }
+.schedule-tree>summary::-webkit-details-marker,.schedule-completed>summary::-webkit-details-marker { display:none; }
+.schedule-tree>summary>svg,.schedule-completed>summary>svg { flex-shrink:0; }
+.schedule-tree[open]>summary>svg,.schedule-completed[open]>summary>svg { transform:rotate(180deg); }
+.schedule-tree-fields { padding:0 0 12px 18px; }
+.schedule-tree .schedule-field-list,.schedule-completed .schedule-field-list { background:transparent; border:0; box-shadow:none; border-radius:0; overflow:visible; }
+.schedule-field-list .list-row { padding-inline:12px; }
+.schedule-completed { margin-top:24px; }
+.schedule-completed>summary { display:flex; align-items:center; justify-content:space-between; gap:12px; list-style:none; cursor:pointer; font-size:20px; font-weight:600; padding:16px 0; }
+.schedule-tree-more>summary { color:var(--blue); padding:14px 12px; cursor:pointer; min-height:48px; }
+.schedule-tree summary:focus-visible,.schedule-completed summary:focus-visible { outline:2px solid var(--blue); outline-offset:3px; }
+.plant-photo-preview { width:100%; position:relative; aspect-ratio:6/5; max-height:420px; background:#dce7d7; overflow:hidden; }
 .plant-photo-preview>img { width:100%; height:100%; object-fit:contain; background:#e4eadf; }
-.plant-viewfinder { height:100%; display:grid; place-items:center; color:#54764d; background:radial-gradient(ellipse at 50% 35%,#f8fcf2,#dce7d7 75%); }
-.plant-photo-controls { padding:22px; }
+.plant-viewfinder { position:absolute; inset:0; display:grid; place-items:center; color:#54764d; background:radial-gradient(ellipse at 50% 35%,#f8fcf2,#dce7d7 75%); }
+.plant-photo-controls { padding:22px 0 0; }
 .plant-photo-buttons { display:flex; flex-wrap:wrap; gap:10px; }
 .plant-photo-buttons .button { flex:1; padding:13px 14px; white-space:nowrap; }
 .plant-photo-buttons>.link { flex-basis:100%; justify-content:center; padding-top:3px; }
@@ -531,7 +543,7 @@ summary {cursor:pointer;min-height:44px;}
 @media(min-width:640px) {
  .plant-photo-preview { aspect-ratio:3/2; }
  .plant-guide-list { max-width:860px; padding:0 24px; }
- .plant-photo-controls { padding:26px; }
+ .plant-photo-controls { padding:26px 0 0; }
 }
 @media(prefers-reduced-transparency:reduce),(prefers-contrast:more) {
  .plant-guide-icon { background:#e1eadf; }
@@ -1355,6 +1367,20 @@ body:has(.pilot-booking-sheet[open]) { overflow:hidden; }
 .notification-task-stack summary { display:flex; align-items:center; gap:12px; padding:14px 0; cursor:pointer; list-style:none; }
 .notification-task-stack summary::-webkit-details-marker { display:none; }
 .notification-task-stack summary .row-copy { display:grid; gap:4px; }
+.notification-task-stack > summary .row-copy { flex:1; min-width:0; }
+.notification-task-stack > summary strong { overflow-wrap:anywhere; }
+.notification-task-stack > summary > svg { flex:none; }
+.notification-task-stack[open] > summary > svg { transform:rotate(180deg); }
+.task-progress { display:block; height:5px; margin-top:5px; overflow:hidden; background:var(--line); border-radius:3px; }
+.task-progress > span { display:block; height:100%; background:var(--blue); }
+.task-progress.is-complete > span { background:#147544; }
+.task-round-date { margin:0 0 8px; color:var(--muted); font-size:12px; line-height:1.5; }
+.notification-task-stack .notification-field-name { color:var(--ink); text-decoration:none; min-height:44px; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:2px; }
+.notification-task-stack a:focus-visible, .notification-task-stack summary:focus-visible { outline:2px solid var(--blue); outline-offset:3px; }
+@media (max-width:420px) {
+ .notification-task-fields { padding-left:0; }
+ .notification-complete { max-width:42%; padding-inline:10px; }
+}
 .notification-field-status { display:flex; align-items:center; gap:5px; color:var(--muted); font-size:13px; }
 .notification-field-status.is-completed { color:var(--blue); }
 .notification-bell { position:relative; }
@@ -1362,7 +1388,7 @@ body:has(.pilot-booking-sheet[open]) { overflow:hidden; }
 .notification-bell-count { position:absolute; top:0; right:-3px; min-width:17px; height:17px; padding:0 4px; display:grid; place-items:center; border-radius:10px; background:var(--blue); color:white; font-size:10px; line-height:1; border:2px solid white; }
 
 .notification-task-fields { padding:0 0 8px 12px; }
-.notification-field-row { display:flex; align-items:center; gap:10px; min-height:48px; padding:2px 0; font-size:14px; }
+.notification-field-row { display:flex; align-items:center; gap:12px; min-height:56px; padding:6px 0; font-size:14px; }
 .notification-field-name { flex:1; min-width:0; overflow-wrap:anywhere; font-weight:500; }
 .notification-status-badge { display:grid; place-items:center; flex:none; width:24px; height:24px; border-radius:50%; background:#e7ede9; color:var(--muted); }
 .notification-status-badge.is-completed { color:#147544; background:#daf3e4; }
@@ -1432,3 +1458,76 @@ body:has(.chat-screen) { overflow:hidden; }
 .booking-inactive-actions { width:100%; }
 .booking-inactive-actions .button:first-child { color:#b42318; background:transparent; border:0; box-shadow:none; }
 .booking-inactive-actions .button:last-child { color:#fff; background:#b42318; border:0; }
+
+.task-detail-page { max-width:640px; margin-inline:auto; }
+.task-detail-page > .back-link { margin-bottom:4px; }
+.task-detail-page > .page-heading { margin:0 0 20px; }
+.task-detail-page .page-title { font-size:30px; line-height:1.12; overflow-wrap:anywhere; }
+.task-detail-status { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; margin-bottom:16px; border-radius:12px; background:#e3f3e9; color:#17613c; font-size:13px; }
+.task-detail-list { margin:0 0 20px; padding:4px 20px; border:0; border-radius:24px; background:var(--surface); }
+.task-detail-list > div { display:grid; grid-template-columns:80px minmax(0,1fr); align-items:center; gap:16px; padding:16px 0; }
+.task-detail-list > div + div { border-top:1px solid var(--line); }
+.task-detail-list dt { font-size:14px; color:var(--muted); }
+.task-detail-list dd { margin:0; text-align:right; font-size:16px; font-weight:500; overflow-wrap:anywhere; }
+.task-detail-actions { display:flex; gap:12px; }
+.task-detail-actions .button { flex:1; min-width:0; min-height:48px; padding:12px; }
+.task-detail-delete { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:44px; margin-top:12px; padding:10px; background:transparent; border:0; color:#b42318; font-size:14px; }
+@media (max-width:759px) {
+ .main-content:has(.task-detail-page) { padding-top:0; }
+}
+
+.task-time-picker { display:flex; align-items:flex-end; justify-content:flex-start; gap:8px; border:0; padding:8px 0 20px; margin:0; }
+.task-time-picker label { display:grid; gap:6px; color:var(--muted); font-size:13px; }
+.task-time-picker select { min-width:76px; min-height:44px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; background:#fff; color:var(--ink); font:inherit; font-size:16px; font-weight:500; font-variant-numeric:tabular-nums; cursor:pointer; }
+.task-time-picker select:focus-visible { outline:2px solid var(--blue); outline-offset:3px; }
+.task-time-picker .time-colon { align-self:flex-end; padding-bottom:11px; font-size:18px; }
+.time-format { align-self:flex-end; padding-bottom:13px; font-size:12px; color:var(--muted); }
+
+.alarm-time-picker { border:0; display:flex; justify-content:center; align-items:center; gap:16px; margin:8px 0 20px; padding:0; }
+.time-wheel-column { width:82px; text-align:center; color:var(--muted); font-size:13px; }
+.time-wheel { height:132px; overflow-y:auto; overscroll-behavior:contain; scroll-snap-type:y mandatory; scrollbar-width:none; padding:44px 0; margin-top:8px; box-sizing:border-box; border-radius:14px; background:linear-gradient(to bottom,transparent 44px,#e7edf3 44px,#e7edf3 88px,transparent 88px); mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent); }
+.time-wheel::-webkit-scrollbar { display:none; }
+.time-wheel-option { height:44px; display:grid; place-items:center; scroll-snap-align:center; font-size:22px; font-weight:500; font-variant-numeric:tabular-nums; color:var(--ink); cursor:pointer; }
+.time-wheel:focus-visible { outline:2px solid var(--blue); outline-offset:3px; }
+.alarm-time-format { font-size:12px; color:var(--muted); padding-top:26px; }
+
+.schedule-history-records { display:grid; gap:16px; padding:8px 12px 20px; }
+.schedule-history-record { display:grid; gap:5px; font-size:14px; }
+.schedule-history-record > span { color:var(--muted); }
+.schedule-history-record > .history-completed { color:#147544; }
+
+.schedule-utility { display:flex; justify-content:flex-end; margin:0 0 12px; }
+.schedule-history-link { display:inline-flex; align-items:center; gap:7px; min-height:44px; color:var(--blue); font-size:14px; font-weight:500; text-decoration:none; }
+.land-schedule-view .schedule-calendar { border:0; border-radius:20px; background:rgba(255,255,255,.7); box-shadow:none; padding:16px; margin-bottom:24px; }
+.land-schedule-view .schedule-agenda-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.land-schedule-view .schedule-agenda-heading h2 { font-size:18px; line-height:1.3; margin:0; }
+.land-schedule-view .schedule-agenda-heading .button { min-height:44px; padding:10px 16px; font-size:14px; box-shadow:none; }
+.land-schedule-view .notification-task-stack > summary { padding:14px 0; }
+.land-schedule-view .notification-task-stack > summary .row-icon { width:40px; height:40px; flex:0 0 40px; border:0; box-shadow:none; background:#e8effa; }
+.land-schedule-view .notification-task-stack > summary strong { font-size:16px; }
+.land-schedule-view .notification-task-stack > summary .row-subtitle { font-size:13px; }
+.land-schedule-view .task-progress { height:4px; margin-top:7px; }
+.land-schedule-view .schedule-completed { margin-top:24px; }
+.land-schedule-view .schedule-completed > summary { font-size:18px; }
+
+.land-schedule-view .schedule-history-button { width:100%; margin-top:24px; min-height:44px; font-size:14px; box-shadow:none; }
+
+.booking-date-note { margin:0; font-size:13px; font-weight:400; line-height:1.5; }
+
+.land-task-preview .notification-task-stack > summary .row-icon { width:40px; height:40px; flex:0 0 40px; border:0; box-shadow:none; background:#e8effa; }
+.land-task-preview .notification-task-stack > summary strong { font-size:16px; }
+.land-task-preview .notification-task-stack > summary .row-subtitle { font-size:13px; }
+.land-task-preview .task-progress { height:4px; margin-top:7px; }
+
+.schedule-history-page { max-width:760px; margin-inline:auto; }
+.schedule-history-header { display:flex; align-items:center; gap:16px; margin:6px 0 28px; }
+.schedule-history-header .page-heading { flex:1; min-width:0; margin:0; }
+.schedule-history-header .page-description { margin-top:8px; }
+.history-calendar-shortcut { flex:none; background:var(--surface); color:var(--blue); }
+.schedule-history-list > h2 { margin:0 0 8px; font-size:18px; font-weight:600; }
+.schedule-history-list .notification-task-stack { margin:0 0 12px; }
+.schedule-history-list .notification-task-fields { padding-left:0; }
+.schedule-history-empty { display:flex; flex-direction:column; align-items:center; gap:12px; padding:56px 16px; text-align:center; }
+.schedule-history-empty > svg { color:#147544; }
+.schedule-history-empty h2 { margin:0; font-size:20px; }
+.schedule-history-empty p { margin:0; color:var(--muted); font-size:14px; }

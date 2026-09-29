@@ -8,6 +8,15 @@ const PHOTO = new File(['photo'], 'leaf.jpg', { type: 'image/jpeg' });
 const IMAGE = 'data:image/jpeg;base64,/9j/2Q==';
 const RESULT = { title: 'Leaves with holes', summary: 'Visible damage needs a closer look.', isPlant: true, observations: ['Several holes are visible.'], nextSteps: ['Look under the leaves.'], guideSlugs: ['caterpillars'] };
 
+test('photo controls and preview render without an outer card', () => {
+  const html = renderPhotoState({status:'idle',image:'',result:null,error:''});
+  assert.match(html, /class="plant-camera-card"/);
+  assert.doesNotMatch(html, /plant-camera-card card/);
+  assert.match(html, /class="plant-viewfinder"/);
+  assert.match(html, /data-photo-action="camera"/);
+  assert.match(html, /data-photo-action="library"/);
+});
+
 test('plant help pages omit the camera/search switch and preserve their tools', () => {
   const searchHtml = renderPlantHelp('/plant-help');
   const cameraHtml = renderPlantHelp('/plant-help/camera');
@@ -62,7 +71,7 @@ test('photo state renders native capture, gallery fallback and explicit send act
   assert.match(idle, /Take a photo/);
   assert.match(idle, /Choose a photo/);
   assert.match(idle, /plant-viewfinder[^>]*><svg/);
-  assert.match(ready, /plant-camera-has-photo/);
+  assert.match(ready, /class="plant-photo-preview"><img/);
   assert.match(renderPhotoState({ status: 'analyzing', image: IMAGE, result: null, error: '' }), /Looking at your plant…/);
 });
 

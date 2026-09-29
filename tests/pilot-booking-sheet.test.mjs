@@ -1,3 +1,4 @@
+import { pilotBookingDateRange } from '../src/booking-dates.mjs';
 import { renderCalendar } from '../src/schedule.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -9,7 +10,7 @@ import { createStore } from '../src/store.mjs';
 
 const LAND = {id:'booking-land',name:'North land',location:'Perak',area:2,crop:'Rice',unit:'ha',plantedAt:'',plots:[],isDemo:false};
 const createState = () => ({...structuredClone(INITIAL_STATE),farms:[LAND],bookings:[]});
-const fieldsFor = (pilot) => ({providerId:pilot.id,farmId:LAND.id,service:pilot.services[0],date:'2099-01-01',time:'09:00',notes:'Use the north entrance.'});
+const fieldsFor = (pilot) => ({providerId:pilot.id,farmId:LAND.id,service:pilot.services[0],date:pilotBookingDateRange().maximumDate,time:'09:00',notes:'Use the north entrance.'});
 
 test('pilot request is a guided modal over the pilot profile', () => {
   const html = renderDiscover(`/services/pilots/${PILOTS[0].id}/book`,createState());
@@ -28,7 +29,7 @@ test('saving request opens its chat and seeds the Messages conversation with job
   assert.equal(booking.status,'requested');
   assert.equal(booking.conversation[0].sender,'you');
   assert.match(booking.conversation[0].text,/North land · 2 ha/);
-  assert.match(booking.conversation[0].text,/2099-01-01 · 09:00/);
+  assert.ok(booking.conversation[0].text.includes(`${fieldsFor(PILOTS[0]).date} · 09:00`));
   assert.match(booking.conversation[0].text,/Use the north entrance/);
   assert.match(renderWorkspace('/messages',state),new RegExp(`/bookings/${booking.id}/chat`));
   assert.match(renderWorkspace(result.redirect,state),/Use the north entrance/);
@@ -68,4 +69,12 @@ test('booking uses the scheduler calendar and prevents selecting past days', () 
   const calendar = renderCalendar('2026-09-27','2026-09',true,[],false,'2026-09-27');
   assert.match(calendar,/data-calendar-date="2026-09-26" disabled/);
   assert.doesNotMatch(calendar,/data-calendar-date="2026-09-27" disabled/);
+});
+
+
+test('booking calendar shows the late-fee notice within its guided date step', () => {
+  const html = renderDiscover(`/services/pilots/${PILOTS[0].id}/book`,createState());
+  const dateStep = html.match(/<section class="field" data-booking-date>[\s\S]*?<\/section>/)?.[0];
+  assert.ok(dateStep);
+  assert.match(dateStep, /data-booking-calendar[\s\S]*<p class="muted booking-date-note">Existing bookings beyond the seven-day window may incur a late fee of RM 30 per day\.<\/p>/);
 });

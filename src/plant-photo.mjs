@@ -1,11 +1,12 @@
 import { validateWebResult } from './plant-web.mjs';
+import { translateAnalysis } from './translation.mjs';
 import { getLocale, t } from './i18n.mjs';
 import { findPlantGuide } from './plant-guides.mjs';
 import { renderPlantAnalysis } from './plant-help.mjs';
 import { escapeHtml as esc, icon } from './ui.mjs';
 
 /** @typedef {{title:string,summary:string,isPlant:boolean,observations:string[],nextSteps:string[],guideSlugs:string[],research?:import('./plant-web.mjs').PlantWebResult,referenceImages?:{url:string,source:string,title:string,credit:string}[]}} PlantAnalysis */
-/** @typedef {{status:'idle'|'preparing'|'ready'|'analyzing'|'success'|'error',image:string,result:PlantAnalysis|null,error:string}} PhotoState */
+/** @typedef {{status:'idle'|'preparing'|'ready'|'analyzing'|'success'|'error'|'translating',resultLocale:string,image:string,result:PlantAnalysis|null,error:string}} PhotoState */
 const MAX_FILE_BYTES = 15 * 1024 * 1024;
 const MAX_IMAGE_CHARACTERS = Math.ceil(4 * 1024 * 1024 / 3) * 4 + 40;
 const MAX_EDGE = 1600;
@@ -87,27 +88,30 @@ export async function requestPlantAnalysis(image, signal, fetcher = fetch) {
 }
 
 /** @returns {PhotoState} */
-const initialState = () => ({ status: 'idle', image: '', result: null, error: '' });
+const initialState = () => ({ status: 'idle', image: '', result: null, resultLocale: getLocale(), error: '' });
 
 /** @param {PhotoState} state @returns {string} */
 export function renderPhotoState(state) {
-  const isBusy = state.status === 'preparing' || state.status === 'analyzing';
+  const isBusy = ['preparing', 'analyzing', 'translating'].includes(state.status);
   const preview = state.image ? `<img src="${esc(state.image)}" alt="${esc(t('Your selected plant photo'))}">` : `<div class="plant-viewfinder" aria-hidden="true">${icon('leaf', 72)}</div>`;
-  const status = state.status === 'preparing' ? 'Preparing your photo…' : state.status === 'analyzing' ? 'Looking at your plant…' : '';
-  return `<section class="plant-camera-card card ${state.image ? 'plant-camera-has-photo' : ''}" aria-busy="${isBusy}"><div class="plant-photo-preview">${preview}</div><div class="plant-photo-controls"><input type="file" accept="image/*" capture="environment" data-plant-photo="camera" aria-label="${esc(t('Take a plant photo'))}" hidden><input type="file" accept="image/*" data-plant-photo="library" aria-label="${esc(t('Choose a plant photo'))}" hidden>${isBusy ? `<p class="plant-photo-status" role="status">${icon('leaf', 22)} ${esc(t(status))}</p><button class="button button-secondary" data-photo-action="cancel">${esc(t('Cancel'))}</button>` : `<div class="plant-photo-buttons">${state.image ? `<button class="button" data-photo-action="analyze">${icon('plant-2', 20)} ${esc(t(state.result ? 'Analyze again' : 'Analyze photo'))}</button><button class="button button-secondary" data-photo-action="camera">${icon('camera', 20)} ${esc(t('Retake'))}</button>` : `<button class="button" data-photo-action="camera">${icon('camera', 20)} ${esc(t('Take a photo'))}</button>`}<button class="${state.image ? 'link' : 'button button-secondary'}" data-photo-action="library">${icon('photo', 20)} ${esc(t('Choose a photo'))}</button></div>`}${state.error ? `<div class="plant-photo-error" role="alert"><p>${esc(t(state.error))}</p><a class="link" href="/plant-help">${esc(t('Search problems instead'))} ${icon('arrow-right', 17)}</a></div>` : ''}</div></section>${state.result ? renderPlantAnalysis(state.result) : ''}`;
+  const status = state.status === 'preparing' ? 'Preparing your photo…' : state.status === 'translating' ? 'Translating your summary…' : state.status === 'analyzing' ? 'Looking at your plant…' : '';
+  const summary = state.result && (!state.resultLocale || state.resultLocale === getLocale()) ? renderPlantAnalysis(state.result)
+    : state.result && !isBusy ? `<section class="card card-pad"><p>${esc(t('This summary is in another language. Translate it to your selected language.'))}</p><button class="button" data-photo-action="translate">${esc(t('Translate summary'))}</button></section>` : '';
+  return `<section class="plant-camera-card" aria-busy="${isBusy}"><div class="plant-photo-preview">${preview}</div><div class="plant-photo-controls"><input type="file" accept="image/*" capture="environment" data-plant-photo="camera" aria-label="${esc(t('Take a plant photo'))}" hidden><input type="file" accept="image/*" data-plant-photo="library" aria-label="${esc(t('Choose a plant photo'))}" hidden>${isBusy ? `<p class="plant-photo-status" role="status">${icon('leaf', 22)} ${esc(t(status))}</p><button class="button button-secondary" data-photo-action="cancel">${esc(t('Cancel'))}</button>` : `<div class="plant-photo-buttons">${state.image ? `<button class="button" data-photo-action="analyze">${icon('plant-2', 20)} ${esc(t(state.result ? 'Analyze again' : 'Analyze photo'))}</button><button class="button button-secondary" data-photo-action="camera">${icon('camera', 20)} ${esc(t('Retake'))}</button>` : `<button class="button" data-photo-action="camera">${icon('camera', 20)} ${esc(t('Take a photo'))}</button>`}<button class="${state.image ? 'link' : 'button button-secondary'}" data-photo-action="library">${icon('photo', 20)} ${esc(t('Choose a photo'))}</button></div>`}${state.error ? `<div class="plant-photo-error" role="alert"><p>${esc(t(state.error))}</p><a class="link" href="/plant-help">${esc(t('Search problems instead'))} ${icon('arrow-right', 17)}</a></div>` : ''}</div></section>${summary}`;
 }
 
 /** @param {{onChange:(state:PhotoState)=>void,prepare?:(file:File)=>Promise<string>,request?:(image:string,signal:AbortSignal)=>Promise<PlantAnalysis>}} options @returns {{getState:()=>PhotoState,choose:(file:File)=>Promise<void>,analyze:()=>Promise<void>,reset:(notify?:boolean)=>void,cancel:()=>void}} */
-export function createPlantPhotoController({ onChange, prepare = preparePlantPhoto, request = requestPlantAnalysis }) {
+export function createPlantPhotoController({ onChange, prepare = preparePlantPhoto, request = requestPlantAnalysis, translate = translateAnalysis }) {
   let state = initialState();
   let revision = 0;
   let pending = null;
+  const localizedResults = new Map();
   /** @param {PhotoState} next @returns {void} */
   const update = (next) => { state = next; onChange(state); };
   /** @returns {void} */
   const cancel = () => { revision += 1; pending?.abort(); pending = null; update({ ...state, status: state.image ? 'ready' : 'idle', error: '' }); };
   /** @param {boolean} notify @returns {void} */
-  const reset = (notify = true) => { revision += 1; pending?.abort(); pending = null; state = initialState(); if (notify) onChange(state); };
+  const reset = (notify = true) => { revision += 1; pending?.abort(); pending = null; state = initialState(); localizedResults.clear(); if (notify) onChange(state); };
   /** @param {File} file @returns {Promise<void>} */
   const choose = async (file) => {
     reset(false);
@@ -119,14 +123,38 @@ export function createPlantPhotoController({ onChange, prepare = preparePlantPho
   /** @returns {Promise<void>} */
   const analyze = async () => {
     if (!state.image || state.status === 'analyzing') return;
+    const resultLocale = getLocale();
     const current = ++revision;
     const controller = new AbortController();
     pending = controller;
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
     update({ ...state, status: 'analyzing', error: '', result: null });
-    try { const result = await request(state.image, controller.signal); if (current === revision) update({ ...state, status: 'success', result }); }
+    try {
+      const result = await request(state.image, controller.signal);
+      if (current === revision) { localizedResults.clear(); localizedResults.set(resultLocale, result); update({ ...state, status: 'success', result, resultLocale }); await localize(); }
+    }
     catch (error) { if (current === revision) update({ ...state, status: 'error', error: controller.signal.aborted ? 'That took too long. Try again or search the guides.' : error instanceof TypeError ? 'Could not connect. Check your connection or search the guides.' : error instanceof Error ? error.message : 'Photo analysis is unavailable.' }); }
     finally { clearTimeout(timer); if (current === revision) pending = null; }
   };
-  return { getState: () => state, choose, analyze, reset, cancel };
+  const localize = async () => {
+    const locale = getLocale();
+    if (!state.result) return;
+    if (state.resultLocale === locale) {
+      if (state.status === 'translating') { revision += 1; pending?.abort(); pending = null; update({ ...state, status: 'success', error: '' }); }
+      return;
+    }
+    const current = ++revision;
+    pending?.abort();
+    const controller = new AbortController(); pending = controller;
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+    const original = state.result;
+    update({ ...state, status: 'translating', error: '' });
+    try {
+      const result = localizedResults.get(locale) ?? parsePlantAnalysis(await translate(original, locale, controller.signal));
+      if (current === revision) { localizedResults.set(locale, result); update({ ...state, status: 'success', result, resultLocale: locale }); }
+    } catch (error) {
+      if (current === revision) update({ ...state, status: 'error', error: 'Translation is unavailable. Please try again.' });
+    } finally { clearTimeout(timer); if (current === revision) pending = null; }
+  };
+  return { getState: () => state, choose, analyze, localize, reset, cancel };
 }

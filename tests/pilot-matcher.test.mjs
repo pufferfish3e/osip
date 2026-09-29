@@ -75,6 +75,12 @@ test('pilot calendar preserves selection while navigating and supports flexible 
   click({ calendarMove:'1' });
   assert.ok(cells.some((cell) => cell.dataset.calendarDate === '2026-10-01'));
   assert.equal(input.value, '2026-09-28');
+  assert.equal(cells.find((cell) => cell.dataset.calendarDate === '2026-10-05').disabled, true);
+  click({ calendarDate:'2026-10-05' });
+  assert.equal(input.value, '2026-09-28');
+  click({ calendarDate:'2026-10-04' });
+  assert.equal(input.value, '2026-10-04');
+  click({ calendarDate:'2026-09-28' });
   click({ calendarDate:'2026-09-01' });
   assert.equal(input.value, '2026-09-28');
   click({ shouldToggle:true });

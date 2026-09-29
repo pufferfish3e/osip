@@ -1,3 +1,4 @@
+import { createRecordId } from './record-id.mjs';
 import { t } from './i18n.mjs';
 import { escapeHtml as esc, icon } from './ui.mjs';
 
@@ -68,7 +69,7 @@ export function initializeKeypadCalculator(root, store) {
   save.addEventListener('click', () => {
     if (state.result === null) return;
     try {
-      store.update((draft) => draft.savedCalculations.unshift({ id: crypto.randomUUID(), type: 'basic', title: state.expression, result: state.result, unit: '', date: new Date().toISOString() }));
+      store.update((draft) => draft.savedCalculations.unshift({ id: createRecordId(), type: 'basic', title: state.expression, result: state.result, unit: '', date: new Date().toISOString() }));
       save.disabled = true; status.textContent = t('Calculation saved.');
     } catch (error) { status.textContent = t(error instanceof Error ? error.message : 'Could not calculate.'); }
   });

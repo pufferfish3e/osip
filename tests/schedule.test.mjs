@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { calendarDate, calendarDays, nextCalendarView, renderCalendar } from '../src/schedule.mjs';
-import { INITIAL_STATE } from '../src/data.mjs';
+import INITIAL_STATE from '../data/demo.json' with {type:'json'};
 import { renderWorkspace } from '../src/workspace.mjs';
 
 test('calendar weeks span month and year boundaries without UTC date shifts', () => {
@@ -38,16 +38,16 @@ test('expanded calendar covers every day including leap February and six-week mo
 
 test('shared calendar exposes selected date and task markers with accessible labels', () => {
   const html = renderCalendar('2026-09-26', '2026-09', true, ['2026-09-26']);
-  assert.match(html, /data-calendar-date="2026-09-26" aria-pressed="true"/);
+  assert.match(html, /data-calendar-date="2026-09-26"\s+aria-pressed="true"/);
   assert.match(html, /Tasks to do/);
   assert.match(html, /data-calendar-move="-1"/);
 });
 
-test('schedule has one task entry point and a five-step sheet using the calendar picker', () => {
+test('schedule has one task entry point and a six-step sheet using the calendar picker', () => {
   const html = renderWorkspace('/farm/farm-1/schedule', structuredClone(INITIAL_STATE));
   assert.match(html, /data-schedule-calendar/);
   assert.match(html, /data-task-picker/);
-  assert.equal((html.match(/data-task-step/g) ?? []).length, 5);
+  assert.equal((html.match(/data-task-step/g) ?? []).length, 6);
   assert.equal((html.match(/data-form="task"/g) ?? []).length, 1);
   assert.match(html, /data-plan-task/);
   assert.doesNotMatch(html, /name="dueDate" type="date"/);
@@ -59,7 +59,7 @@ test('task detail offers guided editing with saved values and explicit deletion'
   const html = renderWorkspace(`/farm/${task.farmId}/tasks/${task.id}`, state);
   assert.match(html, /data-plan-task/);
   assert.match(html, /data-action="delete-task"/);
-  assert.equal((html.match(/data-task-step/g) ?? []).length, 5);
+  assert.equal((html.match(/data-task-step/g) ?? []).length, 6);
   assert.ok(html.includes(`name="id" value="${task.id}"`));
   assert.ok(html.includes(`value="${task.dueDate}"`));
   assert.ok(html.includes(`value="${task.time}"`));

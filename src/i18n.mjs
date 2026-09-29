@@ -2,6 +2,7 @@ import { CORE_TRANSLATIONS } from './locales/core.mjs';
 import { DISCOVER_TRANSLATIONS } from './locales/discover.mjs';
 import { PLANT_TRANSLATIONS } from './locales/plant.mjs';
 import { WORKSPACE_TRANSLATIONS } from './locales/workspace.mjs';
+import { SUPPLEMENTAL_TRANSLATIONS } from './locales/supplemental.mjs';
 
 /** @typedef {'en'|'ms'|'zh-Hans'} Locale */
 /** @typedef {{getItem:(key:string)=>string|null,setItem:(key:string,value:string)=>void}} LocaleStorage */
@@ -14,8 +15,8 @@ export const SUPPORTED_LOCALES = Object.freeze([
 const LANGUAGE_STORAGE_KEY = 'osip-language';
 const FORMAT_LOCALES = { en: 'en-MY', ms: 'ms-MY', 'zh-Hans': 'zh-Hans-MY' };
 const TRANSLATIONS = {
-  ms: { ...CORE_TRANSLATIONS.ms, ...WORKSPACE_TRANSLATIONS.ms, ...DISCOVER_TRANSLATIONS.ms, ...PLANT_TRANSLATIONS.ms },
-  'zh-Hans': { ...CORE_TRANSLATIONS['zh-Hans'], ...WORKSPACE_TRANSLATIONS['zh-Hans'], ...DISCOVER_TRANSLATIONS['zh-Hans'], ...PLANT_TRANSLATIONS['zh-Hans'] },
+  ms: { ...CORE_TRANSLATIONS.ms, ...WORKSPACE_TRANSLATIONS.ms, ...DISCOVER_TRANSLATIONS.ms, ...PLANT_TRANSLATIONS.ms, ...SUPPLEMENTAL_TRANSLATIONS.ms },
+  'zh-Hans': { ...CORE_TRANSLATIONS['zh-Hans'], ...WORKSPACE_TRANSLATIONS['zh-Hans'], ...DISCOVER_TRANSLATIONS['zh-Hans'], ...PLANT_TRANSLATIONS['zh-Hans'], ...SUPPLEMENTAL_TRANSLATIONS['zh-Hans'] },
 };
 /** @type {Locale} */
 let activeLocale = 'en';

@@ -1,3 +1,4 @@
+import { createRecordId } from './record-id.mjs';
 import { preparePlantPhoto } from './plant-photo.mjs';
 import { getFormatLocale, getLocale, t } from './i18n.mjs';
 import { renderPlantWebResult, searchPlantWeb, validateWebResult } from './plant-web.mjs';
@@ -320,7 +321,7 @@ const bindProductIdentification = (panel, signal) => {
       if (signal.aborted || request !== requestNumber) return;
       plannerDraft = Object.fromEntries([...panel.querySelector('form').elements].filter((field) => field.name).map((field) => [field.name, field.value]));
       const locale = getLocale();
-      productSearch = { key: `product-${crypto.randomUUID()}`, isPhoto: Boolean(image), load: () => searchPlantWeb(description || 'Identify this pesticide packaging and shortlist sourced product matches. No dosage.', locale, AbortSignal.timeout(45000), fetch, 'pesticide-products', image) };
+      productSearch = { key: `product-${createRecordId()}`, isPhoto: Boolean(image), load: () => searchPlantWeb(description || 'Identify this pesticide packaging and shortlist sourced product matches. No dosage.', locale, AbortSignal.timeout(45000), fetch, 'pesticide-products', image) };
       openProductPage(panel, '/tools/products');
     } catch (error) { if (!signal.aborted) { console.error('Product photo failed.', error instanceof Error ? error.message : 'Unknown error'); status.textContent = t('No matching products found. Try another photo or description.'); } }
   };
