@@ -711,6 +711,7 @@ summary {cursor:pointer;min-height:44px;}
 .task-sheet h2 { font-size: 26px; margin: 8px 0 20px; }
 .task-sheet .field { margin-bottom: 16px; }
 .task-sheet form,.task-sheet [data-task-step],.task-sheet .field { min-width:0; max-width:100%; }
+.task-sheet input[type="time"] { display:block; width:100%; min-width:0; max-width:100%; }
 .task-sheet-actions { margin-top: 24px; }
 .task-sheet-actions .button:last-child:not([hidden]),.task-sheet-actions [data-task-next] { flex: 1; }
 @media (max-width: 759px) {
