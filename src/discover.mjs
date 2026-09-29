@@ -4,7 +4,7 @@ import { renderCalendar } from './schedule.mjs';
 import { renderDealSearch, renderShopOffers } from './shop-deals.mjs';
 // Pesticide calculator disabled at user request; retain integration for restoration.
 // import { renderMixturePlanner, renderPesticideOptions, renderProductMatchPage, renderTankPreparation } from './mixture-planner.mjs';
-import { renderPilotMatcher, renderPilotReviews } from './pilot-matcher.mjs';
+import { pilotDescription, renderPilotPills, renderPilotMatcher, renderPilotReviews } from './pilot-matcher.mjs';
 import { renderArticleLibrary, renderLearningArticleCard, localizeLearningArticle } from './article-library.mjs';
 import { ARTICLES, COURSES, NEWS, PILOTS, PRODUCTS, isArticleCatalogueLoaded } from './data.mjs';
 import { getFormatLocale, getLocale, t } from './i18n.mjs';
@@ -161,19 +161,14 @@ const servicesHome = () => `${pageHeading('', t('Services'))}
   <label class="search-field">${icon('search')}<input type="search" data-service-search maxlength="200" aria-label="${esc(t('Search pilots'))}" placeholder="${esc(t('Search pilots or a job…'))}"></label><div data-service-results aria-live="polite" hidden></div><div data-service-browse>
   <div class="card-grid"><a class="media-card learning-photo-card services-feature-card" href="/services/pilots">${photo(PILOTS[0]?.portrait ?? '/assets/course.jpg', '')}<div class="learning-photo-body"><p class="learning-photo-meta">${esc(t('Drone pilots'))}</p><h2>${esc(t('Book a drone pilot'))}</h2><div class="learning-photo-footer"><span class="button">${esc(t('Find a pilot'))}${icon('arrow-up-right', 18)}</span></div></div></a>
 </div>
-  <div class="section-heading"><h2>${esc(t('Your services'))}</h2></div><div class="card list">
-${/* Pesticide calculator disabled; restore this link with its route.
-<a class="list-row" href="/tools"><span class="row-icon">${icon('calculator')}</span><span class="row-copy"><span class="row-title">${esc(t('Pesticide calculator'))}</span></span>${icon('chevron-right', 18)}</a>
-*/ ''}
-    <a class="list-row" href="/weather"><span class="row-icon">${icon('cloud')}</span><span class="row-copy"><span class="row-title">${esc(t('Weather'))}</span></span>${icon('chevron-right', 18)}</a>
-    <a class="list-row" href="/bookings"><span class="row-icon">${icon('calendar')}</span><span class="row-copy"><span class="row-title">${esc(t('Your bookings'))}</span><span class="row-subtitle">${esc(t('Requests, schedules and conversations'))}</span></span>${icon('chevron-right', 18)}</a>
-</div></div>`;
+  <div class="section-heading"><h2>${esc(t('Your services'))}</h2></div>
+  <div class="card-grid"><a class="media-card learning-photo-card services-feature-card" href="/bookings">${photo('/assets/drone.jpg', '')}<div class="learning-photo-body"><h2>${esc(t('Your bookings'))}</h2><p class="learning-photo-meta">${esc(t('Requests, schedules and conversations'))}</p><div class="learning-photo-footer"><span class="button">${esc(t('View bookings'))}${icon('arrow-up-right', 18)}</span></div></div></a></div></div>`;
 
 /** @param {Pilot} pilot @returns {string} */
 const pilotCard = (pilot) => `<article class="pilot-portrait-card pilot-catalog-card" data-search-item data-search-text="${esc([pilot.name, pilot.serviceArea, pilot.equipment, ...pilot.services].flatMap((value) => [value, t(value)]).join(' ').toLowerCase())}">
   <img class="pilot-match-cover" src="${esc(pilot.portrait)}" alt="" loading="lazy" width="1086" height="1448">
-  <div class="pilot-match-body"><h2>${esc(pilot.name)}</h2><p class="pilot-match-specialty">${esc(t(pilot.serviceArea))} · ${pilot.services.map((service) => esc(t(service))).join(' · ')}</p>
-    <div class="pilot-match-footer"><div class="pilot-match-stats">${renderPilotReviews(pilot)}<span class="pilot-match-percent">${money(pilot.rate)} / ${esc(t(pilot.rateUnit))}</span></div><a class="button" href="/services/pilots/${esc(pilot.id)}">${esc(t('View pilot'))}${icon('arrow-up-right', 18)}</a></div></div></article>`;
+  <div class="pilot-match-body"><h2>${esc(pilot.name)}</h2>${renderPilotPills(pilot)}<p class="expert-bio">${esc(pilotDescription(pilot))}</p>${renderPilotReviews(pilot)}
+    <div class="pilot-match-footer"><a class="button" href="/services/pilots/${esc(pilot.id)}">${esc(t('View pilot'))}${icon('arrow-up-right',18)}</a></div></div></article>`;
 
 /** @returns {string} */
 const pilotList = () => `${backLink('/services', 'Services')}${pageHeading(t('Drone pilots'), t('Find a drone pilot'))}
@@ -183,12 +178,12 @@ const pilotList = () => `${backLink('/services', 'Services')}${pageHeading(t('Dr
 const pilotDetail = (id) => {
   const pilot = PILOTS.find((item) => item.id === id);
   if (!pilot) return missingPage('Pilot not found', '/services/pilots', 'Find a pilot');
-  return `${backLink('/services/pilots', 'Drone pilots')}<div class="split-layout"><div>
-    ${pageHeading(t('Drone pilot'), pilot.name)}<div class="chips">${pilot.services.map((service) => `<span class="chip">${esc(t(service))}</span>`).join('')}</div>
-    <div class="card card-pad form-stack"><h2>${esc(t('Ready for the field'))}</h2><div class="list-row"><span class="row-icon">${icon('map-pin')}</span><div class="row-copy"><span class="row-title">${esc(t('Service area'))}</span><span class="row-subtitle">${esc(t(pilot.serviceArea))}</span></div></div>
-      <div class="list-row"><span class="row-icon">${icon('drone')}</span><div class="row-copy"><span class="row-title">${esc(t('Equipment'))}</span><span class="row-subtitle">${esc(t(pilot.equipment))}</span></div></div></div></div>
-    <aside class="card card-pad form-stack"><img class="avatar pilot-avatar" src="${esc(pilot.portrait)}" alt="" loading="lazy"><span class="badge badge-blue">${esc(t('Sample pilot'))}</span><div><h2>${money(pilot.rate)} <span class="muted">/ ${esc(t(pilot.rateUnit))}</span></h2><p class="muted">${esc(t('Starting rate · Final quote to be agreed.'))}</p></div>
-      <a class="button" href="/services/pilots/${esc(pilot.id)}/book">${esc(t('Request a booking'))}${icon('arrow-up-right', 18)}</a></aside></div>`;
+  return `${backLink('/services/pilots', 'Drone pilots')}<article class="expert-detail">
+    <header class="expert-detail-heading"><img src="${esc(pilot.portrait)}" alt="" width="112" height="112"><h1>${esc(pilot.name)}</h1><p>${icon('map-pin',16)}${esc(t(pilot.serviceArea))}</p></header>
+    <div class="expert-detail-summary"><p class="expert-bio">${esc(t('Provides {services} in {area}, using a {equipment}.',{services:pilot.services.map((service)=>t(service)).join(' · '),area:t(pilot.serviceArea),equipment:t(pilot.equipment)}))}</p>${renderPilotReviews(pilot)}</div>
+    <section class="expert-detail-section"><h2>${esc(t('What I can help with'))}</h2><div class="expert-detail-topics">${pilot.services.map((service)=>`<span>${esc(t(service))}</span>`).join('')}</div></section>
+    <dl class="expert-detail-facts"><div><dt>${esc(t('Equipment'))}</dt><dd>${esc(t(pilot.equipment))}</dd></div><div><dt>${esc(t('Starting rate'))}</dt><dd>${money(pilot.rate)} / ${esc(t(pilot.rateUnit))}</dd></div></dl>
+    <footer class="expert-detail-action"><a class="button" href="/services/pilots/${esc(pilot.id)}/book">${esc(t('Request a booking'))}${icon('arrow-up-right',18)}</a></footer></article>`;
 };
 
 /** @param {string} id @param {AppState} state @returns {string} */

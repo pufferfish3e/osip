@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { togglePilotPreference, demoPilotMatch, initializePilotDatePicker, matchPilots, renderPilotMatcher, renderPilotMatch, revealPilotMatch } from '../src/pilot-matcher.mjs';
+import { resolvePilotOther, togglePilotPreference, demoPilotMatch, initializePilotDatePicker, matchPilots, renderPilotMatcher, renderPilotMatch, revealPilotMatch } from '../src/pilot-matcher.mjs';
 import { PILOTS } from '../src/data.mjs';
 const PREFERENCES = {service:'Mapping',area:'Perak',date:'',budget:75};
 test('demo matching rotates eligible pilots and gives an explicitly illustrative score below 100', () => {
@@ -99,10 +99,13 @@ test('matched card uses each pilot portrait, shows rating and explains demo revi
   if (pilot.reviewCount) {
     assert.ok(html.includes(String(pilot.rating)));
     assert.ok(html.includes(`(${pilot.reviewCount})`));
-    assert.match(html, /Sample reviews/);
+    assert.match(html, /expert-stars/);
   } else assert.match(html, /No reviews yet/);
-  for (const review of pilot.reviews) assert.ok(html.includes(review));
-  assert.match(html, pilot.portrait.endsWith('.svg') ? /Placeholder portrait/ : /AI-generated portrait/);
+
+  const details = html;
+  assert.ok(details.includes(pilot.equipment));
+  assert.ok(details.includes(pilot.serviceArea.replaceAll('&', '&amp;')));
+  assert.doesNotMatch(details, /preference score|confirmed availability|Sample pilot|Illustrative score|Starting rate/);
   assert.ok(html.includes(`/services/pilots/${pilot.id}`));
  }
  assert.match(renderPilotMatch(undefined), /No pilot fits/);
@@ -116,4 +119,16 @@ test('pilot preferences toggle independently and any budget is exclusive', () =>
   const matches = matchPilots({service:['Mapping'], area:['Perak','Kedah'], date:[], budget:[60,100]});
   assert.ok(matches.length);
   for (const {pilot} of matches) assert.ok(pilot.services.includes('Mapping'));
+});
+
+test('pilot Other preserves existing choices and resolves typed service and area', () => {
+  const choices = ['Mapping','Other'];
+  assert.deepEqual(resolvePilotOther(choices,'  Crop survey  '), ['Mapping','Crop survey']);
+  assert.deepEqual(choices,['Mapping','Other']);
+  assert.deepEqual(resolvePilotOther(['Mapping'],'unused'),['Mapping']);
+  assert.deepEqual(resolvePilotOther(['Other'],'  '),[]);
+  const html = renderPilotMatcher();
+  assert.match(html,/data-preference="service" data-value="Other"/);
+  assert.match(html,/name="otherservice"/);
+  assert.match(html,/name="otherarea"/);
 });

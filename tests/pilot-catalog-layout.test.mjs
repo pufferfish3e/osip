@@ -19,5 +19,5 @@ test('pilot catalogue removes the sample notice and groups matching and search c
 
 test('catalogue search preserves bottom spacing and keeps the matching icon visible', () => {
   assert.match(STYLES, /\.pilot-catalog-controls\s*\{[^}]*margin-bottom:24px;/);
-  assert.match(STYLES, /\.pilot-search-match\s*\{[^}]*flex-shrink:0;/);
+  assert.match(STYLES, /\.pilot-search-match\s*\{[^}]*(?:flex-shrink:0;|flex:0 0 44px;)/);
 });

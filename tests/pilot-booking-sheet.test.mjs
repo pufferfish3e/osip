@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import { submitForm } from '../src/actions.mjs';
 import { INITIAL_STATE, PILOTS, COURSES } from '../src/data.mjs';
 import { renderDiscover } from '../src/discover.mjs';
-import { renderWorkspace } from '../src/workspace.mjs';
+import { unifiedConversations, renderWorkspace } from '../src/workspace.mjs';
 import { createStore } from '../src/store.mjs';
 
 const LAND = {id:'booking-land',name:'North land',location:'Perak',area:2,crop:'Rice',unit:'ha',plantedAt:'',plots:[],isDemo:false};
@@ -89,4 +89,28 @@ test('pilot booking errors have an accessible target inside the modal',()=>{
 test('course booking errors remain visible inside the sheet',()=>{
  const html=renderDiscover(`/learn/courses/${COURSES[0].id}/book`,INITIAL_STATE);
  assert.match(html,/<p[^>]*data-booking-error[^>]*role="alert"/);
+});
+
+test('same pilot bookings share one inbox and retain messages through both old routes', () => {
+  const pilot = PILOTS[0];
+  const base = {type:'pilot',providerId:pilot.id,title:'Mapping',date:'2030-01-01',time:'08:00'};
+  const first = {...base,id:'first',conversation:[{id:'m1',text:'First booking',sender:'you',date:'2030-01-01T08:00:00Z'}]};
+  const second = {...base,id:'second',conversation:[{id:'m2',text:'Second booking',sender:'you',date:'2030-01-02T08:00:00Z'}]};
+  const state = {...structuredClone(INITIAL_STATE),bookings:[first,second],chats:[]};
+  assert.equal(unifiedConversations(state).length,1);
+  assert.equal((renderWorkspace('/messages',state).match(/class="inbox-row"/g) ?? []).length,1);
+  for (const id of ['first','second']) {
+    const html = renderWorkspace(`/bookings/${id}/chat`,state);
+    assert.match(html,/First booking/);
+    assert.match(html,/Second booking/);
+  }
+  assert.equal(first.conversation.length,1);
+  assert.equal(second.conversation.length,1);
+});
+
+test('course chat uses its instructor portrait', () => {
+  const course = COURSES.find((item)=>item.instructorPortrait);
+  const state = {...structuredClone(INITIAL_STATE),chats:[],bookings:[{id:'course-chat',type:'course',providerId:course.id,title:course.title,date:course.date,conversation:[]}]};
+  assert.ok(renderWorkspace('/messages',state).includes(course.instructorPortrait));
+  assert.ok(renderWorkspace('/bookings/course-chat/chat',state).includes(course.instructorPortrait));
 });

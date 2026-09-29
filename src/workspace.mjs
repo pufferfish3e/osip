@@ -268,16 +268,41 @@ const renderBooking = (booking, state) => {
   const amount = booking.type === 'course' ? t('Free') : money(booking.price);
   /** @param {string} label @param {string} value @returns {string} */
   const detail = (label, value) => `<div class="booking-receipt-row"><dt>${esc(t(label))}</dt><dd>${esc(value)}</dd></div>`;
-  return `${back('/bookings', t('All bookings'))}<article class="booking-receipt"><header class="booking-receipt-hero"><span class="booking-receipt-icon" aria-hidden="true">${icon(booking.type === 'course' ? 'school' : 'drone', 28)}</span><h1 class="page-title" tabindex="-1">${esc(bookingTitle(booking))}</h1><p class="booking-receipt-amount">${esc(amount)}</p><p class="muted">${esc(t(booking.type === 'course' ? 'Course fee' : 'Estimate'))}</p>${badge(booking.status)}</header><dl class="booking-receipt-details">${detail('Date', dateLabel(booking.date))}${detail('Time', booking.time)}${pilot ? detail('Provider', pilot.name) : ''}${farm ? detail('Land', farm.name) : ''}</dl>${booking.notes ? `<p class="booking-receipt-note">${esc(booking.notes)}</p>` : ''}${booking.rescheduleRequest ? `<p class="booking-receipt-note muted">${esc(t('Schedule change requested: {date} at {time}. Awaiting provider confirmation.', { date: dateLabel(booking.rescheduleRequest.date), time: booking.rescheduleRequest.time }))}</p>` : ''}<div class="booking-receipt-actions">${isActive ? `<details class="booking-reschedule"><summary>${icon('calendar', 18)} ${esc(t('Reschedule'))}${icon('chevron-down', 18)}</summary>${rescheduleForm(booking)}</details><button class="booking-cancel" data-action="cancel-booking" data-id="${esc(booking.id)}">${esc(t('Cancel booking'))}</button>` : `<div class="booking-inactive-actions"><button class="button button-secondary" disabled>${icon('calendar', 18)} ${esc(t('Reschedule'))}</button><button class="button button-secondary" disabled>${esc(t('Cancel booking'))}</button></div>`}</div><footer class="booking-receipt-footer"><p>${esc(t('Reference {id}', { id: booking.id }))}</p><p>${esc(t('No provider contacted or reservation made.'))}</p></footer></article>`;
+  return `${back('/bookings', t('All bookings'))}<article class="booking-receipt"><header class="booking-receipt-hero"><span class="booking-receipt-icon" aria-hidden="true">${icon(booking.type === 'course' ? 'school' : 'drone', 28)}</span><h1 class="page-title" tabindex="-1">${esc(bookingTitle(booking))}</h1><p class="booking-receipt-amount">${esc(amount)}</p><p class="muted">${esc(t(booking.type === 'course' ? 'Course fee' : 'Estimate'))}</p>${badge(booking.status)}</header><dl class="booking-receipt-details">${detail('Date', dateLabel(booking.date))}${detail('Time', booking.time)}${pilot ? detail('Provider', pilot.name) : ''}${farm ? detail('Land', farm.name) : ''}</dl>${booking.notes ? `<p class="booking-receipt-note">${esc(booking.notes)}</p>` : ''}${booking.rescheduleRequest ? `<p class="booking-receipt-note muted">${esc(t('Schedule change requested: {date} at {time}. Awaiting provider confirmation.', { date: dateLabel(booking.rescheduleRequest.date), time: booking.rescheduleRequest.time }))}</p>` : ''}${booking.type === 'course' ? `<a class="button booking-instructor-chat" href="/bookings/${esc(booking.id)}/chat">${icon('message-circle', 18)}${esc(t('Chat with instructor'))}</a>` : ''}<div class="booking-receipt-actions">${isActive ? `<details class="booking-reschedule"><summary>${icon('calendar', 18)} ${esc(t('Reschedule'))}${icon('chevron-down', 18)}</summary>${rescheduleForm(booking)}</details><button class="booking-cancel" data-action="cancel-booking" data-id="${esc(booking.id)}">${esc(t('Cancel booking'))}</button>` : `<div class="booking-inactive-actions"><button class="button button-secondary" disabled>${icon('calendar', 18)} ${esc(t('Reschedule'))}</button><button class="button button-secondary" disabled>${esc(t('Cancel booking'))}</button></div>`}</div><footer class="booking-receipt-footer"><p>${esc(t('Reference {id}', { id: booking.id }))}</p><p>${esc(t('No provider contacted or reservation made.'))}</p></footer></article>`;
 };
+
+/** @param {Booking} item @returns {string} */
+const conversationIdentity = (item) => {
+  if (item.type === 'pilot') return `pilot:${item.providerId}`;
+  const expert = EXPERTS.find((person) => person.id === item.expertId);
+  const pilot = expert && PILOTS.find((person) => person.name === expert.name && person.portrait === expert.portrait);
+  return pilot ? `pilot:${pilot.id}` : `conversation:${item.id}`;
+};
+/** @param {AppState} state @returns {Booking[]} */
+export function unifiedConversations(state) {
+  const groups = new Map();
+  for (const item of [...state.bookings, ...(state.chats ?? [])]) {
+    const key = conversationIdentity(item);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  }
+  return [...groups.values()].map((items) => {
+    const messages = new Map();
+    for (const item of items) for (const message of item.conversation ?? []) messages.set(message.id, message);
+    return {...items[0], conversation:[...messages.values()].sort((a,b)=>a.date.localeCompare(b.date))};
+  });
+}
+/** @param {AppState} state @param {Booking} item @returns {Booking} */
+const unifiedConversation = (state,item) => unifiedConversations(state).find((chat)=>conversationIdentity(chat) === conversationIdentity(item)) ?? item;
 
 /** @param {Booking} booking @returns {string} */
 const conversationName = (booking) => booking.name ?? (booking.type === 'course' ? COURSES.find((course) => course.id === booking.providerId)?.instructor : PILOTS.find((pilot) => pilot.id === booking.providerId)?.name) ?? bookingTitle(booking);
 /** @param {Booking} booking @returns {string} */
 const conversationAvatar = (booking) => {
   const expert = EXPERTS.find((item) => item.id === booking.expertId);
+  const instructor = booking.type === 'course' ? COURSES.find((course) => course.id === booking.providerId) : undefined;
   const pilot = booking.type === 'pilot' ? PILOTS.find((item) => item.id === booking.providerId) : undefined;
-  return `<img class="chat-avatar" src="${esc(expert?.portrait ?? pilot?.portrait ?? '/assets/avatar-default.svg')}" alt="" width="50" height="50">`;
+  return `<img class="chat-avatar" src="${esc(expert?.portrait ?? pilot?.portrait ?? instructor?.instructorPortrait ?? '/assets/avatar-default.svg')}" alt="" width="50" height="50">`;
 };
 /** @param {Booking} booking @returns {string} */
 const renderChat = (booking) => {
@@ -287,7 +312,7 @@ const renderChat = (booking) => {
 };
 /** @param {AppState} state @returns {string} */
 const renderMessages = (state) => {
-  const bookings = [...state.bookings, ...(state.chats ?? []).map((chat) => ({ ...chat, title:chat.name, date:new Date().toISOString() }))].sort((a,b) => (b.conversation?.at(-1)?.date ?? b.date).localeCompare(a.conversation?.at(-1)?.date ?? a.date));
+  const bookings = unifiedConversations(state).map((chat) => ({...chat, title:chat.title ?? chat.name, date:chat.date ?? ''})).sort((a,b) => (b.conversation?.at(-1)?.date ?? b.date).localeCompare(a.conversation?.at(-1)?.date ?? a.date));
   return `${pageHeading('', t('Messages'))}<section class="inbox"><label class="search-field">${icon('search',20)}<input type="search" data-search="conversations" aria-label="${esc(t('Search conversations'))}" placeholder="${esc(t('Search conversations'))}"></label><div class="section-heading"><a class="link" href="/messages/new">${icon('plus',18)} ${esc(t('New chat'))}</a></div>${bookings.length ? `<div class="inbox-list">${bookings.map((booking) => {
     const name = conversationName(booking); const latest = booking.conversation?.at(-1);
     return `<a class="inbox-row" data-search-item data-topic="all" data-search-text="${esc(`${name} ${bookingTitle(booking)} ${latest?.text ?? ''}`.toLowerCase())}" href="${booking.name ? `/messages/${esc(booking.id)}` : `/bookings/${esc(booking.id)}/chat`}">${conversationAvatar(booking)}<span class="row-copy"><span class="inbox-row-heading"><strong>${esc(name)}</strong><time>${esc(dateLabel(latest?.date ?? booking.date))}</time></span><span class="inbox-preview">${latest?.sender === 'you' ? `${esc(t('You'))}: ` : ''}${esc(latest?.text ?? t(booking.name ? 'Start a conversation' : 'Start a conversation about this booking'))}</span></span></a>`;
@@ -494,14 +519,14 @@ const bookingRoute = (parts, state) => {
   if (parts[0] === 'messages' && parts.length === 2) {
     if (parts[1] === 'new') return `${back('/messages', t('Messages'))}${pageHeading('', t('New chat'))}<form class="form-stack" data-form="conversation"><label class="field">${esc(t('Name'))}<input name="name" maxlength="100" required autocomplete="off"></label><button class="button" type="submit">${esc(t('Start a conversation'))}${icon('arrow-up-right',18)}</button></form>`;
     const chat = state.chats?.find((item) => item.id === parts[1]);
-    return chat ? renderChat(chat) : missing('Conversation not found', '/messages');
+    return chat ? renderChat(unifiedConversation(state,chat)) : missing('Conversation not found', '/messages');
   }
   if (parts[0] !== 'bookings') return null;
   if (parts.length === 1) return renderBookings(state);
   const booking = state.bookings.find((item) => item.id === parts[1]);
   if (!booking) return missing('Booking not found', '/bookings');
   if (parts.length === 2) return renderBooking(booking, state);
-  return parts.length === 3 && parts[2] === 'chat' ? renderChat(booking) : null;
+  return parts.length === 3 && parts[2] === 'chat' ? renderChat(unifiedConversation(state,booking)) : null;
 };
 
 /** @param {string[]} parts @param {AppState} state @returns {string|null} */

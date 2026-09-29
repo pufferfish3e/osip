@@ -42,14 +42,19 @@ export const EXPERTS = [
   {id:'expert-drone-borneo',name:'Farah Binti Ali',portrait:'/assets/expert-lina.jpg',crops:["Rice","Oil palm","Rubber","Coconut","Durian","Banana","Pineapple","Guava","Vegetables","Chilli","Cocoa","Pepper"],topics:['Drone operations'],area:'East Malaysia',areas:["Sabah","Sarawak"],languages:['Bahasa Melayu','English'],isDemo:true},
 ];
 const MATCH_WEIGHTS = {crop:40,topic:30,area:20,language:10};
-/** @typedef {{crop:string,topic:string,area:string,language:string}} ExpertPreferences */
+/** @typedef {{crop:string|string[],topic:string|string[],area:string|string[],language:string|string[]}} ExpertPreferences */
 /** @param {ExpertPreferences} preferences @returns {{expert:(typeof EXPERTS)[number],score:number,reasons:string[]}[]} */
 export function matchExperts(preferences) {
   return EXPERTS.map((expert) => {
-    const matches = {crop:expert.crops.some((crop)=>crop.toLowerCase() === preferences.crop.trim().toLowerCase()),topic:expert.topics.some((topic)=>topic.toLowerCase() === preferences.topic.trim().toLowerCase()),area:expert.area === preferences.area || expert.areas?.includes(preferences.area) === true,language:expert.languages.includes(preferences.language)};
-    const reasons = Object.keys(matches).filter((key) => matches[key]).map((key) => preferences[key]);
-    const score = Object.keys(matches).reduce((sum,key) => sum + (matches[key] ? MATCH_WEIGHTS[key] : 0),0);
-    return {expert,score,reasons};
+    const values = {crop:expert.crops,topic:expert.topics,area:[expert.area,...(expert.areas ?? [])],language:expert.languages};
+    const reasons = [];
+    const score = Object.keys(MATCH_WEIGHTS).reduce((sum,key) => {
+      const selected = [...new Set([].concat(preferences[key]).map((value) => value.trim()).filter(Boolean))];
+      const matched = selected.filter((value) => values[key].some((option) => option.toLowerCase() === value.toLowerCase()));
+      reasons.push(...matched);
+      return sum + (selected.length ? MATCH_WEIGHTS[key] * matched.length / selected.length : 0);
+    },0);
+    return {expert,score:Math.round(score),reasons};
   }).sort((first,second) => second.score - first.score || first.expert.id.localeCompare(second.expert.id));
 }
 /** @param {import('./store.mjs').AppState} state @param {string} expertId @returns {string} */

@@ -67,7 +67,7 @@ test('every listed crop has a matching specialist and every state has a drone sp
   }
   assert.ok(EXPERTS.every((expert) => expert.isDemo === true));
   const page = renderExperts();
-  assert.match(page,/Demo profiles/);
+  assert.doesNotMatch(page,/Demo profiles/);
   assert.match(page,/Drone operations/);
   assert.match(page,/Negeri Sembilan/);
 });
@@ -102,4 +102,37 @@ test('view expert opens a detailed profile instead of another catalogue card', (
   assert.match(html, /expert-detail-action/);
   assert.match(html, /expert-bio/);
   assert.doesNotMatch(html, /pilot-catalog-card|pilot-portrait-card/);
+});
+
+test('expert bios are concise and ratings render five fractional stars with review counts', () => {
+  setLocale('en');
+  for (const expert of EXPERTS) {
+    const html = renderExperts(expert.id);
+    const bio = html.match(/class="expert-bio">([^<]+)</)[1];
+    const wordCount = bio.trim().split(/\s+/).length;
+    assert.ok(wordCount >= 20 && wordCount <= 30, `${expert.name}: ${wordCount} words`);
+    assert.equal((html.match(/class="expert-star"/g) ?? []).length, 5);
+    assert.match(html, /4\.[6-9] <span>\(\d+\)<\/span>/);
+    assert.match(html, /--star-fill:[6-9]\d(?:\.\d+)?%/);
+  }
+});
+
+test('expert match preserves location and every crop as separate glass pills', () => {
+  const expert = EXPERTS.find((item) => item.crops.length > 5);
+  assert.ok(expert);
+  const html = renderExpertMatch({expert,score:80});
+  const pills = html.match(/class="expert-glass-pills">([\s\S]*?)<\/div>/)[1];
+  assert.equal((pills.match(/<span>/g) ?? []).length, expert.crops.length + 1);
+  for (const label of [expert.area,...expert.crops]) assert.ok(pills.includes(`<span>${label}</span>`));
+});
+
+test('expert multiselect retains typed choices and scores partial coverage', async () => {
+  const {resolveExpertPreferences} = await import('../src/expert-ui.mjs');
+  const prefs = {crop:['Rice','Other'],topic:['Pests','Water'],area:['Kedah','Perak'],language:['English'],otherCrop:'Chilli',otherTopic:''};
+  const resolved = resolveExpertPreferences(prefs);
+  assert.deepEqual(resolved.crop,['Rice','Chilli']);
+  assert.deepEqual(prefs.crop,['Rice','Other']);
+  const azlan = matchExperts(resolved).find((match)=>match.expert.id === 'expert-azlan');
+  assert.equal(azlan.score,70);
+  assert.deepEqual(azlan.reasons,['Rice','Pests','Water','Kedah','English']);
 });

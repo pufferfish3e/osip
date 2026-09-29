@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { submitForm } from '../src/actions.mjs';
-import { INITIAL_STATE, PILOTS } from '../src/data.mjs';
+import { COURSES, INITIAL_STATE, PILOTS } from '../src/data.mjs';
 import { initializeChatComposer, renderWorkspace } from '../src/workspace.mjs';
 
 const BOOKING = { id:'receipt-test', type:'pilot', providerId:'azlan', title:'Mapping with Azlan Ibrahim', date:'2026-09-30', time:'09:00', farmId:'land-test', status:'requested', notes:'Check the north field', price:504.5, conversation:[] };
@@ -86,4 +86,17 @@ test('Enter sends, while Shift+Enter and composition preserve typing', () => {
   textarea.value = '   ';
   press();
   assert.equal(submissions, 1);
+});
+
+test('course receipt opens its existing instructor conversation with the matching portrait', () => {
+  const state = structuredClone(INITIAL_STATE);
+  const course = COURSES[0];
+  state.bookings = [{...BOOKING,type:'course',providerId:course.id,title:course.title,price:0}];
+  const receipt = renderWorkspace('/bookings/receipt-test',state);
+  assert.match(receipt, /class="button booking-instructor-chat" href="\/bookings\/receipt-test\/chat"/);
+  assert.match(receipt, /Chat with instructor/);
+  const chat = renderWorkspace('/bookings/receipt-test/chat',state);
+  assert.ok(chat.includes(course.instructor));
+  assert.ok(chat.includes(course.instructorPortrait));
+  assert.match(chat, /name="bookingId" value="receipt-test"/);
 });

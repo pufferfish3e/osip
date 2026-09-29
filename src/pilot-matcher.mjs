@@ -59,25 +59,41 @@ export function matchPilots(preferences) {
   }).sort((a, b) => b.score - a.score || a.pilot.rate - b.pilot.rate || a.pilot.id.localeCompare(b.pilot.id));
 }
 /** @param {string} name @param {string[]} values @returns {string} */
-const choices = (name, values) => `<div class="pilot-preference-options">${values.map((value) => `<button type="button" class="button button-secondary" data-preference="${name}" data-value="${value}" aria-pressed="false">${esc(t(value))}</button>`).join('')}</div>`;
+const choices = (name, values) => `<div class="chips pilot-preference-options">${values.map((value) => `<button type="button" class="chip" data-preference="${name}" data-value="${value}" aria-pressed="false">${esc(t(value))}</button>`).join('')}</div>`;
+/** @param {string} key @returns {string} */
+const otherPreference = (key) => `<label class="field" data-pilot-other-label="${key}" hidden><span>${esc(t('Other'))}</span><input class="input" name="other${key}" type="text" maxlength="80" data-pilot-other="${key}"></label>`;
+/** @param {string[]} selected @param {string} other @returns {string[]} */
+export function resolvePilotOther(selected, other) {
+  return [...new Set(selected.map((value) => value === 'Other' ? other.trim().slice(0,80) : value).filter(Boolean))];
+}
 /** @returns {string} */
 export function renderPilotMatcher() {
-  return `<dialog class="task-sheet pilot-preference-sheet" data-pilot-wizard aria-labelledby="pilot-wizard-title"><form novalidate><div class="task-sheet-heading"><span data-match-progress></span><button type="button" class="icon-button" data-match-close aria-label="${esc(t('Cancel'))}">${icon('x')}</button></div><h2 id="pilot-wizard-title" data-match-heading></h2><div data-match-step="0">${choices('service', ['Mapping', 'Crop survey', 'Spraying'])}</div><div data-match-step="1" hidden>${choices('area', ['Perak', 'Kedah', 'Other'])}</div><div data-match-step="2" hidden><input type="hidden" name="date" value=""><p>${esc(t('Preferred date'))}</p><div data-pilot-date-picker>${renderCalendar('', calendarDate(new Date()).slice(0, 7), true, [], false, pilotBookingDateRange().minimumDate, pilotBookingDateRange().maximumDate)}</div><button type="button" class="button button-secondary" data-pilot-flexible aria-pressed="true">${esc(t('Leave blank for flexible dates.'))}</button></div><div data-match-step="3" hidden>${choices('budget', ['60', '75', '100', 'Any budget'])}</div><p role="alert" data-match-error></p><div class="task-sheet-actions"><button type="button" class="button button-secondary" data-match-back>${esc(t('Back'))}</button><button type="submit" class="button" data-match-next>${esc(t('Continue'))}</button></div><button type="button" class="pilot-catalog-shortcut" data-match-close>${esc(t('Browse all pilots'))}</button></form></dialog><dialog class="pilot-match-dialog" data-pilot-match aria-label="${esc(t('Your pilot match'))}"></dialog>`;
+  return `<dialog class="task-sheet pilot-preference-sheet" data-pilot-wizard aria-labelledby="pilot-wizard-title"><form novalidate><div class="task-sheet-heading"><span data-match-progress></span><button type="button" class="icon-button" data-match-close aria-label="${esc(t('Cancel'))}">${icon('x')}</button></div><h2 id="pilot-wizard-title" data-match-heading></h2><div data-match-step="0">${choices('service', ['Mapping', 'Crop survey', 'Spraying', 'Other'])}${otherPreference('service')}</div><div data-match-step="1" hidden>${choices('area', ['Perak', 'Kedah', 'Other'])}${otherPreference('area')}</div><div data-match-step="2" hidden><input type="hidden" name="date" value=""><p>${esc(t('Preferred date'))}</p><div data-pilot-date-picker>${renderCalendar('', calendarDate(new Date()).slice(0, 7), true, [], false, pilotBookingDateRange().minimumDate, pilotBookingDateRange().maximumDate)}</div><button type="button" class="button button-secondary" data-pilot-flexible aria-pressed="true">${esc(t('Leave blank for flexible dates.'))}</button></div><div data-match-step="3" hidden>${choices('budget', ['60', '75', '100', 'Any budget'])}</div><p role="alert" data-match-error></p><div class="task-sheet-actions"><button type="button" class="button button-secondary" data-match-back>${esc(t('Back'))}</button><button type="submit" class="button" data-match-next>${esc(t('Continue'))}</button></div><button type="button" class="pilot-catalog-shortcut" data-match-close>${esc(t('Browse all pilots'))}</button></form></dialog><dialog class="pilot-match-dialog" data-pilot-match aria-label="${esc(t('Your pilot match'))}"></dialog>`;
 }
 /** @param {(typeof PILOTS)[number]} pilot @returns {string} */
 export function renderPilotReviews(pilot) {
   if (!pilot.reviewCount) return `<span class="muted">${esc(t('No reviews yet.'))}</span>`;
-  return `<details class="pilot-review-preview"><summary aria-label="${esc(t('Reviews'))}"><span aria-hidden="true">★</span> ${pilot.rating} <span>(${pilot.reviewCount})</span></summary><div><strong>${esc(t('Sample reviews'))}</strong>${pilot.reviews.map((review) => `<blockquote><span aria-hidden="true">★★★★★</span><p>${esc(t(review))}</p></blockquote>`).join('')}</div></details>`;
+  const stars = Array.from({length:5}, (_,position) => `<span class="expert-star" style="--star-fill:${Math.round(Math.min(1,Math.max(0,pilot.rating-position))*100)}%">${icon('star',16)}</span>`).join('');
+  return `<p class="expert-rating" aria-label="${esc(t('Reviews'))}: ${pilot.rating} / 5"><span class="expert-stars" aria-hidden="true">${stars}</span><strong>${pilot.rating} <span>(${pilot.reviewCount})</span></strong></p>`;
+}
+/** @param {(typeof PILOTS)[number]} pilot @returns {string} */
+export function renderPilotPills(pilot) {
+  return `<div class="expert-glass-pills">${[pilot.serviceArea,...pilot.services].map((label)=>`<span>${esc(t(label))}</span>`).join('')}</div>`;
+}
+/** @param {(typeof PILOTS)[number]} pilot @returns {string} */
+export function pilotDescription(pilot) {
+  return t('Provides {services} in {area}, using a {equipment}.', {services:pilot.services.map((service)=>t(service)).join(' · '),area:t(pilot.serviceArea),equipment:t(pilot.equipment)});
 }
 /** @param {ReturnType<typeof matchPilots>[number]|undefined} match @returns {string} */
 export function renderPilotMatch(match) {
   const close = `<button class="icon-button pilot-match-close" data-result-close aria-label="${esc(t('Cancel'))}">${icon('x')}</button>`;
   if (!match) return `${close}<div class="pilot-match-body"><h2>${esc(t('No pilot fits this service and area yet.'))}</h2><button class="button" data-match-retry>${esc(t('Change preferences'))}</button><button class="pilot-catalog-shortcut" data-result-close>${esc(t('Browse all pilots'))}</button></div>`;
-  const { pilot, score, dateMatches, budgetMatches } = match;
-  return `${close}<article class="pilot-portrait-card"><img class="pilot-match-cover" src="${esc(pilot.portrait)}" alt=""><div class="pilot-match-body">
-    <h2>${esc(pilot.name)}</h2><p class="pilot-match-specialty">${esc(t(pilot.serviceArea))}</p>
-    <div class="pilot-match-footer"><div class="pilot-match-stats">${renderPilotReviews(pilot)}<span class="pilot-match-percent">${score}% ${esc(t(match.isDemoScore ? 'Demo match' : 'Match'))}</span></div><a class="button" href="/services/pilots/${esc(pilot.id)}">${esc(t('View pilot'))}${icon('arrow-up-right', 18)}</a></div>
-    <details class="pilot-match-details"><summary>${esc(t('Match details'))}</summary><p>RM ${pilot.rate} / ${esc(t(pilot.rateUnit))}</p><p>${esc(t(match.isDemoScore ? 'Illustrative score. Service and area are filtered; this is not confirmed availability.' : 'Service and area match. Date and budget refine the score.'))}</p>${!dateMatches ? `<p>${esc(t('Available after your preferred date.'))}</p>` : ''}${!budgetMatches ? `<p>${esc(t('Starting rate exceeds your budget.'))}</p>` : ''}<p>${esc(t('A preference score, not confirmed availability.'))}</p><p>${esc(t(pilot.portrait.endsWith('.svg') ? 'Sample pilot · Placeholder portrait' : 'Sample pilot · AI-generated portrait'))}</p></details>
+  const { pilot, score } = match;
+  return `<article class="pilot-portrait-card expert-result-card"><img class="pilot-match-cover" src="${esc(pilot.portrait)}" alt="">
+    <div class="expert-result-heading"><span>${score}% ${esc(t(match.isDemoScore ? 'Demo match' : 'Preference match'))}</span><button class="icon-button" data-result-close aria-label="${esc(t('Cancel'))}">${icon('x')}</button></div>
+    <div class="pilot-match-body"><h2>${esc(pilot.name)}</h2>${renderPilotPills(pilot)}
+    <p class="expert-bio">${esc(pilotDescription(pilot))}</p>${renderPilotReviews(pilot)}
+    <div class="pilot-match-footer"><a class="button" href="/services/pilots/${esc(pilot.id)}">${esc(t('View pilot'))}${icon('arrow-up-right',18)}</a></div>
     <button class="pilot-catalog-shortcut" data-match-retry>${esc(t('Change preferences'))}</button></div></article>`;
 };
 /** @param {HTMLElement} wizard @param {HTMLInputElement} input @param {string} today @returns {void} */
@@ -138,6 +154,8 @@ export function initializePilotMatcher(root) {
       const key = button.dataset.preference;
       const value = button.dataset.value;
       preferences[key] = togglePilotPreference(preferences[key], value, key === 'budget' ? 'Any budget' : '');
+      const otherLabel = wizard.querySelector(`[data-pilot-other-label="${key}"]`);
+      if (otherLabel) otherLabel.hidden = !preferences[key].includes('Other');
       wizard.querySelectorAll(`[data-preference="${key}"]`).forEach((choice) => choice.setAttribute('aria-pressed', String(preferences[key].includes(choice.dataset.value))));
     }
   });
@@ -145,9 +163,15 @@ export function initializePilotMatcher(root) {
     event.preventDefault();
     if (!wizard.open) return;
     if ((step === 0 && !preferences.service.length) || (step === 1 && !preferences.area.length) || (step === 3 && !preferences.budget.length)) { wizard.querySelector('[data-match-error]').textContent = t('Choose an option to continue.'); return; }
+    const otherKey = step === 0 ? 'service' : step === 1 ? 'area' : '';
+    if (otherKey && preferences[otherKey].includes('Other') && !form.elements[`other${otherKey}`].value.trim()) {
+      wizard.querySelector('[data-match-error]').textContent = t('Please enter a short description.');
+      form.elements[`other${otherKey}`].focus();
+      return;
+    }
     if (step < 3) { step += 1; update(); return; }
     preferences.date = form.elements.date.value.split(',').filter(Boolean);
-    const match = demoPilotMatch({...preferences, budget: preferences.budget.map((value) => Number(value) || 0)}, previousPilotId);
+    const match = demoPilotMatch({...preferences, service:resolvePilotOther(preferences.service, form.elements.otherservice.value), area:resolvePilotOther(preferences.area, form.elements.otherarea.value), budget: preferences.budget.map((value) => Number(value) || 0)}, previousPilotId);
     previousPilotId = match?.pilot.id ?? previousPilotId;
     wizard.close();
     try { await revealPilotMatch(result, match); }

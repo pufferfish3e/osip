@@ -416,8 +416,8 @@ summary {cursor:pointer;min-height:44px;}
 .schedule-completed>summary { display:flex; align-items:center; justify-content:space-between; gap:12px; list-style:none; cursor:pointer; font-size:20px; font-weight:600; padding:16px 0; }
 .schedule-tree-more>summary { color:var(--blue); padding:14px 12px; cursor:pointer; min-height:48px; }
 .schedule-tree summary:focus-visible,.schedule-completed summary:focus-visible { outline:2px solid var(--blue); outline-offset:3px; }
-.plant-photo-preview { width:100%; position:relative; aspect-ratio:6/5; max-height:420px; background:#dce7d7; overflow:hidden; }
-.plant-photo-preview>img { width:100%; height:100%; object-fit:contain; background:#e4eadf; }
+.plant-photo-preview { width:100%; border-radius:24px; position:relative; aspect-ratio:6/5; max-height:420px; background:#dce7d7; overflow:hidden; }
+.plant-photo-preview>img { border-radius:24px; width:100%; height:100%; object-fit:contain; background:#e4eadf; }
 .plant-viewfinder { position:absolute; inset:0; display:grid; place-items:center; color:#54764d; background:radial-gradient(ellipse at 50% 35%,#f8fcf2,#dce7d7 75%); }
 .plant-photo-controls { padding:22px 0 0; }
 .plant-photo-buttons { display:flex; flex-wrap:wrap; gap:10px; }
@@ -961,8 +961,8 @@ body:has(.course-booking-sheet[open]) { overflow: hidden; }
  .chat-screen { margin-inline:0; padding:0; border-radius:0; }
 }
 
-.pilot-preference-options { display: grid; gap: 12px; margin: 20px 0; }
-.pilot-preference-options [aria-pressed="true"] { background: var(--blue); color: #fff; }
+.pilot-preference-options { display:flex; flex-wrap:wrap; gap:8px; margin:20px 0; }
+.pilot-preference-options [aria-pressed="true"], [data-expert-choices] [aria-pressed="true"] { background: var(--blue); color: #fff; }
 .pilot-preference-sheet [hidden] { display: none !important; }
 .pilot-catalog-shortcut { display: block; padding: 16px; width: 100%; border: 0; background: transparent; color: var(--blue); font: inherit; cursor: pointer; }
 .pilot-match-dialog { position: fixed; inset: 0; margin: auto; padding: 0; width: min(360px, calc(100% - 32px)); max-height: 88dvh; overflow: auto; border: 0; border-radius: 31px; background: #303432; color: #fff; box-shadow: 0 24px 80px #0005; }
@@ -1344,8 +1344,8 @@ body:has(.pilot-booking-sheet[open]) { overflow:hidden; }
 .notification-copy time { font-size:12px; color:var(--muted); }
 .notification-unread { width:8px; height:8px; flex:0 0 8px; margin-top:7px; border-radius:50%; background:var(--blue); }
 .notification-pending { margin-bottom:28px; }
-.notification-pending .section-heading { margin:16px 0 8px; }
-.notification-pending .section-heading h2 { font-size:14px; color:var(--muted); font-weight:500; }
+.notification-pending .section-heading, .notification-completed .section-heading { margin:16px 0 8px; }
+.notification-pending .section-heading h2, .notification-completed .section-heading h2 { font-size:14px; color:var(--muted); font-weight:500; }
 .notification-pending .card { background:#fff; border:0; box-shadow:none; border-radius:20px; }
 
 .chat-typing { color:var(--muted); width:fit-content; }
@@ -1587,3 +1587,24 @@ body:has(.chat-screen) { overflow:hidden; }
 .expert-detail-facts dd { margin:0; text-align:right; overflow-wrap:anywhere; }
 .expert-detail-action { padding:8px 0 16px; }
 .expert-detail-action .button { width:100%; min-height:54px; }
+
+.expert-detail-heading > img { display: block; margin-inline: auto; }
+.expert-stars { display: inline-flex; gap: 3px; flex-shrink: 0; }
+.expert-star { display: inline-flex; position: relative; width: 16px; height: 16px; color: #a7afa9; }
+.expert-star > svg { fill: currentColor; }
+.expert-star::after { content: ''; position: absolute; inset: 0; background: #eebd45; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 94%, 50% 72%, 21% 94%, 32% 57%, 2% 35%, 39% 35%); width: 100%; mask-image: linear-gradient(to right, #000 var(--star-fill), transparent var(--star-fill)); }
+.expert-rating .expert-stars { margin-left: 0; }
+.expert-detail-summary .expert-rating strong span { color: var(--muted); }
+
+.expert-glass-pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; min-width: 0; }
+.expert-glass-pills > span { padding: 6px 10px; border-radius: 999px; border: 1px solid #ffffff30; background: #25332dcc; color: #fff; font-size: 12px; line-height: 1.4; max-width: 100%; overflow-wrap: anywhere; }
+@supports ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))) {
+  .expert-glass-pills > span { background: #ffffff1f; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .expert-glass-pills > span { background: #25332d; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+
+[data-expert-choices] { flex-wrap:wrap; overflow:visible; }
+
+.booking-instructor-chat { display: flex; width: 100%; min-height: 48px; gap: 10px; margin-top: 24px; border-radius: 999px; }
