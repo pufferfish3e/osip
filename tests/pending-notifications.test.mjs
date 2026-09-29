@@ -38,3 +38,16 @@ test('updates have compact unread indicators, newest first, and read action', ()
   applyAction(state, 'mark-notifications-read');
   assert.doesNotMatch(renderWorkspace('/notifications', state), /class="notification-unread"/);
 });
+
+test('booking updates use the scheduled task disclosure layout', () => {
+  const state = structuredClone(INITIAL_STATE);
+  state.farms = [];
+  state.tasks = [];
+  state.notifications = [{ id:'note-1', title:'Booking request saved', body:'Spraying with Pilot. Saved on this device.', date:'2026-09-29T03:00:00Z', read:false }];
+  const html = renderWorkspace('/notifications', state);
+  assert.match(html, /<details class="notification-task-stack notification-update-stack is-unread" data-notification-stack="note-1"><summary>/);
+  assert.match(html, /<strong>Booking request saved<\/strong>/);
+  assert.match(html, /<div class="notification-task-fields notification-update-fields"><p>Spraying with Pilot\. Saved on this device\.<\/p>/);
+  assert.match(html, /data-action="mark-notification-read" data-id="note-1"/);
+  assert.doesNotMatch(html, /notification-item|notification-icon/);
+});
