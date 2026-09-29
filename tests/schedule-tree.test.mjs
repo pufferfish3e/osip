@@ -50,7 +50,8 @@ test('multi-field schedules share a tree while independent schedules stay separa
   submitForm(state,'task',FIELDS);
   const html = renderWorkspace('/schedule',state);
   assert.equal((html.match(/class="notification-task-stack"/g) ?? []).length,2);
-  assert.match(html,/Until harvest/);
+  assert.match(html,/End date/);
+  assert.doesNotMatch(html,/value="harvest"/);
   assert.match(html,/When should it end\?/);
   assert.doesNotMatch(html,/schedule-tree-fields"><div class="card/);
 });
@@ -63,4 +64,15 @@ test('end condition persists in local storage', () => {
   const restored = createStore(adapter,DEMO,'demo').getState().tasks.at(-1);
   assert.equal(restored.endKind,'harvest');
   assert.equal(restored.endDate,FIELDS.endDate);
+});
+
+test('editing a harvest schedule uses the unified date choice and preserves its end date', () => {
+  const state = structuredClone(DEMO);
+  state.tasks = [];
+  submitForm(state,'task',FIELDS);
+  const task = state.tasks[0];
+  const html = renderWorkspace(`/farm/${task.farmId}/tasks/${task.id}`,state);
+  assert.match(html,/name="endKind" value="date" checked/);
+  assert.ok(html.includes(`name="endDate" value="${FIELDS.endDate}"`));
+  assert.doesNotMatch(html,/name="endKind" value="harvest"/);
 });
