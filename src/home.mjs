@@ -1,5 +1,5 @@
 import { canCompleteTask } from './actions.mjs';
-import { NEWS, WEATHER } from './data.mjs';
+import { NEWS } from './data.mjs';
 import { convertArea } from './calculators.mjs';
 import { getFormatLocale, t } from './i18n.mjs';
 import { escapeHtml as esc, localizeDemoState, icon, friendlyDate } from './ui.mjs';
@@ -33,8 +33,8 @@ const farmOverview = (state) => {
   return `<section class="farm-overview"><img src="/assets/farm.jpg" alt="${esc(t('Aerial view of rice fields'))}" fetchpriority="high"><div class="farm-overview-content"><div class="flex items-center justify-between gap-3"><span class="photo-label">${icon('plant-2', 16)} ${esc(farm?.name ?? t('My land'))}</span><span class="photo-label">${esc(t(farm?.isDemo || farm?.id === 'farm-1' ? 'Land' : 'My land'))}</span></div><div class="farm-total"><p>${esc(t('Your growing space'))}</p><h2>${area.toLocaleString(getFormatLocale(), { maximumFractionDigits: 2 })}<span>${esc(t(unit))}</span></h2><p>${featured ? `${featured.count} ${esc(t('Tasks'))}` : esc(t('{count} land parcel', { count: farm ? 1 : 0 }))} <span aria-hidden="true">·</span> ${esc(crops ?? t('Ready for a new season'))}</p></div><a class="photo-button" href="${farm ? `/farm/${esc(farm.id)}` : '/farm'}">${esc(t('View my land'))} ${icon('arrow-up-right', 18)}</a></div></section>`;
 };
 
-/** @param {string} farmId @returns {string} */
-const weatherCard = () => `<a class="weather-preview card" href="/weather"><div class="flex items-center justify-between"><span class="eyebrow">${esc(t('Weather'))}</span>${icon('arrow-up-right', 20)}</div><p class="weather-location">${esc(t(WEATHER.location))}</p><div class="weather-current"><strong>${WEATHER.temperature}°</strong><span class="weather-sun" aria-hidden="true">⛅</span></div><p class="weather-condition">${esc(t(WEATHER.condition))}</p><div class="weather-metrics"><span>${icon('wind', 18)} ${esc(t('Northeast {speed} km/h', { speed: WEATHER.windSpeed }))}</span><span>${icon('droplet', 18)} ${esc(t('{chance}% rain', { chance: WEATHER.rainChance }))}</span></div><p class="weather-caption">${esc(t('Sample forecast · not live'))}</p></a>`;
+/** @param {import('./weather.mjs').Weather|undefined} weather @param {string} status @param {string} location */
+const weatherCard = (weather, status, location) => `<a class="weather-preview card" href="/weather"><div class="flex items-center justify-between"><span class="eyebrow">${esc(t('Weather'))}</span>${icon('arrow-up-right', 20)}</div><p class="weather-location">${esc(location)}</p><div class="weather-current"><strong>${weather ? `${weather.temperature}°` : '—°'}</strong><span class="weather-sun" aria-hidden="true">⛅</span></div><p class="weather-condition">${esc(weather ? t(weather.condition) : t(status === 'error' ? 'Forecast unavailable' : 'Loading forecast…'))}</p>${weather ? `<div class="weather-metrics"><span>${icon('wind', 18)} ${esc(t('{direction} {speed} km/h', { direction: t(({ N:'North', NE:'Northeast', E:'East', SE:'Southeast', S:'South', SW:'Southwest', W:'West', NW:'Northwest' })[weather.windDirection]), speed:weather.windSpeed }))}</span><span>${icon('droplet', 18)} ${esc(t('{chance}% rain', { chance: weather.rainChance }))}</span></div><p class="weather-caption">${esc(t('Forecast by Open-Meteo'))}</p>` : ''}</a>`;
 
 /** @param {import('./store.mjs').AppState} state @returns {string} */
 const scheduleSection = (state) => {
@@ -54,7 +54,7 @@ const latestStory = () => {
 };
 
 /** @param {import('./store.mjs').AppState} inputState @returns {string} */
-export function renderHome(inputState) {
+export function renderHome(inputState, weather, weatherStatus = 'loading', weatherLocation = 'Perak') {
   inputState = localizeDemoState(inputState);
   const realFarms = inputState.farms.filter((farm) => farm.isDemo === false || (!farm.isDemo && farm.id !== 'farm-1'));
   const state = realFarms.length ? { ...inputState, farms: realFarms, tasks: inputState.tasks.filter((task) => realFarms.some((farm) => farm.id === task.farmId)) } : inputState;
@@ -64,5 +64,5 @@ export function renderHome(inputState) {
   const heading = hasChosenRole
     ? `<header class="home-heading"><div><p class="eyebrow">${date}</p><h1 tabindex="-1">${esc(greeting)}</h1>${!state.profile.onboarded ? `<a class="link" href="/onboarding/${state.profile.role}">${esc(t('Finish your setup'))} ${icon('arrow-right', 16)}</a>` : ''}</div><a class="button button-secondary desktop-only" href="/farm">${icon('plant-2', 18)} ${esc(t('My land'))}</a></header>`
     : `<header class="home-heading home-welcome"><div><h1 tabindex="-1">${esc(t('Make yourself at home'))}</h1><p class="muted">${esc(t('Set up your farmer or pilot profile.'))}</p></div><a class="button" href="/onboarding/role">${esc(t('Choose role'))} ${icon('arrow-right', 18)}</a></header>`;
-  return `${heading}<div class="overview-grid">${farmOverview(state)}${weatherCard()}</div><div class="quick-actions" aria-label="${esc(t('Quick actions'))}">${QUICK_ACTIONS.map(([href, symbol, label]) => `<a href="${href}" class="quick-action"><span>${icon(symbol, 25)}</span>${esc(t(label))}</a>`).join('')}</div><div class="home-lower">${scheduleSection(state)}${learnSection()}</div>${latestStory()}`;
+  return `${heading}<div class="overview-grid">${farmOverview(state)}${weatherCard(weather, weatherStatus, weatherLocation)}</div><div class="quick-actions" aria-label="${esc(t('Quick actions'))}">${QUICK_ACTIONS.map(([href, symbol, label]) => `<a href="${href}" class="quick-action"><span>${icon(symbol, 25)}</span>${esc(t(label))}</a>`).join('')}</div><div class="home-lower">${scheduleSection(state)}${learnSection()}</div>${latestStory()}`;
 }

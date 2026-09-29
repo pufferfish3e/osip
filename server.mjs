@@ -33,7 +33,7 @@ const PUBLIC_FILES = new Set([
   '/assets/vendor/leaflet.js', '/assets/vendor/leaflet.css',
   '/index.html', '/offline.html', '/src/browser-app.mjs', '/sw.js', '/manifest.webmanifest',
   '/src/open-articles.mjs', '/src/article-reader.mjs', '/src/extension-articles.mjs', '/src/article-catalogue.mjs', '/src/article-library.mjs', '/src/data.mjs', '/src/store.mjs', '/src/spray-calculator.mjs', '/src/calculators.mjs', '/src/profile-photo.mjs', '/src/ui.mjs', '/src/shell.mjs',
-  '/src/home.mjs', '/src/workspace.mjs', '/src/discover.mjs', '/src/pilot-matcher.mjs', '/src/expert-data.mjs', '/src/expert-ui.mjs', '/src/keypad-calculator.mjs', '/src/actions.mjs', '/src/pwa.mjs', '/src/drafts.mjs',
+  '/src/home.mjs', '/src/workspace.mjs', '/src/weather.mjs', '/src/discover.mjs', '/src/pilot-matcher.mjs', '/src/expert-data.mjs', '/src/expert-ui.mjs', '/src/keypad-calculator.mjs', '/src/actions.mjs', '/src/pwa.mjs', '/src/drafts.mjs',
   '/src/plant-web.mjs', '/src/plant-action.mjs', '/src/plant-guides.mjs', '/src/plant-help.mjs', '/src/plant-photo.mjs',
   '/src/i18n.mjs', '/src/language.mjs', '/src/locales/core.mjs', '/src/locales/workspace.mjs', '/src/locales/discover.mjs', '/src/locales/plant.mjs',
   '/assets/app.css', '/assets/aura-brand.css', '/assets/vendor/gsap.min.js', '/assets/icons.svg', '/assets/mark.svg', '/assets/avatar-default.svg',

@@ -10,7 +10,7 @@ import { isLandBoundary } from './land-boundary.mjs';
 import { renderLandEditor } from './land-editor.mjs';
 import { renderLandSetup } from './land-setup.mjs';
 import { calendarDate, renderTaskTimePicker, taskRepeatLabel } from './schedule.mjs';
-import { COURSES, PILOTS, PRODUCTS, WEATHER } from './data.mjs';
+import { COURSES, PILOTS, PRODUCTS } from './data.mjs';
 import { getFormatLocale, getLocale, SUPPORTED_LOCALES, t } from './i18n.mjs';
 import { escapeHtml as esc, localizeDemoState, icon, pageHeading, emptyState, profilePhoto } from './ui.mjs';
 
@@ -220,9 +220,12 @@ const weatherTrend = (values) => {
   return `<svg viewBox="0 0 200 64" aria-hidden="true"><path d="${path}" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="${points[0][0]}" cy="${points[0][1]}" r="4" fill="currentColor"/></svg>`;
 };
 /** @param {string} label @param {string} symbol @param {number} value @param {string} unit @param {number[]} values @param {string} [detail] @returns {string} */
-const weatherMetric = (label, symbol, value, unit, values, detail = '') => `<section class="forecast-metric"><div class="forecast-metric-value"><h2>${icon(symbol, 18)}${esc(t(label))}</h2><p><strong>${value}</strong><span>${esc(t(unit))}</span></p>${detail ? `<span class="forecast-detail">${esc(detail)}</span>` : ''}</div><div class="forecast-trend">${weatherTrend(values)}<div class="forecast-times"><span>${esc(t('Now'))}</span><span>12:00</span><span>15:00</span></div><span class="sr-only">${WEATHER.hourly.map((hour, index) => `${esc(t(hour.time))}: ${values[index]} ${esc(t(unit))}`).join('; ')}</span></div></section>`;
-/** @param {Farm} farm @returns {string} */
-const renderWeather = () => `${back('/', t('Home'))}<div class="forecast-panel"><header class="forecast-hero"><div><h1>${esc(t(WEATHER.location))}</h1><p class="forecast-temperature">${WEATHER.temperature}<span>°C</span></p><p>${esc(t(WEATHER.condition))}</p><p>${esc(t('High'))}: ${WEATHER.daily[0].high}° · ${esc(t('Low'))}: ${WEATHER.daily[0].low}°</p></div><span class="forecast-symbol" aria-hidden="true">⛅</span></header><p class="forecast-source">${esc(t('Sample forecast · not live'))}</p><div class="forecast-metrics">${weatherMetric('Wind speed', 'wind', WEATHER.windSpeed, 'km/h', WEATHER.hourly.map((hour) => hour.windSpeed), t('From {direction}', { direction: t(WIND_DIRECTIONS[WEATHER.windDirection]) }))}${weatherMetric('Rain chance', 'cloud-rain', WEATHER.rainChance, '%', WEATHER.hourly.map((hour) => hour.rainChance))}${weatherMetric('Humidity', 'droplet', WEATHER.humidity, '%', WEATHER.hourly.map((hour) => hour.humidity))}</div><div class="forecast-days">${WEATHER.daily.map((day) => `<div><span>${esc(t(day.day))}</span>${icon(day.rainChance > 50 ? 'cloud-rain' : 'cloud', 22)}<span>${day.high}° <span class="forecast-low">${day.low}°</span></span></div>`).join('')}</div></div>`;
+const weatherMetric = (label, symbol, value, unit, hours, key, detail = '') => {
+  const values = hours.map((hour) => hour[key]);
+  return `<section class="forecast-metric"><div class="forecast-metric-value"><h2>${icon(symbol, 18)}${esc(t(label))}</h2><p><strong>${value}</strong><span>${esc(t(unit))}</span></p>${detail ? `<span class="forecast-detail">${esc(detail)}</span>` : ''}</div><div class="forecast-trend">${weatherTrend(values)}<div class="forecast-times"><span>${esc(t('Now'))}</span><span>${esc(hours[2].time)}</span><span>${esc(hours[5].time)}</span></div><span class="sr-only">${hours.map((hour, index) => `${esc(index === 0 ? t('Now') : hour.time)}: ${values[index]} ${esc(t(unit))}`).join('; ')}</span></div></section>`;
+};
+/** @param {import('./weather.mjs').Weather|undefined} weather @param {string} status @param {string} location */
+const renderWeather = (weather, status, location) => `${back('/', t('Home'))}<div class="forecast-panel"><header class="forecast-hero"><div><h1>${esc(location)}</h1><p class="forecast-temperature">${weather ? weather.temperature : '—'}<span>°C</span></p><p>${esc(weather ? t(weather.condition) : t(status === 'error' ? 'Forecast unavailable' : 'Loading forecast…'))}</p>${weather ? `<p>${esc(t('High'))}: ${weather.daily[0].high}° · ${esc(t('Low'))}: ${weather.daily[0].low}°</p>` : ''}</div><span class="forecast-symbol" aria-hidden="true">⛅</span></header>${weather ? `<p class="forecast-source">${esc(t('Forecast updated {time}', { time:weather.updatedAt.slice(11) }))} · <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a></p><div class="forecast-metrics">${weatherMetric('Wind speed', 'wind', weather.windSpeed, 'km/h', weather.hourly, 'windSpeed', t('From {direction}', { direction: t(WIND_DIRECTIONS[weather.windDirection]) }))}${weatherMetric('Rain chance', 'cloud-rain', weather.rainChance, '%', weather.hourly, 'rainChance')}${weatherMetric('Humidity', 'droplet', weather.humidity, '%', weather.hourly, 'humidity')}</div><div class="forecast-days">${weather.daily.map((day, index) => `<div><span>${esc(index === 0 ? t('Today') : index === 1 ? t('Tomorrow') : new Date(`${day.date}T12:00:00`).toLocaleDateString(getFormatLocale(), { weekday:'short' }))}</span>${icon(day.rainChance > 50 ? 'cloud-rain' : 'cloud', 22)}<span>${day.high}° <span class="forecast-low">${day.low}°</span></span></div>`).join('')}</div>` : `<p class="forecast-source" role="status">${esc(t(status === 'error' ? 'Check your connection and open weather again.' : 'Fetching current conditions…'))}</p>`}</div>`;
 
 /** Only app-generated titles are translated; custom booking titles stay untouched.
  * @param {Booking} booking @returns {string}
@@ -493,12 +496,12 @@ const renderScheduler = (state) => {
   return `${pageHeading('', t('Scheduler'))}<div class="section-stack">${state.farms.map((farm) => schedulerLand(farm, state.tasks)).join('')}</div>`;
 };
 
-/** @param {string[]} parts @param {AppState} state @returns {string|null} */
-const farmRoute = (parts, state) => {
+/** @param {string[]} parts @param {AppState} state @param {import('./weather.mjs').Weather|undefined} weather @param {string} weatherStatus @param {string} weatherLocation @returns {string|null} */
+const farmRoute = (parts, state, weather, weatherStatus, weatherLocation) => {
   if (parts[0] === 'schedule' && parts.length === 1) return renderScheduler(state);
-  if (parts[0] === 'weather' && parts.length === 1) return renderWeather();
+  if (parts[0] === 'weather' && parts.length === 1) return renderWeather(weather, weatherStatus, weatherLocation);
   if (parts[0] === 'weather' && parts.length === 2) {
-    return renderWeather();
+    return renderWeather(weather, weatherStatus, weatherLocation);
   }
   if (parts[0] !== 'farm') return null;
   if (parts.length === 1) return renderFarms(state);
@@ -564,11 +567,11 @@ const fixedRoute = (path, state) => {
   return Object.hasOwn(routes, path) ? routes[path](state) : null;
 };
 
-/** @param {string} path @param {AppState} state @returns {string|null} */
-export function renderWorkspace(path, state) {
+/** @param {string} path @param {AppState} state @param {import('./weather.mjs').Weather|undefined} weather @param {string} weatherStatus @param {string} weatherLocation @returns {string|null} */
+export function renderWorkspace(path, state, weather, weatherStatus = 'loading', weatherLocation = 'Perak') {
   state = localizeDemoState(state);
   const parts = path.split('/').filter(Boolean);
-  return fixedRoute(path, state) ?? farmRoute(parts, state) ?? bookingRoute(parts, state) ?? orderRoute(parts, state);
+  return fixedRoute(path, state) ?? farmRoute(parts, state, weather, weatherStatus, weatherLocation) ?? bookingRoute(parts, state) ?? orderRoute(parts, state);
 }
 
 /** @param {string} action @param {string} label @param {string} iconName @param {boolean} [isDisabled] @returns {string} */

@@ -16,6 +16,7 @@ import { renderDiscover, renderServiceResults } from './discover.mjs';
 import { clearDraft, readDraft, saveDraft } from './drafts.mjs';
 import { initializeLandMap } from './land-map.mjs';
 import { renderHome } from './home.mjs';
+import { fetchLiveWeather, selectWeatherLocation, weatherLocationKey } from './weather.mjs';
 import { loadArticleCatalogue } from './data.mjs';
 import { getFormatLocale, getLocale, loadLocale, saveLocale, setLocale, t } from './i18n.mjs';
 import { captureFormState, initializeLocalizedValidation, localizeDocument, restoreFormState } from './language.mjs';
@@ -46,6 +47,9 @@ const TOAST_DURATION = 4200;
 const REMINDER_INTERVAL = 60000;
 const DRAFT_FORMS = ['farmer-onboarding', 'pilot-onboarding', 'verification'];
 const PENDING_CHATS = new Set();
+const WEATHER_MAX_AGE = 10 * 60 * 1000;
+let weatherView = { key:'', data:null, status:'loading', checkedAt:0 };
+let weatherRequest = null;
 let toastTimer = 0;
 let animationContext = null;
 let disposeChatTyping = () => {};
@@ -134,10 +138,34 @@ const render = (shouldAnimate = false) => {
   animationContext?.revert();
   const state = STORE.getState();
   const path = window.location.pathname.replace(/\/$/, '') || '/';
+  const hasWeather = (path === '/' && state.profile.role !== 'pilot') || path === '/weather' || path.startsWith('/weather/');
+  const weatherLocation = hasWeather ? selectWeatherLocation(state, path) : null;
+  const weatherKey = weatherLocation ? weatherLocationKey(weatherLocation) : '';
+  if (weatherLocation && weatherView.key !== weatherKey) {
+    weatherRequest?.controller.abort();
+    weatherRequest = null;
+    weatherView = { key:weatherKey, data:null, status:'loading', checkedAt:0 };
+  }
   if (path !== '/plant-help/camera') PHOTO.reset(false);
   renderShell(path, state);
   localizeDocument(document);
-  MAIN.innerHTML = path === '/' ? (state.profile.role === 'pilot' ? renderWorkspace('/pilot', state) : renderHome(state)) : renderPlantHelp(path, plantQuery, plantCategory) ?? renderWorkspace(path, state) ?? renderDiscover(path, state) ?? emptyState('This page is not here', 'Choose a destination from the navigation.', '/', 'Go home');
+  MAIN.innerHTML = path === '/' ? (state.profile.role === 'pilot' ? renderWorkspace('/pilot', state) : renderHome(state, weatherView.data, weatherView.status, weatherLocation?.label)) : renderPlantHelp(path, plantQuery, plantCategory) ?? renderWorkspace(path, state, weatherView.data, weatherView.status, weatherLocation?.label) ?? renderDiscover(path, state) ?? emptyState('This page is not here', 'Choose a destination from the navigation.', '/', 'Go home');
+  if (hasWeather && weatherLocation && !weatherRequest && Date.now() - weatherView.checkedAt >= (weatherView.status === 'error' ? 60000 : WEATHER_MAX_AGE)) {
+    const controller = new AbortController();
+    const pending = { key:weatherKey, controller };
+    weatherRequest = pending;
+    weatherView.checkedAt = Date.now();
+    void fetchLiveWeather(weatherLocation, fetch, controller.signal).then((data) => {
+      if (weatherRequest !== pending) return;
+      weatherView = { key:weatherKey, data, status:'ready', checkedAt:Date.now() };
+      if (location.pathname === '/' || location.pathname.startsWith('/weather')) render();
+    }).catch((error) => {
+      if (weatherRequest !== pending || controller.signal.aborted) return;
+      console.error('Could not load forecast.', error);
+      weatherView = { key:weatherKey, data:null, status:'error', checkedAt:Date.now() };
+      if (location.pathname === '/' || location.pathname.startsWith('/weather')) render();
+    }).finally(() => { if (weatherRequest === pending) weatherRequest = null; });
+  }
   const cataloguePanel = MAIN.querySelector('[data-load-article-catalogue]');
   if (cataloguePanel) void loadArticleCatalogue().then(() => {
     if (cataloguePanel.isConnected) render();

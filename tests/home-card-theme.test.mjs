@@ -2,17 +2,16 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-import { INITIAL_STATE, NEWS, WEATHER } from '../src/data.mjs';
+import { INITIAL_STATE, NEWS } from '../src/data.mjs';
 import { renderHome, selectFeaturedLand } from '../src/home.mjs';
 
 const STYLES = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 
-test('home weather keeps forecast values and link with the shared weather theme', () => {
+test('home weather awaits current values and links to the shared forecast theme', () => {
   const html = renderHome(INITIAL_STATE);
-  assert.match(html, /href="\/weather\/farm-1"/);
-  assert.ok(html.includes(`${WEATHER.temperature}°`));
-  assert.ok(html.includes(WEATHER.location));
-  assert.match(html, /Sample forecast · not live/);
+  assert.match(html, /href="\/weather"/);
+  assert.match(html, /Loading forecast/);
+  assert.doesNotMatch(html, /Sample forecast/);
   assert.match(html, /weather-sun" aria-hidden="true">⛅/);
   assert.match(STYLES, /\.forecast-panel,\.weather-preview\.card[^}]*linear-gradient/);
 });
