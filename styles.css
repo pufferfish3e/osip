@@ -711,9 +711,6 @@ summary {cursor:pointer;min-height:44px;}
 .task-sheet h2 { font-size: 26px; margin: 8px 0 20px; }
 .task-sheet .field { margin-bottom: 16px; }
 .task-sheet form,.task-sheet [data-task-step],.task-sheet .field { min-width:0; max-width:100%; }
-.task-sheet input[type="time"] { display:block; width:100%; min-width:0; max-width:100%; box-sizing:border-box; -webkit-appearance:none; appearance:none; }
-.task-sheet input[type="time"]::-webkit-date-and-time-value { min-width:0; text-align:left; }
-.task-sheet input[type="time"]::-webkit-datetime-edit { min-width:0; padding:0; }
 .task-sheet-actions { margin-top: 24px; }
 .task-sheet-actions .button:last-child:not([hidden]),.task-sheet-actions [data-task-next] { flex: 1; }
 @media (max-width: 759px) {
@@ -1479,21 +1476,6 @@ body:has(.chat-screen) { overflow:hidden; }
 @media (max-width:759px) {
  .main-content:has(.task-detail-page) { padding-top:0; }
 }
-
-.task-time-picker { display:flex; align-items:flex-end; justify-content:flex-start; gap:8px; border:0; padding:8px 0 20px; margin:0; }
-.task-time-picker label { display:grid; gap:6px; color:var(--muted); font-size:13px; }
-.task-time-picker select { min-width:76px; min-height:44px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; background:#fff; color:var(--ink); font:inherit; font-size:16px; font-weight:500; font-variant-numeric:tabular-nums; cursor:pointer; }
-.task-time-picker select:focus-visible { outline:2px solid var(--blue); outline-offset:3px; }
-.task-time-picker .time-colon { align-self:flex-end; padding-bottom:11px; font-size:18px; }
-.time-format { align-self:flex-end; padding-bottom:13px; font-size:12px; color:var(--muted); }
-
-.alarm-time-picker { border:0; display:flex; justify-content:center; align-items:center; gap:16px; margin:8px 0 20px; padding:0; }
-.time-wheel-column { width:82px; text-align:center; color:var(--muted); font-size:13px; }
-.time-wheel { height:132px; overflow-y:auto; overscroll-behavior:contain; scroll-snap-type:y mandatory; scrollbar-width:none; padding:44px 0; margin-top:8px; box-sizing:border-box; border-radius:14px; background:linear-gradient(to bottom,transparent 44px,#e7edf3 44px,#e7edf3 88px,transparent 88px); mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent); }
-.time-wheel::-webkit-scrollbar { display:none; }
-.time-wheel-option { height:44px; display:grid; place-items:center; scroll-snap-align:center; font-size:22px; font-weight:500; font-variant-numeric:tabular-nums; color:var(--ink); cursor:pointer; }
-.time-wheel:focus-visible { outline:2px solid var(--blue); outline-offset:3px; }
-.alarm-time-format { font-size:12px; color:var(--muted); padding-top:26px; }
 
 .schedule-history-records { display:grid; gap:16px; padding:8px 12px 20px; }
 .schedule-history-record { display:grid; gap:5px; font-size:14px; }

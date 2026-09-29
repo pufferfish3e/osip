@@ -560,6 +560,11 @@ const onSubmit = async (event) => {
       catch (error) { console.error('Could not clear completed onboarding draft', error); }
     }
     finishAction(result);
+    if (form.dataset.form === 'pilot-booking') {
+      const bookingId = result.redirect?.match(/^\/bookings\/([^/]+)\/chat$/)?.[1];
+      const booking = STORE.getState().bookings.find((item) => item.id === bookingId);
+      if (booking) void replyToConversation(booking).catch(reportError);
+    }
     if (form.dataset.form === 'message') {
       const state = STORE.getState();
       const conversation = fields.chatId ? state.chats?.find((item) => item.id === fields.chatId) : state.bookings.find((item) => item.id === fields.bookingId);
