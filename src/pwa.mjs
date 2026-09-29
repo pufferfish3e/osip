@@ -5,6 +5,13 @@ import { escapeHtml as esc } from './ui.mjs';
 let installPrompt = null;
 let workerRegistration = null;
 
+const installInstructions = () => {
+  const agent = navigator.userAgent || '';
+  if (/Android/i.test(agent)) return t('On Android, open Aura in Chrome, tap the three-dot menu, then tap Install app or Add to Home screen. If you opened Aura inside another app, choose Open in Chrome first.');
+  if (/iPhone|iPad|iPod/i.test(agent)) return t('On iPhone, open Aura in Safari, tap Share, then Add to Home Screen.');
+  return t('Open your browser menu and choose Install app or Add to Home screen.');
+};
+
 const cacheViewedPhotos = () => {
   const paths = [...new Set([...document.images].filter((image) => image.complete && image.naturalWidth).map((image) => {
     const url = new URL(image.currentSrc || image.src, window.location.href);
@@ -16,12 +23,18 @@ const cacheViewedPhotos = () => {
 /** @param {Toast} toast @returns {Promise<void>} */
 export async function installApp(toast) {
   if (window.matchMedia('(display-mode: standalone)').matches) return toast('Aura is already installed.');
-  if (!installPrompt) return document.querySelector('#install-dialog').showModal();
+  if (!installPrompt) {
+    const dialog = document.querySelector('#install-dialog');
+    dialog.querySelector('[data-install-instructions]').textContent = installInstructions();
+    if (!dialog.open) dialog.showModal();
+    return;
+  }
   try {
-    await installPrompt.prompt();
-    const choice = await installPrompt.userChoice;
+    const prompt = installPrompt;
+    installPrompt = null; // The browser only allows this prompt to be used once.
+    await prompt.prompt();
+    const choice = await prompt.userChoice;
     if (choice.outcome === 'accepted') toast('Installation requested.');
-    installPrompt = null;
   } catch (error) {
     console.error('Install failed', error);
     toast('Installation could not start. Try your browser menu.');
@@ -40,15 +53,13 @@ export function applyUpdate() {
 /** @param {Toast} toast @returns {Promise<void>} */
 export async function initializePwa(toast) {
   window.addEventListener('beforeinstallprompt', (event) => { event.preventDefault(); installPrompt = event; });
+  window.addEventListener('appinstalled', () => { installPrompt = null; });
   if (!('serviceWorker' in navigator)) return;
   try {
-    // Let the visible page and its images finish before the offline installation
-    // competes for bandwidth. Yield once when idle callbacks are unavailable.
-    if (document.readyState !== 'complete') await new Promise((resolve) => window.addEventListener('load', resolve, { once: true }));
-    await new Promise((resolve) => {
-      if ('requestIdleCallback' in window) window.requestIdleCallback(resolve, { timeout: 2000 });
-      else window.setTimeout(resolve, 0);
-    });
+    // Registration must not wait for remote photos or slow page resources: on
+    // Android, that could postpone the browser's install prompt indefinitely.
+    // The caller has already rendered the first screen; yield once to paint it.
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
     workerRegistration = await navigator.serviceWorker.register('/sw.js');
     if (workerRegistration.waiting) offerUpdate();
     workerRegistration.addEventListener('updatefound', () => {
