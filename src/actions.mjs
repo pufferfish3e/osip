@@ -159,7 +159,7 @@ const saveBooking = (state, fields, isCourse) => {
   const conversation = isCourse ? [] : [{ id:makeId('message'), sender:'you', text:`${title}\n${farm.name} · ${farm.area} ha\n${date} · ${time}${notes ? `\n${notes}` : ''}`, date:timestamp() }];
   state.bookings.push({ id, type: isCourse ? 'course' : 'pilot', service, services, providerId, title, date, time, farmId, status: 'requested', notes, price: isCourse ? provider.price : provider.rate * farm.area, conversation });
   notify(state, 'Booking request saved', `${title}. Saved on this device.`);
-  return { redirect: isCourse ? `/bookings/${id}` : `/bookings/${id}/chat`, message: t('Request saved locally. No provider contacted.') };
+  return { redirect: isCourse ? `/bookings/${id}` : `/bookings/${id}/chat`, message: isCourse ? t('Request saved locally. No provider contacted.') : '' };
 };
 /** @param {AppState} state @param {Fields} fields @returns {ActionResult} */
 const savePilot = (state, fields) => {

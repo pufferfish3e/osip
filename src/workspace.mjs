@@ -293,7 +293,10 @@ export function unifiedConversations(state) {
   });
 }
 /** @param {AppState} state @param {Booking} item @returns {Booking} */
-const unifiedConversation = (state,item) => unifiedConversations(state).find((chat)=>conversationIdentity(chat) === conversationIdentity(item)) ?? item;
+const unifiedConversation = (state,item) => {
+  const chat = unifiedConversations(state).find((entry)=>conversationIdentity(entry) === conversationIdentity(item));
+  return chat ? { ...chat, id:item.id } : item;
+};
 
 /** @param {Booking} booking @returns {string} */
 const conversationName = (booking) => booking.name ?? (booking.type === 'course' ? COURSES.find((course) => course.id === booking.providerId)?.instructor : PILOTS.find((pilot) => pilot.id === booking.providerId)?.name) ?? bookingTitle(booking);

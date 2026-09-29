@@ -26,6 +26,7 @@ test('saving request opens its chat and seeds the Messages conversation with job
   const result = submitForm(state,'pilot-booking',fieldsFor(PILOTS[0]));
   const booking = state.bookings[0];
   assert.equal(result.redirect,`/bookings/${booking.id}/chat`);
+  assert.equal(result.message, '');
   assert.equal(booking.status,'requested');
   assert.equal(booking.conversation[0].sender,'you');
   assert.match(booking.conversation[0].text,/North land · 2 ha/);
@@ -103,6 +104,7 @@ test('same pilot bookings share one inbox and retain messages through both old r
     const html = renderWorkspace(`/bookings/${id}/chat`,state);
     assert.match(html,/First booking/);
     assert.match(html,/Second booking/);
+    assert.match(html,new RegExp(`data-chat-id="${id}"`));
   }
   assert.equal(first.conversation.length,1);
   assert.equal(second.conversation.length,1);
