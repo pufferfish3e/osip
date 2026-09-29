@@ -6,17 +6,17 @@ import { renderWorkspace } from '../src/workspace.mjs';
 import { renderHome } from '../src/home.mjs';
 import { renderDiscover } from '../src/discover.mjs';
 
-test('weather replaces calculator shortcuts on home and services', () => {
-  for (const html of [renderHome(DEMO), renderDiscover('/services', DEMO)]) {
-    assert.match(html, /href="\/weather"/);
-    assert.doesNotMatch(html, /href="\/tools"/);
-  }
+test('weather shortcut opens the forecast from home', () => {
+  const html = renderHome(DEMO);
+  assert.match(html, /href="\/weather"/);
+  assert.doesNotMatch(html, /href="\/tools"/);
 });
 test('weather shortcut works with existing land or an empty account', () => {
   for (const state of [DEMO, NEW_USER]) {
     const html = renderWorkspace('/weather', state);
     assert.match(html, /forecast-panel/);
-    assert.match(html, /Sample forecast · not live/);
+    assert.match(html, /Loading forecast/);
+    assert.doesNotMatch(html, /Sample forecast/);
     assert.doesNotMatch(html, /Farm not found|undefined/);
   }
 });

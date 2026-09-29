@@ -71,7 +71,12 @@ export const SUPPLEMENTAL_TRANSLATIONS = {
     "Translate summary": "Terjemah ringkasan",
     "Translating your summary…": "Sedang menterjemah ringkasan anda…",
     "This summary is in another language. Translate it to your selected language.": "Ringkasan ini dalam bahasa lain. Terjemahkannya ke bahasa pilihan anda.",
-    "Spray mixture and product quantities from your land area.": "Campuran semburan dan kuantiti produk berdasarkan keluasan tanah anda."
+    "Spray mixture and product quantities from your land area.": "Campuran semburan dan kuantiti produk berdasarkan keluasan tanah anda.",
+    "Sunny": "Cerah", "Thunderstorms": "Ribut petir",
+    "Loading forecast…": "Memuatkan ramalan…", "Fetching current conditions…": "Mendapatkan keadaan cuaca semasa…",
+    "Forecast unavailable": "Ramalan tidak tersedia", "Check your connection and open weather again.": "Semak sambungan anda dan buka cuaca sekali lagi.",
+    "Forecast updated {time}": "Ramalan dikemas kini pada {time}", "Forecast by Open-Meteo": "Ramalan oleh Open-Meteo",
+    "{direction} {speed} km/h": "{direction} {speed} km/j"
   },
   "zh-Hans": {
     "Completed {title}": "已完成：{title}",
@@ -144,6 +149,11 @@ export const SUPPLEMENTAL_TRANSLATIONS = {
     "Translate summary": "翻译摘要",
     "Translating your summary…": "正在翻译摘要…",
     "This summary is in another language. Translate it to your selected language.": "此摘要使用另一种语言，请翻译为您选择的语言。",
-    "Spray mixture and product quantities from your land area.": "根据土地面积计算喷洒混合液及产品用量。"
+    "Spray mixture and product quantities from your land area.": "根据土地面积计算喷洒混合液及产品用量。",
+    "Sunny": "晴朗", "Thunderstorms": "雷暴",
+    "Loading forecast…": "正在加载天气预报…", "Fetching current conditions…": "正在获取当前天气…",
+    "Forecast unavailable": "天气预报暂不可用", "Check your connection and open weather again.": "请检查网络连接后重新打开天气页面。",
+    "Forecast updated {time}": "天气预报更新于 {time}", "Forecast by Open-Meteo": "天气预报由 Open-Meteo 提供",
+    "{direction} {speed} km/h": "{direction} {speed} 公里/小时"
   }
 };

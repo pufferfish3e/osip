@@ -613,7 +613,7 @@ export const NEWS = [
 
 export const WEATHER = {
   isDemo: true, location: 'Perak', temperature: 28, condition: 'Partly cloudy', humidity: 76,
-  rainChance: 40, windSpeed: 12, gusts: 20, windDirection: 'NE', windDegrees: 45, updatedAt: 'Sample forecast · not live',
+  rainChance: 40, windSpeed: 12, gusts: 20, windDirection: 'NE', windDegrees: 45,
   hourly: [
     { time: 'Now', temperature: 28, rainChance: 40, condition: 'Partly cloudy', windSpeed: 12, humidity: 76 },
     { time: '11:00', temperature: 29, rainChance: 35, condition: 'Cloudy', windSpeed: 14, humidity: 72 },
