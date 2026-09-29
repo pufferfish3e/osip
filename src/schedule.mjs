@@ -62,7 +62,6 @@ export function initializeSchedule(root, options = {}) {
   let marked = rows.filter((row) => row.dataset.taskDone === 'false').map((row) => row.dataset.taskDate);
   const dialog = panel.querySelector('.task-sheet');
   const form = dialog.querySelector('form');
-  const syncTimeWheels = initializeTaskTimePicker(form);
   const picker = dialog.querySelector('[data-task-picker]');
   const calendar = panel.querySelector('[data-schedule-calendar]');
   let selected = form.elements.dueDate.value || SELECTED_DATES.get(panel.dataset.schedule) || today;
@@ -101,7 +100,6 @@ export function initializeSchedule(root, options = {}) {
     dialog.removeAttribute('aria-labelledby');
     heading.tabIndex = -1;
     if (dialog.open) heading.focus({ preventScroll: true });
-    if (step === 2) syncTimeWheels();
     if (step === 5) renderTaskReview(form, dialog);
   };
   const pickerMarks = (month) => options.tasks ? markedTaskDates(options.tasks,month) : marked;
@@ -260,48 +258,10 @@ export function initializeBookingCalendar(root) {
   draw();
 }
 
-const TIME_WHEEL_ROW_HEIGHT = 44;
 /** @param {string} [value] @returns {string} */
 export function renderTaskTimePicker(value = '08:00') {
-  const wheels = ['Hour','Minute'].map((label,index)=>{
-    const count = index === 0 ? 24 : 60;
-    return `<div class="time-wheel-column"><span>${esc(t(label))}</span><div class="time-wheel" data-time-wheel="${index}" role="spinbutton" tabindex="0" aria-label="${esc(t(label))}" aria-valuemin="0" aria-valuemax="${count-1}" aria-valuenow="${Number(value.split(':')[index])}">${Array.from({length:count},(_,number)=>`<div class="time-wheel-option" data-time-value="${number}" aria-hidden="true">${String(number).padStart(2,'0')}</div>`).join('')}</div></div>`;
-  }).join('');
-  return `<fieldset class="alarm-time-picker"><legend class="sr-only">${esc(t('Time'))}</legend><input type="hidden" name="time" value="${esc(value)}">${wheels}<span class="alarm-time-format">24h</span></fieldset>`;
+  return `<label class="field">${esc(t('Time'))}<input class="input" type="time" name="time" value="${esc(value)}" required></label>`;
 }
-/** @param {HTMLFormElement} form @returns {()=>void} */
-const initializeTaskTimePicker = (form) => {
-  const wheels = [...form.querySelectorAll('[data-time-wheel]')];
-  const sync = () => wheels.forEach((wheel,index)=>{
-    const value = Number(form.elements.time.value.split(':')[index]);
-    wheel.scrollTop = value * TIME_WHEEL_ROW_HEIGHT;
-    wheel.setAttribute('aria-valuenow',String(value));
-  });
-  wheels.forEach((wheel,index)=>{
-    const select = (value) => {
-      const parts = form.elements.time.value.split(':');
-      parts[index] = String(value).padStart(2,'0');
-      form.elements.time.value = parts.join(':');
-      wheel.setAttribute('aria-valuenow',String(value));
-    };
-    wheel.addEventListener('scroll',()=>{
-      if (wheel.clientHeight) select(Math.round(wheel.scrollTop / TIME_WHEEL_ROW_HEIGHT));
-    },{passive:true});
-    wheel.addEventListener('click',(event)=>{
-      const option = event.target.closest('[data-time-value]');
-      if (option) { select(Number(option.dataset.timeValue)); sync(); }
-    });
-    wheel.addEventListener('keydown',(event)=>{
-      if (!['ArrowUp','ArrowDown','Home','End'].includes(event.key)) return;
-      event.preventDefault();
-      const max = index === 0 ? 23 : 59;
-      const current = Number(wheel.getAttribute('aria-valuenow'));
-      const next = event.key === 'Home' ? 0 : event.key === 'End' ? max : current + (event.key === 'ArrowUp' ? -1 : 1);
-      select(Math.max(0,Math.min(max,next))); sync();
-    });
-  });
-  return sync;
-};
 
 /** @param {import('./store.mjs').Task[]} tasks @param {string} month @returns {string[]} */
 export function markedTaskDates(tasks,month) {
