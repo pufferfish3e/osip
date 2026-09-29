@@ -70,10 +70,25 @@ test('photo analysis uses the documented Responses image and structured-output c
   assert.equal(sentBody.text.format.strict, true);
   assert.match(sentBody.instructions, /observations render as non-interactive pills/);
   assert.match(sentBody.instructions, /nextSteps render as numbered action cards/);
-  assert.match(sentBody.instructions, /without HTML, Markdown/);
+  assert.match(sentBody.instructions, /two useful plain-language paragraphs/);
+  assert.match(sentBody.instructions, /paired \*\* markers/);
+  assert.match(sentBody.instructions, /only allowed Markdown is \*\*bold\*\* in summary/);
   assert.match(sentBody.instructions, /Do not put speculative diagnoses, severity ratings or confidence percentages/);
   assert.equal(sentBody.text.format.schema.additionalProperties, false);
   assert.ok(sentBody.text.format.schema.properties.guideSlugs.items.enum.includes('aphids'));
+});
+
+test('photo analysis requests two explanatory paragraphs with emphasis', async () => {
+  let instructions = '';
+  const handler = makeHandler({ fetchImpl: async (_url, options) => {
+    instructions = JSON.parse(options.body).instructions;
+    return providerResponse({ ...VALID_ANALYSIS, isPlant: false, guideSlugs: [] });
+  } });
+  const result = await requestAnalysis(handler);
+  assert.equal(result.status, 200);
+  assert.match(instructions, /two useful plain-language paragraphs/);
+  assert.match(instructions, /paired \*\* markers/);
+  assert.match(instructions, /only allowed Markdown is \*\*bold\*\* in summary/);
 });
 
 test('a missing API key gives a useful setup response without contacting OpenAI', async () => {
