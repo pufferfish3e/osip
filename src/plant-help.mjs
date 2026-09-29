@@ -5,6 +5,12 @@ import { emptyState, escapeHtml as esc, icon, pageHeading } from './ui.mjs';
 
 const CATEGORIES = ['all', 'Pests', 'Disease', 'Growing conditions'];
 
+/** Render only the supported **emphasis** syntax, escaping all model text. */
+const summaryParagraphs = (summary) => summary.trim().split(/\n\s*\n/).filter(Boolean).map((paragraph) => {
+  const parts = paragraph.split(/(\*\*[^*\n]+\*\*)/g);
+  return `<p class="plant-summary-copy">${parts.map((part) => part.startsWith('**') && part.endsWith('**') ? `<strong>${esc(part.slice(2, -2))}</strong>` : esc(part)).join('')}</p>`;
+}).join('');
+
 /** @param {import('./plant-guides.mjs').PlantGuide} guide @returns {string} */
 const guideCard = (source) => {
   const guide = localizePlantGuide(source, getLocale());
@@ -50,10 +56,10 @@ export function renderPlantAnalysis(result) {
   const steps = result.research ? researchedSteps : result.nextSteps.map((text) => ({ text }));
   const referenceImages = result.isPlant ? (result.referenceImages ?? []) : [];
   return `<section class="plant-analysis" aria-labelledby="plant-summary-title">
-    <header class="plant-summary-card card"><div class="plant-summary-label">${icon('leaf', 20)}<span>${esc(t('Photo summary'))}</span></div><h2 id="plant-summary-title" tabindex="-1">${esc(result.title)}</h2><p class="plant-summary-copy">${esc(result.summary)}</p>
+    <header class="plant-summary-card card"><div class="plant-summary-label">${icon('leaf', 20)}<span>${esc(t('Photo summary'))}</span></div><h2 id="plant-summary-title" tabindex="-1">${esc(result.title)}</h2>${summaryParagraphs(result.summary)}
       ${result.observations.length ? `<div class="plant-observation-group"><h3>${esc(t('What’s visible'))}</h3><ul class="plant-observations" role="list">${result.observations.map((item) => `<li>${esc(item)}</li>`).join('')}</ul></div>` : ''}
     </header>
-    ${referenceImages.length ? `<section class="plant-references" aria-labelledby="plant-references-title"><h3 id="plant-references-title">${esc(t('Photos to compare'))}</h3><p class="muted">${esc(t('Examples, not a diagnosis of your photo.'))}</p><div class="plant-reference-strip" role="list">${referenceImages.map((item) => `<a class="plant-reference-card" role="listitem" href="${esc(item.source)}" target="_blank" rel="noopener noreferrer"><img src="${esc(item.url)}" alt="${esc(item.title)}" loading="lazy" referrerpolicy="no-referrer"><span><strong>${esc(item.title)}</strong><small>${esc(item.credit)} · Wikimedia Commons ${icon('arrow-up-right', 14)}</small></span></a>`).join('')}</div></section>` : ''}
+    ${referenceImages.length ? `<section class="plant-references" aria-labelledby="plant-references-title"><h3 id="plant-references-title">${esc(t('Photos to compare'))}</h3><div class="plant-reference-strip" role="list">${referenceImages.map((item) => `<a class="plant-reference-card" role="listitem" href="${esc(item.source)}" target="_blank" rel="noopener noreferrer"><img src="${esc(item.url)}" alt="${esc(item.title)}" loading="lazy" referrerpolicy="no-referrer"><span><strong>${esc(item.title)}</strong><small>${esc(item.credit)} · Wikimedia Commons ${icon('arrow-up-right', 14)}</small></span></a>`).join('')}</div></section>` : ''}
     ${steps.length ? `<section class="plant-next-steps" aria-labelledby="plant-steps-title"><h3 id="plant-steps-title">${esc(t('Next steps'))}</h3><ol class="plant-action-cards" role="list">${steps.map((item, index) => `<li><span class="plant-step-number" aria-hidden="true">${index + 1}</span><div><p>${esc(item.text)}</p>${item.source ? `<a href="${esc(item.source.url)}" target="_blank" rel="noopener noreferrer">${esc(t('Read article'))} ${icon('arrow-up-right', 16)}</a>` : ''}</div></li>`).join('')}</ol></section>` : ''}
     ${result.research ? `<details class="plant-research-sources"><summary>${esc(t('Research sources'))}</summary>${renderPlantWebResult(result.research)}</details>` : ''}
     <p class="plant-analysis-note">${icon('info-circle', 18)}<span>${esc(t('AI-generated observations, not a confirmed diagnosis.'))}</span></p>

@@ -60,6 +60,13 @@ test('search and AI text are escaped and missing guides rejected', () => {
   assert.deepEqual(parsePlantAnalysis({ ...RESULT, isPlant: false }).guideSlugs, []);
 });
 
+test('photo summary renders two paragraphs with safe keyword emphasis', () => {
+  const html = renderPlantAnalysis({ ...RESULT, summary: 'There are **red clusters** on the leaf.\n\nCheck the **underside** before deciding. <script>alert(1)</script>' });
+  assert.match(html, /<p class="plant-summary-copy">There are <strong>red clusters<\/strong> on the leaf\.<\/p>/);
+  assert.match(html, /<p class="plant-summary-copy">Check the <strong>underside<\/strong> before deciding\. &lt;script&gt;/);
+  assert.doesNotMatch(html, /<script>/);
+});
+
 test('photo state renders native capture, gallery fallback and explicit send action', () => {
   const idle = renderPhotoState({ status: 'idle', image: '', result: null, error: '' });
   assert.match(idle, /capture="environment"/);
@@ -83,6 +90,7 @@ test('researched actions keep their own article links and optional reference pho
   const referenceImages = [{ url: 'https://upload.wikimedia.org/example.jpg', source: 'https://commons.wikimedia.org/wiki/File:Example.jpg', title: 'Aphid close-up', credit: 'Example author · CC BY 4.0' }];
   const html = renderPlantAnalysis({ ...RESULT, research, referenceImages });
   assert.match(html, /Photos to compare/);
+  assert.doesNotMatch(html, /Examples, not a diagnosis of your photo/);
   assert.match(html, /Aphid close-up/);
   assert.match(html, /Check beneath leaves/);
   assert.match(html, /Read article/);
