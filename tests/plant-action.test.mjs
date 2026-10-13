@@ -22,7 +22,7 @@ const renderNavigation = (path) => {
   }
 };
 
-test('mobile navigation places the Camera action between Farm and Services', () => {
+test('mobile navigation places the Analyse action between Farm and Services', () => {
   const mobile = renderNavigation('/')['#bottom-nav'].innerHTML;
   const destinations = [...mobile.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((match) => match[1]);
   const labels = [...mobile.matchAll(/<span>([^<]+)<\/span>/g)].map((match) => match[1]);
@@ -30,7 +30,7 @@ test('mobile navigation places the Camera action between Farm and Services', () 
   assert.deepEqual(labels, ['Home', 'My land', 'Services', 'Learn']);
   assert.ok(mobile.indexOf('href="/farm"') < mobile.indexOf('data-plant-action'));
   assert.ok(mobile.indexOf('data-plant-action') < mobile.indexOf('href="/services"'));
-  assert.match(mobile, /class="plant-action-label"[^>]*>Camera<\/span>/);
+  assert.match(mobile, /class="plant-action-label"[^>]*>Analyse<\/span>/);
 });
 
 test('navigation highlights plant tools and retains shop-to-Services selection', () => {

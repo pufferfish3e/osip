@@ -17,11 +17,11 @@ export function getMode() {
 }
 
 /** @returns {string} */
-const actionLabel = () => t(activeMode === 'camera' ? 'Camera. Hold to switch to Search.' : 'Search. Hold to switch to Camera.');
+const actionLabel = () => t(activeMode === 'camera' ? 'Analyse. Hold to switch to Search.' : 'Search. Hold to switch to Analyse.');
 
 /** @param {string} path @returns {string} */
 export function renderPlantAction(path) {
-  return `<button class="nav-item plant-action ${path.startsWith('/plant-help') ? 'is-active' : ''}" type="button" data-plant-action data-mode="${activeMode}" aria-label="${esc(actionLabel())}" aria-describedby="plant-action-hint"><span class="plant-action-disc">${icon(activeMode, 25)}</span><span class="plant-action-label" aria-live="polite">${esc(t(activeMode === 'camera' ? 'Camera' : 'Search'))}</span></button><span id="plant-action-hint" class="sr-only">${esc(t('Tap to open. Hold or use arrow keys to switch tools.'))}</span>`;
+  return `<button class="nav-item plant-action ${path.startsWith('/plant-help') ? 'is-active' : ''}" type="button" data-plant-action data-mode="${activeMode}" aria-label="${esc(actionLabel())}" aria-describedby="plant-action-hint"><span class="plant-action-disc">${icon(activeMode, 25)}</span><span class="plant-action-label" aria-live="polite">${esc(t(activeMode === 'camera' ? 'Analyse' : 'Search'))}</span></button><span id="plant-action-hint" class="sr-only">${esc(t('Tap to open. Hold or use arrow keys to switch tools.'))}</span>`;
 }
 
 /** @param {ActionContext} context @param {Event} event @returns {HTMLButtonElement|null} */
@@ -47,7 +47,7 @@ const switchMode = (button, shouldAnimate) => {
   button.setAttribute('aria-label', actionLabel());
   const label = button.querySelector('.plant-action-label');
   const disc = button.querySelector('.plant-action-disc');
-  if (label) label.textContent = t(activeMode === 'camera' ? 'Camera' : 'Search');
+  if (label) label.textContent = t(activeMode === 'camera' ? 'Analyse' : 'Search');
   if (disc) disc.innerHTML = icon(activeMode, 25);
   const canAnimate = shouldAnimate && !globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   if (disc && canAnimate && globalThis.gsap) globalThis.gsap.fromTo(disc, { scale: 0.9 }, { scale: 1, duration: SWITCH_DURATION, ease: 'power2.out', overwrite: true, clearProps: 'transform' });
