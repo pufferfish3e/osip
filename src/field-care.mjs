@@ -4,7 +4,7 @@ import { applyAction, canCompleteTask, completeTaskField } from './actions.mjs';
 import { getFormatLocale, t } from './i18n.mjs';
 import { fieldTaskUrgency } from './land-map.mjs';
 import { calendarDate, taskRepeatLabel } from './schedule.mjs';
-import { escapeHtml as esc, icon } from './ui.mjs';
+import { escapeHtml as esc, fieldLabel, icon } from './ui.mjs';
 
 const CARE_TYPES = ['Fertilizer', 'Pesticide'];
 const SHEET_OPEN_SECONDS = 0.28;
@@ -125,9 +125,10 @@ export function initializeFieldCare(root, store) {
   sheet.addEventListener('field-care-open', (event) => {
     if (sheet.open) return;
     farmId = event.detail.farmId; plotId = event.detail.plotId;
-    const field = store.getState().farms.find((farm) => farm.id === farmId)?.plots.find((plot) => plot.id === plotId);
+    const plots = store.getState().farms.find((farm) => farm.id === farmId)?.plots ?? [];
+    const field = plots.find((plot) => plot.id === plotId);
     if (!field) return;
-    sheet.querySelector('h2').textContent = field.name;
+    sheet.querySelector('h2').textContent = fieldLabel(field, plots);
     sheet.querySelector('[data-care-error]').textContent = '';
     sheet.querySelector('[data-care-content]').innerHTML = renderFieldSchedules(store.getState().tasks, farmId, plotId);
     motion.open();

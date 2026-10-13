@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'osip-shell-';
 // The build fingerprints shell content so browsers discover asset updates.
-const CACHE_NAME = `${CACHE_PREFIX}v3-35d8f0d78da93b6d`;
+const CACHE_NAME = `${CACHE_PREFIX}v3-20f8a70da41c68cc`;
 const SHELL_FILES = [
   '/src/booking-dates.mjs',
   '/src/record-id.mjs',
@@ -16,7 +16,7 @@ const SHELL_FILES = [
   '/', '/index.html', '/offline.html', '/src/browser-app.mjs', '/manifest.webmanifest',
   '/src/open-articles.mjs', '/src/article-reader.mjs', '/src/extension-articles.mjs', '/src/article-catalogue.mjs', '/src/article-library.mjs', '/src/data.mjs', '/src/store.mjs', '/src/spray-calculator.mjs', '/src/calculators.mjs', '/src/profile-photo.mjs', '/src/ui.mjs', '/src/shell.mjs',
   '/src/home.mjs', '/src/workspace.mjs', '/src/weather.mjs', '/src/discover.mjs', '/src/pilot-matcher.mjs', '/src/expert-data.mjs', '/src/expert-ui.mjs', '/src/keypad-calculator.mjs', '/src/actions.mjs', '/src/pwa.mjs', '/src/drafts.mjs',
-  '/src/land-editor.mjs', '/src/land-records.mjs', '/src/land-grid.mjs', '/src/land-setup.mjs', '/src/field-boundary.mjs', '/src/land-boundary.mjs', '/src/land-map.mjs', '/src/field-care.mjs', '/src/schedule.mjs', '/src/plant-web.mjs', '/src/plant-action.mjs', '/src/plant-guides.mjs', '/src/plant-help.mjs', '/src/plant-photo.mjs',
+  '/src/land-editor.mjs', '/src/land-records.mjs', '/src/land-grid.mjs', '/src/field-preview.mjs', '/src/land-setup.mjs', '/src/field-boundary.mjs', '/src/land-boundary.mjs', '/src/land-map.mjs', '/src/field-care.mjs', '/src/schedule.mjs', '/src/plant-web.mjs', '/src/plant-action.mjs', '/src/plant-guides.mjs', '/src/plant-help.mjs', '/src/plant-photo.mjs',
   '/src/i18n.mjs', '/src/language.mjs', '/src/locales/core.mjs', '/src/locales/workspace.mjs', '/src/locales/discover.mjs', '/src/locales/plant.mjs',
   '/assets/vendor/leaflet.js', '/assets/vendor/leaflet.css', '/assets/app.css', '/assets/aura-brand.css', '/assets/vendor/gsap.min.js', '/assets/icons.svg', '/assets/mark.svg', '/assets/avatar-default.svg',
   '/assets/expert-farid.jpg',
