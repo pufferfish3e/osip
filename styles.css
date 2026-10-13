@@ -1502,6 +1502,24 @@ body:has(.chat-screen) { overflow:hidden; }
 
 .booking-date-note { margin:0; font-size:13px; font-weight:400; line-height:1.5; }
 
+.booking-weather-slot:empty { display:none; }
+.booking-weather { --weather-tone:#55657a; --weather-wash:#eef3fa; display:grid; grid-template-columns:44px minmax(0,1fr); align-items:center; gap:4px 12px; padding:14px; border-radius:18px; background:var(--weather-wash); color:var(--ink); }
+.booking-weather[data-level="good"] { --weather-tone:#1f7a45; --weather-wash:#e3f4e8; }
+.booking-weather[data-level="caution"] { --weather-tone:#9a6700; --weather-wash:#fff3d1; }
+.booking-weather[data-level="warning"] { --weather-tone:#c2410c; --weather-wash:#ffe6da; }
+.booking-weather-symbol { display:grid; place-items:center; width:44px; height:44px; border-radius:50%; background:var(--weather-tone); color:#fff; }
+.booking-weather[data-level="caution"] .booking-weather-symbol { background:#f2b01e; color:#3d2a00; }
+.booking-weather[data-level="none"] .booking-weather-symbol { background:#dbe3ee; color:#55657a; }
+.booking-weather-copy { display:flex; flex-direction:column; gap:2px; min-width:0; font-size:13px; line-height:1.4; color:var(--muted); }
+.booking-weather-copy strong { font-size:16px; font-weight:600; color:var(--weather-tone); }
+.booking-weather-stats { grid-column:1 / -1; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr); gap:8px; margin-top:10px; }
+.booking-weather-stats > span { display:flex; align-items:center; justify-content:center; gap:6px; min-height:36px; border-radius:12px; background:#ffffffb3; font-size:14px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.booking-weather-stats svg { flex:none; color:var(--weather-tone); }
+.booking-weather-stats small { margin-left:-3px; font-size:12px; font-weight:500; color:var(--muted); }
+[data-booking-calendar] .calendar-days button[data-weather]::after { content:""; position:absolute; bottom:5px; left:calc(50% - 3px); width:6px; height:6px; border-radius:50%; background:#e0a100; }
+[data-booking-calendar] .calendar-days button[data-weather="warning"]::after { background:#c2410c; }
+[data-booking-calendar] .calendar-days button[data-weather][aria-pressed="true"]::after { box-shadow:0 0 0 1.5px #fff; }
+
 .land-task-preview .notification-task-stack > summary .row-icon { width:40px; height:40px; flex:0 0 40px; border:0; box-shadow:none; background:#e8effa; }
 .land-task-preview .notification-task-stack > summary strong { font-size:16px; }
 .land-task-preview .notification-task-stack > summary .row-subtitle { font-size:13px; }

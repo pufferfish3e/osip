@@ -17,7 +17,7 @@ const DEFAULT_PORT = 4173;
 const MAX_PORT = 65535;
 const ROUTE_PREFIXES = ['/schedule', '/farm', '/learn', '/services', '/tools', '/weather', '/onboarding', '/auth', '/account', '/notifications', '/bookings', '/messages', '/pilot', '/shop', '/checkout', '/orders', '/news', '/plant-help'];
 const PUBLIC_FILES = new Set([
-  '/src/booking-dates.mjs',
+  '/src/booking-dates.mjs', '/src/booking-weather.mjs',
   '/src/record-id.mjs',
   '/src/translation.mjs', '/src/locales/supplemental.mjs',
   '/src/task-history.mjs',
