@@ -154,7 +154,7 @@ test('translated shell keeps four destinations and its centre action, accessible
   const html = renderNavigation(state);
   assert.match(html['#sidebar'].innerHTML, /<strong>Home<\/strong>/);
   assert.deepEqual([...html['#bottom-nav'].innerHTML.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((match) => match[1]), ['/', '/farm', '/schedule', '/learn']);
-  assert.match(html['#bottom-nav'].innerHTML, /相机。长按切换为搜索。/);
+  assert.match(html['#bottom-nav'].innerHTML, /分析。长按切换为搜索。/);
   assert.match(html['#sidebar'].innerHTML, /<span>学习<\/span>/);
   assert.match(html['#topbar'].innerHTML, /<span class="sr-only">切换语言<\/span><select data-language-select>/);
   assert.match(html['#topbar'].innerHTML, /value="zh-Hans" lang="zh-Hans" selected/);

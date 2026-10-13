@@ -81,7 +81,7 @@ const gestureFixture = () => {
   };
 };
 
-test('a short tap opens Camera exactly once through the native click', () => {
+test('a short tap opens Analyse exactly once through the native click', () => {
   const fixture = gestureFixture();
   try {
     fixture.dispatch('pointerdown'); fixture.advance(100); fixture.dispatch('pointerup');
