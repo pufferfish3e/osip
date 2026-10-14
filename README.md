@@ -51,7 +51,7 @@ Records persist on this browser/device using localStorage. Existing checklist re
 
 ## Plant photos and problem search
 
-The larger centre button in the flat mobile navbar opens Camera or Search. Hold for about half a second to switch modes, then tap to open the selected tool. With a keyboard, focus the button and use either arrow key or Shift+F10 to switch; Enter or Space opens it. Both tools lead to the same guides. Learning remains available from the home screen and desktop navigation.
+The larger centre button in the flat mobile navbar opens Analyse (plant photo check) or Search. Hold for about half a second to switch modes, then tap to open the selected tool. With a keyboard, focus the button and use either arrow key or Shift+F10 to switch; Enter or Space opens it. Both tools lead to the same guides. Learning remains available from the home screen and desktop navigation.
 
 The blank `.env` file is ready for your key:
 
