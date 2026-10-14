@@ -26,7 +26,7 @@ Open http://127.0.0.1:4173. The server serves only an explicit public-file allow
 - Farm and plot records, dated tasks, completion tracking, and in-app due reminders.
 - Farming guide search, topic filters, and offline saved guides.
 - Plant photo analysis and problem search, accessible from Learn; both lead to the same ten plant-problem guides.
-- Sample wind/weather, pilot comparison, booking requests, proposed schedule changes, and booking-linked local messages.
+- Sample wind/weather, pilot comparison, booking requests that the pilot confirms in the booking chat, proposed schedule changes, and booking-linked local messages.
 - Course requests, shop cart, unpaid orders, and a clearly marked payment simulation inside checkout.
 - Area conversion, planned material costs, gross-margin calculation, and saved results.
 - Installable app shell, cached deep routes and photographs saved offline when viewed, reduced-motion support, accessible forms and touch targets.

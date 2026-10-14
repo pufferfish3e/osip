@@ -1620,3 +1620,14 @@ body:has(.chat-screen) { overflow:hidden; }
 [data-expert-choices] { flex-wrap:wrap; overflow:visible; }
 
 .booking-instructor-chat { display: flex; width: 100%; min-height: 48px; gap: 10px; margin-top: 24px; border-radius: 999px; }
+
+.chat-history .message-approval { width:min(300px,85%); }
+.approval-card { margin-top:10px; border-radius:16px; background:#fff; overflow:hidden; box-shadow:0 1px 0 #183c2c0f; }
+.approval-card header { display:flex; align-items:center; gap:8px; padding:12px 14px; background:#e3f4e8; color:#1f7a45; }
+.approval-card header strong { font-size:15px; font-weight:600; }
+.approval-card ul { list-style:none; margin:0; padding:6px 14px; }
+.approval-card li { display:flex; align-items:center; gap:10px; min-height:34px; font-size:14px; color:var(--ink); }
+.approval-card li svg { flex:none; color:var(--muted); }
+.approval-card footer { display:flex; align-items:baseline; justify-content:space-between; padding:10px 14px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
+.approval-card footer strong { font-size:17px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+.approval-card-link { display:flex; align-items:center; justify-content:center; gap:4px; min-height:44px; border-top:1px solid var(--line); color:var(--blue); font-size:14px; font-weight:500; text-decoration:none; }

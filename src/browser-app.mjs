@@ -10,7 +10,7 @@ import { initializeArticleLibrary } from './article-library.mjs';
 import { initializeKeypadCalculator } from './keypad-calculator.mjs';
 import { initializeLandCardDeletion, initializeLandEditor } from './land-editor.mjs';
 import { initializeLandSetup } from './land-setup.mjs';
-import { applyAction, canCompleteTask, completeTaskField, collectReminders, submitForm } from './actions.mjs';
+import { applyAction, approvePilotBooking, canCompleteTask, completeTaskField, collectReminders, submitForm } from './actions.mjs';
 import { calculateCost, calculateMargin, convertArea } from './calculators.mjs';
 import { renderDiscover, renderServiceResults } from './discover.mjs';
 import { clearDraft, readDraft, saveDraft } from './drafts.mjs';
@@ -18,7 +18,7 @@ import { initializeLandMap } from './land-map.mjs';
 import { renderHome } from './home.mjs';
 import { fetchLiveWeather, selectWeatherLocation, weatherLocationKey } from './weather.mjs';
 import { initializeBookingWeather } from './booking-weather.mjs';
-import { loadArticleCatalogue } from './data.mjs';
+import { loadArticleCatalogue, PILOTS } from './data.mjs';
 import { getFormatLocale, getLocale, loadLocale, saveLocale, setLocale, t } from './i18n.mjs';
 import { captureFormState, initializeLocalizedValidation, localizeDocument, restoreFormState } from './language.mjs';
 import { initializePlantAction } from './plant-action.mjs';
@@ -48,6 +48,7 @@ const TOAST_DURATION = 4200;
 const REMINDER_INTERVAL = 60000;
 const DRAFT_FORMS = ['farmer-onboarding', 'pilot-onboarding', 'verification'];
 const PENDING_CHATS = new Set();
+const PILOT_REPLY_DELAY = 2400;
 const WEATHER_MAX_AGE = 10 * 60 * 1000;
 let weatherView = { key:'', data:null, status:'loading', checkedAt:0 };
 let weatherRequest = null;
@@ -561,12 +562,11 @@ const onSubmit = async (event) => {
       try { clearDraft(localStorage, form.dataset.form); }
       catch (error) { console.error('Could not clear completed onboarding draft', error); }
     }
-    finishAction(result);
     if (form.dataset.form === 'pilot-booking') {
       const bookingId = result.redirect?.match(/^\/bookings\/([^/]+)\/chat$/)?.[1];
-      const booking = STORE.getState().bookings.find((item) => item.id === bookingId);
-      if (booking) void replyToConversation(booking).catch(reportError);
+      if (bookingId) schedulePilotApproval(bookingId);
     }
+    finishAction(result);
     if (form.dataset.form === 'message') {
       const state = STORE.getState();
       const conversation = fields.chatId ? state.chats?.find((item) => item.id === fields.chatId) : state.bookings.find((item) => item.id === fields.bookingId);
@@ -651,6 +651,8 @@ for (const name of ['online', 'offline']) window.addEventListener(name, () => {
   document.querySelector('#connection-status').textContent = t(navigator.onLine ? 'Your field companion' : 'Offline · saved on this device');
   toast(navigator.onLine ? 'You’re back online.' : 'Offline. Your saved workspace is still available.');
 });
+// A request left waiting when the app was closed gets its reply soon after reopening.
+for (const booking of STORE.getState().bookings) if (booking.awaitingPilotReply) schedulePilotApproval(booking.id, PILOT_REPLY_DELAY / 2);
 render(true);
 if (STORE.lastError) {
   const notice = document.querySelector('#app-notice');
@@ -687,16 +689,44 @@ async function replyToConversation(conversation) {
     });
   } finally {
     PENDING_CHATS.delete(conversation.id);
-    if ([`/bookings/${conversation.id}/chat`, `/messages/${conversation.id}`, '/messages'].includes(location.pathname)) {
-      const composer = MAIN.querySelector('.chat-composer textarea');
-      const draft = composer?.value ?? '';
-      const hasFocus = document.activeElement === composer;
-      render();
-      const nextComposer = MAIN.querySelector('.chat-composer textarea');
-      if (nextComposer) {
-        nextComposer.value = draft;
-        if (hasFocus) nextComposer.focus({ preventScroll:true });
-      }
-    }
+    refreshConversation(conversation.id);
   }
+}
+
+/** Re-renders an open conversation without losing the message being typed. @param {string} id @returns {boolean} */
+function refreshConversation(id) {
+  if (![`/bookings/${id}/chat`, `/messages/${id}`, '/messages'].includes(location.pathname)) return false;
+  const composer = MAIN.querySelector('.chat-composer textarea');
+  const draft = composer?.value ?? '';
+  const hasFocus = document.activeElement === composer;
+  render();
+  const nextComposer = MAIN.querySelector('.chat-composer textarea');
+  if (nextComposer) {
+    nextComposer.value = draft;
+    if (hasFocus) nextComposer.focus({ preventScroll:true });
+  }
+  return true;
+}
+
+/** The pilot "types" briefly, then confirms the request in the chat. @param {string} bookingId @param {number} [delay] @returns {void} */
+function schedulePilotApproval(bookingId, delay = PILOT_REPLY_DELAY) {
+  if (PENDING_CHATS.has(bookingId)) return;
+  PENDING_CHATS.add(bookingId);
+  setTimeout(() => {
+    PENDING_CHATS.delete(bookingId);
+    let isApproved = false;
+    try { STORE.update((state) => { isApproved = approvePilotBooking(state, bookingId); }); }
+    catch (error) { reportError(error); }
+    if (refreshConversation(bookingId)) {
+      const card = isApproved ? [...MAIN.querySelectorAll('.message-approval')].at(-1) : null;
+      card?.scrollIntoView({ block:'nearest' });
+      if (card && window.gsap && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) window.gsap.fromTo(card, { autoAlpha:0, y:12, scale:0.98 }, { autoAlpha:1, y:0, scale:1, duration:0.32, ease:'power2.out', clearProps:'all' });
+      return;
+    }
+    if (!isApproved) return;
+    if (location.pathname === '/notifications' || location.pathname === `/bookings/${bookingId}`) render();
+    else updateNotificationBell(STORE.getState(), location.pathname);
+    const pilot = PILOTS.find((item) => item.id === STORE.getState().bookings.find((booking) => booking.id === bookingId)?.providerId);
+    if (pilot) toast(t('{name} confirmed your booking.', { name: pilot.name }));
+  }, delay);
 }

@@ -258,6 +258,11 @@ const notificationCopy = (notification, state) => {
     return { title: t(notification.title), body: t('{title}. Saved on this device.', { title: booking ? bookingTitle(booking) : title }) };
   }
   if (notification.title === 'Schedule change saved') return { title: t(notification.title), body: t(notification.body) };
+  if (notification.title === 'Booking confirmed' && notification.bookingId) {
+    const booking = state.bookings.find((item) => item.id === notification.bookingId);
+    const pilot = PILOTS.find((item) => item.id === booking?.providerId);
+    if (booking && pilot) return { title: t(notification.title), body: t('{name} confirmed {title}.', { name: pilot.name, title: bookingTitle(booking) }) };
+  }
   return { title: notification.title, body: notification.body };
 };
 
@@ -317,11 +322,17 @@ const conversationAvatar = (booking) => {
   const pilot = booking.type === 'pilot' ? PILOTS.find((item) => item.id === booking.providerId) : undefined;
   return `<img class="chat-avatar" src="${esc(expert?.portrait ?? pilot?.portrait ?? instructor?.instructorPortrait ?? '/assets/avatar-default.svg')}" alt="" width="50" height="50">`;
 };
+/** @param {import('./store.mjs').Message & {approval:{bookingId:string,services:string[],date:string,time:string,land:string,price:number}}} message @returns {string} */
+const approvalMessage = (message) => {
+  const { approval } = message;
+  const row = (symbol, value) => value ? `<li>${icon(symbol, 18)}<span>${esc(value)}</span></li>` : '';
+  return `<article class="message-bubble message-received message-approval"><span class="sr-only">${esc(message.sender)}</span><p>${esc(t('All set! I’ve confirmed your booking.'))}</p><section class="approval-card" aria-label="${esc(t('Booking confirmed'))}"><header>${icon('circle-check', 22)}<strong>${esc(t('Booking confirmed'))}</strong></header><ul>${row('drone', approval.services.map((service) => t(service)).join(', '))}${row('calendar', dateLabel(approval.date))}${row('clock', approval.time)}${row('map-pin', approval.land)}</ul><footer><span>${esc(t('Estimate'))}</span><strong>${esc(money(approval.price))}</strong></footer><a class="approval-card-link" href="/bookings/${esc(approval.bookingId)}">${esc(t('View booking'))}${icon('chevron-right', 16)}</a></section><time datetime="${esc(message.date)}">${esc(dateLabel(message.date))}</time></article>`;
+};
 /** @param {Booking} booking @returns {string} */
 const renderChat = (booking) => {
   const name = conversationName(booking);
   const messages = booking.conversation ?? [];
-  return `<section class="chat-screen" data-chat-id="${esc(booking.id)}"><header class="chat-header"><a class="icon-button" href="/messages" aria-label="${esc(t('Messages'))}">${icon('arrow-left',22)}</a>${conversationAvatar(booking)}<div class="row-copy"><h1>${esc(name)}</h1></div>${booking.name ? '' : `<a class="icon-button" href="/bookings/${esc(booking.id)}" aria-label="${esc(t('Booking details'))}">${icon('calendar',22)}</a>`}</header><div class="message-list chat-history" role="log" aria-label="${esc(t('Conversation'))}" aria-live="polite">${messages.length ? messages.map((message) => `<article class="message-bubble ${message.sender === 'you' ? 'message-own' : 'message-received'}"><span class="sr-only">${esc(message.sender === 'you' ? t('You') : message.sender)}</span><p>${esc(message.text)}</p><time datetime="${esc(message.date)}">${esc(dateLabel(message.date))}</time></article>`).join('') : `<div class="empty-state">${icon('message-circle',40)}<h2>${esc(t('Start a conversation'))}</h2></div>`}<div class="chat-typing message-bubble message-received" data-chat-typing role="status" hidden><span class="chat-typing-dots" aria-hidden="true"><span></span><span></span><span></span></span><span class="sr-only">${esc(name)} ${esc(t('is typing'))}</span></div></div><form class="chat-composer" data-form="message">${hidden(booking.name ? 'chatId' : 'bookingId', booking.id)}<label class="sr-only" for="chat-message">${esc(t('Your message'))}</label><textarea id="chat-message" name="message" rows="1" maxlength="2000" required placeholder="${esc(t('Your message'))}"></textarea><button class="icon-button" type="submit" aria-label="${esc(t('Save message'))}">${icon('arrow-up',22)}</button></form></section>`;
+  return `<section class="chat-screen" data-chat-id="${esc(booking.id)}"><header class="chat-header"><a class="icon-button" href="/messages" aria-label="${esc(t('Messages'))}">${icon('arrow-left',22)}</a>${conversationAvatar(booking)}<div class="row-copy"><h1>${esc(name)}</h1></div>${booking.name ? '' : `<a class="icon-button" href="/bookings/${esc(booking.id)}" aria-label="${esc(t('Booking details'))}">${icon('calendar',22)}</a>`}</header><div class="message-list chat-history" role="log" aria-label="${esc(t('Conversation'))}" aria-live="polite">${messages.length ? messages.map((message) => message.approval ? approvalMessage(message) : `<article class="message-bubble ${message.sender === 'you' ? 'message-own' : 'message-received'}"><span class="sr-only">${esc(message.sender === 'you' ? t('You') : message.sender)}</span><p>${esc(message.text)}</p><time datetime="${esc(message.date)}">${esc(dateLabel(message.date))}</time></article>`).join('') : `<div class="empty-state">${icon('message-circle',40)}<h2>${esc(t('Start a conversation'))}</h2></div>`}<div class="chat-typing message-bubble message-received" data-chat-typing role="status" hidden><span class="chat-typing-dots" aria-hidden="true"><span></span><span></span><span></span></span><span class="sr-only">${esc(name)} ${esc(t('is typing'))}</span></div></div><form class="chat-composer" data-form="message">${hidden(booking.name ? 'chatId' : 'bookingId', booking.id)}<label class="sr-only" for="chat-message">${esc(t('Your message'))}</label><textarea id="chat-message" name="message" rows="1" maxlength="2000" required placeholder="${esc(t('Your message'))}"></textarea><button class="icon-button" type="submit" aria-label="${esc(t('Save message'))}">${icon('arrow-up',22)}</button></form></section>`;
 };
 /** @param {AppState} state @returns {string} */
 const renderMessages = (state) => {
@@ -455,7 +466,7 @@ const renderTaskFieldRow = (farm,task,field,isCompleted = false) => {
 /** @param {AppState['notifications'][number]} notification @param {AppState} state */
 const renderUpdateNotification = (notification, state) => {
   const copy = notificationCopy(notification, state);
-  const isBooking = notification.title === 'Booking request saved' || notification.title === 'Schedule change saved';
+  const isBooking = ['Booking request saved', 'Schedule change saved', 'Booking confirmed'].includes(notification.title);
   return `<details class="notification-task-stack notification-update-stack ${notification.read ? '' : 'is-unread'}" data-notification-stack="${esc(notification.id)}"><summary><span class="row-icon">${icon(isBooking ? 'calendar' : 'bell',20)}</span><span class="row-copy"><strong>${esc(copy.title)}</strong><span class="row-subtitle"><time datetime="${esc(notification.date)}">${esc(dateLabel(notification.date))}</time></span></span>${notification.read ? '' : '<span class="notification-unread" aria-hidden="true"></span>'}${icon('chevron-down',18)}</summary><div class="notification-task-fields notification-update-fields"><p>${esc(copy.body)}</p>${notification.read ? '' : `<button type="button" class="notification-read-action" data-action="mark-notification-read" data-id="${esc(notification.id)}">${esc(t('Mark as read'))}</button>`}</div></details>`;
 };
 

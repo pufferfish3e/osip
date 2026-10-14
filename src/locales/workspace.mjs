@@ -1,6 +1,11 @@
 /** Authored UI copy only; user-entered records keep their original language. */
 export const WORKSPACE_TRANSLATIONS = {
   "ms": {
+    "All set! I’ve confirmed your booking.": "Beres! Saya sudah sahkan tempahan anda.",
+    "Booking confirmed": "Tempahan disahkan",
+    "View booking": "Lihat tempahan",
+    "{name} confirmed {title}.": "{name} mengesahkan {title}.",
+    "{name} confirmed your booking.": "{name} mengesahkan tempahan anda.",
     "Due now": "Perlu dibuat sekarang",
     "Due in 1 minute": "Perlu dibuat dalam 1 minit",
     "Due in {count} minutes": "Perlu dibuat dalam {count} minit",
@@ -620,6 +625,11 @@ export const WORKSPACE_TRANSLATIONS = {
     "{service} with {name}": "{service} bersama {name}"
   },
   "zh-Hans": {
+    "All set! I’ve confirmed your booking.": "好了！我已确认你的预约。",
+    "Booking confirmed": "预约已确认",
+    "View booking": "查看预约",
+    "{name} confirmed {title}.": "{name} 已确认 {title}。",
+    "{name} confirmed your booking.": "{name} 已确认你的预约。",
     "Due now": "现在到期",
     "Due in 1 minute": "1 分钟后到期",
     "Due in {count} minutes": "{count} 分钟后到期",
