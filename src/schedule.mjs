@@ -3,6 +3,7 @@ import { createRecordId } from './record-id.mjs';
 import { hasPendingTasksOnDate } from './task-history.mjs';
 import { getFormatLocale, t } from './i18n.mjs';
 import { escapeHtml as esc, icon } from './ui.mjs';
+import { fertiliserFromFields, fertiliserLabel } from './fertiliser.mjs';
 
 const DAYS_PER_WEEK = 7;
 const AGENDA_PAGE_SIZE = 10;
@@ -89,19 +90,43 @@ export function initializeSchedule(root, options = {}) {
     }
     panel.querySelector('[data-agenda-empty]').hidden = count !== 0;
   };
+  const steps = [...dialog.querySelectorAll('[data-task-step]')];
+  // Fertiliser details only for fertiliser tasks; an end date only for repeating ones.
+  const visibleSteps = () => steps.filter((item) => (item.dataset.taskStep !== 'fertiliser' || form.elements.category.value === 'Fertilizer') && (item.dataset.taskStep !== 'end' || form.elements.repeat.value !== 'none'));
+  const stepName = () => steps[step].dataset.taskStep;
+  const updateProgress = () => {
+    const visible = visibleSteps();
+    dialog.querySelector('[data-task-progress]').textContent = `${visible.indexOf(steps[step]) + 1} / ${visible.length}`;
+  };
   const updateStep = () => {
-    dialog.querySelectorAll('[data-task-step]').forEach((item, index) => { item.hidden = index !== step; });
+    const visible = visibleSteps();
+    const isLast = steps[step] === visible.at(-1);
+    steps.forEach((item, index) => { item.hidden = index !== step; });
     dialog.querySelector('[data-task-back]').hidden = step === 0;
-    dialog.querySelector('[data-task-next]').hidden = step === 5;
-    dialog.querySelector('[type="submit"]').hidden = step !== 5;
-    dialog.querySelector('[data-task-progress]').textContent = `${form.elements.repeat.value === 'none' && step === 5 ? 5 : step + 1} / ${form.elements.repeat.value === 'none' ? 5 : 6}`;
-    const heading = dialog.querySelectorAll('[data-task-step]')[step].querySelector('h2');
+    dialog.querySelector('[data-task-next]').hidden = isLast;
+    dialog.querySelector('[type="submit"]').hidden = !isLast;
+    updateProgress();
+    const heading = steps[step].querySelector('h2');
     dialog.setAttribute('aria-label', heading.textContent);
     dialog.removeAttribute('aria-labelledby');
     heading.tabIndex = -1;
     if (dialog.open) heading.focus({ preventScroll: true });
-    if (step === 5) renderTaskReview(form, dialog);
+    if (isLast) renderTaskReview(form, dialog);
   };
+  const moveStep = (direction) => {
+    const visible = visibleSteps();
+    const next = visible[visible.indexOf(steps[step]) + direction];
+    if (next) step = steps.indexOf(next);
+    updateStep();
+  };
+  form.addEventListener('change', (event) => {
+    if (['category', 'repeat'].includes(event.target.name)) { updateProgress(); return; }
+    if (event.target.name !== 'fertiliserProduct') return;
+    form.querySelector('[name="fertiliserProduct"]').setCustomValidity('');
+    const other = form.querySelector('[data-fertiliser-other]');
+    other.hidden = event.target.value !== 'other';
+    if (!other.hidden) other.querySelector('input').focus({ preventScroll: true });
+  });
   const pickerMarks = (month) => options.tasks ? markedTaskDates(options.tasks,month) : marked;
   const drawPicker = () => { const month = form.elements.dueDate.value.slice(0,7); picker.innerHTML = renderCalendar(form.elements.dueDate.value, month, true, pickerMarks(month), false, calendarDate(new Date())); };
   panel.querySelector('[data-agenda]')?.addEventListener('click', (event) => {
@@ -120,20 +145,21 @@ export function initializeSchedule(root, options = {}) {
   });
   bindTaskSheet(panel, dialog, form, picker, pickerMarks, () => { step = 0; form.reset(); form.dataset.creationKey = createRecordId(); delete form.dataset.submitted; if (!form.elements.id) form.elements.dueDate.value = selected < calendarDate(new Date()) ? calendarDate(new Date()) : selected; drawPicker(); updateStep(); }, () => {
     const scheduled = new Date(`${form.elements.dueDate.value}T${form.elements.time.value}`).getTime();
-    if ((step === 0 && form.elements.dueDate.value < calendarDate(new Date())) || (step === 2 && scheduled < Date.now())) {
+    if ((stepName() === 'date' && form.elements.dueDate.value < calendarDate(new Date())) || (stepName() === 'time' && scheduled < Date.now())) {
       let error = dialog.querySelector('[data-task-time-error]');
       if (!error) { error = document.createElement('p'); error.dataset.taskTimeError = ''; error.setAttribute('role','alert'); }
-      dialog.querySelectorAll('[data-task-step]')[step].append(error);
+      steps[step].append(error);
       error.textContent = t('Choose a future task date and time.');
       return;
     }
     dialog.querySelector('[data-task-time-error]')?.remove();
-    const input = step === 1 ? form.elements.title : step === 2 ? form.elements.time : null;
+    const input = stepName() === 'what' ? form.elements.title : stepName() === 'time' ? form.elements.time : null;
     if (input && !input.reportValidity()) return;
-    if (step === 3 && form.elements.repeat.value === 'custom' && !form.elements.repeatInterval.reportValidity()) return;
-    if (step === 4 && form.elements.endKind.value !== 'never' && !validateTaskEndDate(form)) return;
-    step = step === 3 && form.elements.repeat.value === 'none' ? 5 : Math.min(5, step + 1); updateStep();
-  }, () => { step = step === 5 && form.elements.repeat.value === 'none' ? 3 : Math.max(0, step - 1); updateStep(); });
+    if (stepName() === 'fertiliser' && !validateFertiliserStep(form)) return;
+    if (stepName() === 'repeat' && form.elements.repeat.value === 'custom' && !form.elements.repeatInterval.reportValidity()) return;
+    if (stepName() === 'end' && form.elements.endKind.value !== 'never' && !validateTaskEndDate(form)) return;
+    moveStep(1);
+  }, () => moveStep(-1));
   form.addEventListener('submit', () => { SELECTED_DATES.set(panel.dataset.schedule, form.elements.dueDate.value); });
   updateAgenda();
 }
@@ -143,7 +169,23 @@ const renderTaskReview = (form, dialog) => {
   const values = [form.elements.title.value, parseDate(form.elements.dueDate.value).toLocaleDateString(getFormatLocale(), { dateStyle: 'long' }), form.elements.time.value, t(form.elements.category.value), taskRepeatLabel({ repeat: form.elements.repeat.value, repeatInterval: Number(form.elements.repeatInterval.value), repeatUnit: form.elements.repeatUnit.value })];
   values.push([...form.querySelectorAll('[name="plotIds"]:checked')].map((input) => input.nextElementSibling.textContent).join(', ') || t('Whole land'));
   values.push(form.elements.repeat.value === 'none' ? t('One-time task') : form.elements.endKind.value === 'never' ? t('No end date') : `${t(form.elements.endKind.value === 'harvest' ? 'Until harvest' : 'Ends')} · ${form.elements.endDate.value}`);
+  const isFertiliser = form.elements.category.value === 'Fertilizer';
+  values.push(isFertiliser ? fertiliserLabel(fertiliserFromForm(form)) : '');
+  dialog.querySelector('[data-review-fertiliser]').hidden = !isFertiliser;
   dialog.querySelectorAll('[data-task-review]').forEach((item, index) => { item.textContent = values[index]; });
+};
+/** @param {HTMLFormElement} form @returns {import('./fertiliser.mjs').Fertiliser|undefined} */
+const fertiliserFromForm = (form) => {
+  try { return fertiliserFromFields(Object.fromEntries(new FormData(form))); } catch { return undefined; }
+};
+/** @param {HTMLFormElement} form @returns {boolean} */
+const validateFertiliserStep = (form) => {
+  const choice = form.querySelector('[name="fertiliserProduct"]');
+  const other = form.elements.fertiliserOther;
+  const amount = form.elements.fertiliserAmount;
+  choice.setCustomValidity(form.querySelector('[name="fertiliserProduct"]:checked') ? '' : t('Choose which fertiliser to apply.'));
+  other.required = form.elements.fertiliserProduct.value === 'other';
+  return choice.reportValidity() && other.reportValidity() && amount.reportValidity();
 };
 /** @param {string} date @param {string} minimumDate @returns {boolean} */
 export const isTaskEndDateValid = (date, minimumDate) => /^\d{4}-\d{2}-\d{2}$/.test(date) && calendarDate(parseDate(date)) === date && date >= minimumDate;
