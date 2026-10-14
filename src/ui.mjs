@@ -22,6 +22,11 @@ export function emptyState(title, description, href = '', label = '') {
   return `<section class="empty-state card card-pad">${icon('plant-2', 36)}<h2>${escapeHtml(t(title))}</h2><p class="muted">${escapeHtml(t(description))}</p>${href ? `<a class="button" href="${escapeHtml(href)}">${escapeHtml(t(label))}</a>` : ''}</section>`;
 }
 
+/** Areas are stored to four decimals; people read at most two. @param {number} value @returns {string} */
+export function formatArea(value) {
+  return new Intl.NumberFormat(getFormatLocale(), { maximumFractionDigits: 2 }).format(Number.isFinite(value) ? value : 0);
+}
+
 /** @param {number} amount @returns {string} */
 export function money(amount) {
   return new Intl.NumberFormat(getFormatLocale(), { style: 'currency', currency: 'MYR', maximumFractionDigits: 2 }).format(amount);

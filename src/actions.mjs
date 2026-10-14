@@ -162,7 +162,8 @@ const saveBooking = (state, fields, isCourse) => {
   const service = services.join(', ');
   const title = isCourse ? provider.title : `${service} with ${provider.name}`;
   const notes = text(fields, 'notes', false);
-  const conversation = isCourse ? [] : [{ id:makeId('message'), sender:'you', text:`${title}\n${farm.name} · ${farm.area} ha\n${date} · ${time}${notes ? `\n${notes}` : ''}`, date:timestamp() }];
+  const conversation = isCourse ? [] : [{ id:makeId('message'), sender:'you', text:`${title}\n${farm.name} · ${farm.area} ha\n${date} · ${time}${notes ? `\n${notes}` : ''}`, date:timestamp(),
+    request: { services, providerId, land: farm.name, area: farm.area, date, time, notes } }];
   state.bookings.push({ id, type: isCourse ? 'course' : 'pilot', service, services, providerId, title, date, time, farmId, status: 'requested', notes, price: isCourse ? provider.price : provider.rate * farm.area, conversation, ...(isCourse ? {} : { awaitingPilotReply: true }) });
   notify(state, 'Booking request saved', `${title}. Saved on this device.`);
   return { redirect: isCourse ? `/bookings/${id}` : `/bookings/${id}/chat`, message: isCourse ? t('Request saved locally. No provider contacted.') : '' };
