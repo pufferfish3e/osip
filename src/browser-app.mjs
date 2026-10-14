@@ -17,6 +17,7 @@ import { clearDraft, readDraft, saveDraft } from './drafts.mjs';
 import { initializeLandMap } from './land-map.mjs';
 import { renderHome } from './home.mjs';
 import { fetchLiveWeather, selectWeatherLocation, weatherLocationKey } from './weather.mjs';
+import { initializeBookingWeather } from './booking-weather.mjs';
 import { loadArticleCatalogue } from './data.mjs';
 import { getFormatLocale, getLocale, loadLocale, saveLocale, setLocale, t } from './i18n.mjs';
 import { captureFormState, initializeLocalizedValidation, localizeDocument, restoreFormState } from './language.mjs';
@@ -121,7 +122,8 @@ const initializePilotBookingSheet = () => {
   });
   form.querySelector('[data-booking-back]').addEventListener('click', () => { step -= 1; showStep(); });
   form.querySelector('[data-booking-services]').addEventListener('change', (event) => { form.querySelector('[data-booking-services] input').setCustomValidity(''); });
-  initializeBookingCalendar(sheet);
+  const weather = initializeBookingWeather(sheet, STORE.getState(), { gsap: window.gsap, prefersReducedMotion: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches });
+  initializeBookingCalendar(sheet, weather.update);
   motion.open(); showStep();
 };
 /** @param {boolean} shouldAnimate @returns {void} */

@@ -62,22 +62,23 @@ export function parseWeather(payload, label) {
   };
 }
 
+/** @param {{label:string,latitude?:number,longitude?:number}} location @param {typeof fetch} fetchImpl @param {AbortSignal} signal @returns {Promise<{latitude:number,longitude:number}>} */
+async function resolveCoordinates(location, fetchImpl, signal) {
+  if (finite(location.latitude) && finite(location.longitude)) return { latitude: location.latitude, longitude: location.longitude };
+  if (location.label === PERAK.label) return { latitude: PERAK.latitude, longitude: PERAK.longitude };
+  const geocode = new URL(GEOCODING_URL);
+  geocode.search = new URLSearchParams({ name: location.label.split(',')[0].trim(), count: '1', countryCode: 'MY' });
+  const found = await fetchImpl(geocode, { signal });
+  if (!found.ok) throw new Error('Forecast location is unavailable.');
+  const place = (await found.json()).results?.[0];
+  if (!finite(place?.latitude) || !finite(place?.longitude)) throw new Error('Forecast location is unavailable.');
+  return { latitude: place.latitude, longitude: place.longitude };
+}
+
 /** @param {{label:string,latitude?:number,longitude?:number}} location @param {typeof fetch} [fetchImpl] @param {AbortSignal} [signal] */
 export async function fetchLiveWeather(location, fetchImpl = fetch, signal) {
   const requestSignal = AbortSignal.any([signal ?? new AbortController().signal, AbortSignal.timeout(12000)]);
-  let { latitude, longitude } = location;
-  if (!finite(latitude) || !finite(longitude)) {
-    if (location.label === PERAK.label) ({ latitude, longitude } = PERAK);
-    else {
-      const geocode = new URL(GEOCODING_URL);
-      geocode.search = new URLSearchParams({ name: location.label.split(',')[0].trim(), count: '1', countryCode: 'MY' });
-      const found = await fetchImpl(geocode, { signal: requestSignal });
-      if (!found.ok) throw new Error('Forecast location is unavailable.');
-      const place = (await found.json()).results?.[0];
-      if (!finite(place?.latitude) || !finite(place?.longitude)) throw new Error('Forecast location is unavailable.');
-      ({ latitude, longitude } = place);
-    }
-  }
+  const { latitude, longitude } = await resolveCoordinates(location, fetchImpl, requestSignal);
   const url = new URL(FORECAST_URL);
   url.search = new URLSearchParams({ latitude: String(latitude), longitude: String(longitude), timezone: 'auto', forecast_days: '7',
     current: 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m',
@@ -86,4 +87,40 @@ export async function fetchLiveWeather(location, fetchImpl = fetch, signal) {
   const response = await fetchImpl(url, { signal: requestSignal });
   if (!response.ok) throw new Error('Forecast data is unavailable.');
   return parseWeather(await response.json(), location.label);
+}
+
+/** @typedef {{date:string,condition:string,high:number,rainChance:number,windSpeed:number,gusts:number}} DayOutlook */
+
+/** Daily outlook covering the whole pilot booking window (tomorrow to seven days ahead).
+ * @param {Record<string,unknown>} payload @returns {DayOutlook[]} */
+export function parseDailyOutlook(payload) {
+  const daily = payload?.daily;
+  if (!Array.isArray(daily?.time)) throw new Error('Forecast data is unavailable.');
+  return daily.time.map((date, index) => ({
+    date, condition: condition(daily.weather_code?.[index]), high: daily.temperature_2m_max?.[index],
+    rainChance: daily.precipitation_probability_max?.[index], windSpeed: daily.wind_speed_10m_max?.[index], gusts: daily.wind_gusts_10m_max?.[index],
+  })).filter((day) => typeof day.date === 'string' && /^\d{4}-\d\d-\d\d$/.test(day.date) && [day.high, day.rainChance, day.windSpeed, day.gusts].every(finite))
+    .map((day) => ({ ...day, high: rounded(day.high), rainChance: rounded(day.rainChance), windSpeed: rounded(day.windSpeed), gusts: rounded(day.gusts) }));
+}
+
+/** @param {{label:string,latitude?:number,longitude?:number}} location @param {typeof fetch} [fetchImpl] @param {AbortSignal} [signal] @returns {Promise<DayOutlook[]>} */
+export async function fetchDailyOutlook(location, fetchImpl = fetch, signal) {
+  const requestSignal = AbortSignal.any([signal ?? new AbortController().signal, AbortSignal.timeout(12000)]);
+  const { latitude, longitude } = await resolveCoordinates(location, fetchImpl, requestSignal);
+  const url = new URL(FORECAST_URL);
+  url.search = new URLSearchParams({ latitude: String(latitude), longitude: String(longitude), timezone: 'auto', forecast_days: '9',
+    daily: 'weather_code,temperature_2m_max,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max' });
+  const response = await fetchImpl(url, { signal: requestSignal });
+  if (!response.ok) throw new Error('Forecast data is unavailable.');
+  return parseDailyOutlook(await response.json());
+}
+
+/** Drone spraying is affected by rain wash-off and wind drift; thresholds are conservative day-level guides.
+ * @param {DayOutlook} day @returns {{level:'good'|'caution'|'warning',reason:'clear'|'rain'|'wind'}} */
+export function flightOutlook(day) {
+  if (day.rainChance >= 60) return { level: 'warning', reason: 'rain' };
+  if (day.windSpeed >= 20 || day.gusts >= 35) return { level: 'warning', reason: 'wind' };
+  if (day.rainChance >= 35) return { level: 'caution', reason: 'rain' };
+  if (day.windSpeed >= 15) return { level: 'caution', reason: 'wind' };
+  return { level: 'good', reason: 'clear' };
 }

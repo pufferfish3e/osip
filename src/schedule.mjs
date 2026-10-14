@@ -237,15 +237,15 @@ const bindTaskSheet = (panel, dialog, form, picker, pickerMarks, open, next, bac
   });
 };
 
-/** @param {HTMLElement} root @returns {void} */
-export function initializeBookingCalendar(root) {
+/** @param {HTMLElement} root @param {()=>void} [onDraw] @returns {void} */
+export function initializeBookingCalendar(root, onDraw = () => {}) {
   const panel = root.querySelector('[data-booking-date]');
   if (!panel) return;
   const input = panel.querySelector('input[name="date"]');
   const calendar = panel.querySelector('[data-booking-calendar]');
   const { minimumDate, maximumDate } = pilotBookingDateRange();
   let view = {selected:input.value || minimumDate,month:(input.value || minimumDate).slice(0,7),isExpanded:true};
-  const draw = () => { calendar.innerHTML = renderCalendar(view.selected,view.month,true,[],false,minimumDate,maximumDate); input.value=view.selected; };
+  const draw = () => { calendar.innerHTML = renderCalendar(view.selected,view.month,true,[],false,minimumDate,maximumDate); input.value=view.selected; onDraw(); };
   calendar.addEventListener('click', (event) => {
     const button = event.target instanceof Element ? event.target.closest('button') : null;
     if (!button || button.disabled) return;
