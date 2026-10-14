@@ -33,13 +33,22 @@ export function friendlyDate(value) {
   return Number.isNaN(date.valueOf()) ? t('Date to confirm') : new Intl.DateTimeFormat(getFormatLocale(), { month: 'short', day: 'numeric' }).format(date);
 }
 
+/** Fields made by splitting land are saved as "Field N"; show their crop instead, numbered only when crops repeat.
+ * @param {import('./store.mjs').Plot} plot @param {import('./store.mjs').Plot[]} plots @returns {string} */
+export function fieldLabel(plot, plots) {
+  if (!Number.isInteger(plot.gridNumber) || plot.name !== `Field ${plot.gridNumber}`) return plot.name;
+  if (!plot.crop?.trim()) return t('Field {number}', { number: plot.gridNumber });
+  const sameCrop = plots.filter((item) => item.crop === plot.crop);
+  return sameCrop.length > 1 ? t('{crop} {number}', { crop: t(plot.crop), number: sameCrop.findIndex((item) => item.id === plot.id) + 1 }) : t(plot.crop);
+}
+
 /** Translate only untouched demo fields; custom records and persisted data stay unchanged.
  * @param {import('./store.mjs').AppState} state @returns {import('./store.mjs').AppState}
  */
 export function localizeDemoState(state) {
   const demo = INITIAL_STATE.farms[0];
   const farms = state.farms.map((farm) => {
-    if (farm.id !== demo?.id || farm.isDemo === false) return { ...farm, crop: farm.crop.split(', ').map((crop) => t(crop)).join(', '), plots: farm.plots.map((plot) => ({ ...plot, name: Number.isInteger(plot.gridNumber) && plot.name === `Field ${plot.gridNumber}` ? t('Field {number}', { number: plot.gridNumber }) : plot.name, crop: t(plot.crop) })) };
+    if (farm.id !== demo?.id || farm.isDemo === false) return { ...farm, crop: farm.crop.split(', ').map((crop) => t(crop)).join(', '), plots: farm.plots.map((plot) => ({ ...plot, name: fieldLabel(plot, farm.plots), crop: t(plot.crop) })) };
     const localized = { ...farm };
     for (const key of ['name', 'location', 'crop']) if (farm[key] === demo[key]) localized[key] = t(farm[key]);
     if (farm.name === demo.name) localized.name = t('Sungai Dua land');
