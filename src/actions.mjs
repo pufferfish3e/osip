@@ -157,7 +157,7 @@ const saveBooking = (state, fields, isCourse) => {
   const title = isCourse ? provider.title : `${service} with ${provider.name}`;
   const notes = text(fields, 'notes', false);
   const conversation = isCourse ? [] : [{ id:makeId('message'), sender:'you', text:`${title}\n${farm.name} · ${farm.area} ha\n${date} · ${time}${notes ? `\n${notes}` : ''}`, date:timestamp() }];
-  state.bookings.push({ id, type: isCourse ? 'course' : 'pilot', service, services, providerId, title, date, time, farmId, status: 'requested', notes, price: isCourse ? provider.price : provider.rate * farm.area, conversation });
+  state.bookings.push({ id, type: isCourse ? 'course' : 'pilot', service, services, providerId, title, date, time, farmId, status: 'requested', notes, price: isCourse ? provider.price : provider.rate * farm.area, conversation, ...(isCourse ? {} : { awaitingPilotReply: true }) });
   notify(state, 'Booking request saved', `${title}. Saved on this device.`);
   return { redirect: isCourse ? `/bookings/${id}` : `/bookings/${id}/chat`, message: isCourse ? t('Request saved locally. No provider contacted.') : '' };
 };
@@ -329,6 +329,23 @@ export function applyAction(state, action, id = '', role = '') {
   if (action === 'pilot-accept') throw new ActionError('Accepting jobs requires verified credentials and a connected booking service.');
   throw new ActionError('This action is unavailable.');
 }
+/** The pilot's reply to a new request: confirms it and posts an approval card in the booking chat.
+ * @param {AppState} state @param {string} bookingId @param {Date} [now] @returns {boolean} */
+export function approvePilotBooking(state, bookingId, now = new Date()) {
+  const booking = state.bookings.find((item) => item.id === bookingId && item.type === 'pilot');
+  if (!booking?.awaitingPilotReply) return false;
+  delete booking.awaitingPilotReply;
+  if (booking.status !== 'requested') return false;
+  const pilot = PILOTS.find((item) => item.id === booking.providerId);
+  const farm = state.farms.find((item) => item.id === booking.farmId);
+  const date = now.toISOString();
+  booking.status = 'confirmed';
+  booking.conversation.push({ id: makeId('message'), sender: pilot?.name ?? 'Pilot', text: `Booking confirmed: ${booking.title} on ${booking.date} at ${booking.time}.`, date,
+    approval: { bookingId, services: booking.services ?? [booking.service], date: booking.date, time: booking.time, land: farm?.name ?? '', price: booking.price } });
+  state.notifications.unshift({ id: makeId('note'), title: 'Booking confirmed', body: `${pilot?.name ?? 'Your pilot'} confirmed ${booking.title}.`, bookingId, date, read: false });
+  return true;
+}
+
 /** @param {AppState} state @param {Date} now @returns {boolean} */
 export function collectReminders(state, now = new Date()) {
   let hasChanged = false;
