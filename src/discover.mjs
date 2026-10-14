@@ -8,7 +8,7 @@ import { pilotDescription, renderPilotPills, renderPilotMatcher, renderPilotRevi
 import { renderArticleLibrary, renderLearningArticleCard, localizeLearningArticle } from './article-library.mjs';
 import { ARTICLES, COURSES, NEWS, PILOTS, PRODUCTS, isArticleCatalogueLoaded } from './data.mjs';
 import { getFormatLocale, getLocale, t } from './i18n.mjs';
-import { emptyState, escapeHtml as esc, localizeDemoState, icon, pageHeading } from './ui.mjs';
+import { emptyState, escapeHtml as esc, formatArea, localizeDemoState, icon, pageHeading } from './ui.mjs';
 
 /** @typedef {import('./store.mjs').AppState} AppState */
 /** @typedef {(typeof ARTICLES)[number]} Article */
@@ -191,7 +191,7 @@ const pilotBooking = (id, state) => {
   const pilot = PILOTS.find((item) => item.id === id);
   if (!pilot) return missingPage('Pilot not found', '/services/pilots', 'Find a pilot');
   if (!state.farms.length) return emptyState('Start with your farm.', 'Add a farm so your pilot knows where the work is needed.', '/onboarding/farmer', 'Add your farm');
-  const farms = [...state.farms].sort((first, second) => Number(Boolean(first.isDemo || first.id === 'farm-1')) - Number(Boolean(second.isDemo || second.id === 'farm-1'))).map((farm) => `<option value="${esc(farm.id)}">${esc(farm.name)} · ${esc(farm.area.toString())} ${esc(t(farm.unit ?? 'ha'))}</option>`).join('');
+  const farms = [...state.farms].sort((first, second) => Number(Boolean(first.isDemo || first.id === 'farm-1')) - Number(Boolean(second.isDemo || second.id === 'farm-1'))).map((farm) => `<option value="${esc(farm.id)}">${esc(farm.name)} · ${esc(formatArea(farm.area))} ${esc(t(farm.unit ?? 'ha'))}</option>`).join('');
   return `${pilotDetail(id)}<dialog class="task-sheet pilot-booking-sheet" data-pilot-booking-sheet data-pilot-id="${esc(pilot.id)}" aria-labelledby="pilot-booking-title"><form class="form-stack" data-form="pilot-booking"><div class="task-sheet-heading"><span class="muted" data-booking-progress></span><button class="icon-button" type="button" data-booking-close aria-label="${esc(t('Cancel'))}">${icon('x',20)}</button></div><h2 id="pilot-booking-title">${esc(t('Booking details'))}</h2>
       ${hiddenInput('providerId', pilot.id)}${hiddenInput('type', 'pilot')}${hiddenInput('title', `Drone service with ${pilot.name}`)}${hiddenInput('price', pilot.rate)}
       <label class="field">${esc(t('Your land'))}<select class="input" name="farmId" required>${farms}</select></label>
