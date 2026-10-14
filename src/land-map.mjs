@@ -1,4 +1,4 @@
-import { escapeHtml, icon } from './ui.mjs';
+import { escapeHtml, fieldLabel, icon } from './ui.mjs';
 import { displayedLandBoundary } from './land-boundary.mjs';
 import { t } from './i18n.mjs';
 import { deleteField, fieldAreaHectares, mappedFields, normalizeFieldBoundary, saveFieldBoundary } from './field-boundary.mjs';
@@ -297,7 +297,8 @@ const refreshFieldOptions = (editor) => {
   const select = editor.panel.querySelector('[data-field-select]');
   select.replaceChildren(...editor.fields.map((field) => {
     const option = document.createElement('option');
-    option.value = field.id; option.textContent = `${field.name} · ${field.crop}`;
+    const label = fieldLabel(field, editor.fields);
+    option.value = field.id; option.textContent = label.startsWith(t(field.crop)) ? label : `${label} · ${t(field.crop)}`;
     return option;
   }));
 };
@@ -431,7 +432,7 @@ const showFieldDeletion = (editor) => {
   if (editor.isEditing || !editor.plotId) return;
   const field = editor.fields.find((item) => item.id === editor.plotId);
   if (!field) return;
-  editor.panel.querySelector('[data-field-delete-copy]').textContent = t('Delete “{name}”? Its boundary and field details will be removed. Farm tasks and total area will stay unchanged.', { name: field.name });
+  editor.panel.querySelector('[data-field-delete-copy]').textContent = t('Delete “{name}”? Its boundary and field details will be removed. Farm tasks and total area will stay unchanged.', { name: fieldLabel(field, editor.fields) });
   editor.panel.querySelector('[data-field-delete-dialog]').showModal();
 };
 
@@ -509,7 +510,7 @@ const watchFieldTaskUrgency = (taskLayers, store, farmId) => {
 const initializeLandOverview = (panel, farm, map, leaflet, store, baseLayer) => {
   const boundary = displayedLandBoundary(farm);
   if (boundary.length) leaflet.polygon(boundary, { color: SAVED_COLOR, weight: 2, fillOpacity: 0.08, interactive: false }).addTo(map);
-  const fields = mappedFields(farm);
+  const fields = mappedFields(farm).map((field, _, all) => ({ ...field, name: fieldLabel(field, all) }));
   const taskLayers = [];
   for (const field of fields) {
     if (!field.boundary?.length) continue;
