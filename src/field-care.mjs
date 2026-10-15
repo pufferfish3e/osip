@@ -5,6 +5,7 @@ import { getFormatLocale, t } from './i18n.mjs';
 import { fieldTaskUrgency } from './land-map.mjs';
 import { calendarDate, taskRepeatLabel } from './schedule.mjs';
 import { escapeHtml as esc, fieldLabel, icon } from './ui.mjs';
+import { fertiliserTag } from './fertiliser.mjs';
 
 const CARE_TYPES = ['Fertilizer', 'Pesticide'];
 const SHEET_OPEN_SECONDS = 0.28;
@@ -76,7 +77,7 @@ const renderFieldTaskOccurrence = (task, farmId, plotId, now) => {
   const status = t({ upcoming: 'Scheduled later', soon: 'Due within 2 hours', overdue: 'Overdue' }[state.urgency]);
   const canComplete = canCompleteTask(task, now);
   const action = canComplete ? `<button type="button" class="button" data-care-complete="${esc(task.id)}">${esc(t('Complete'))}</button>` : `<button type="button" class="button button-secondary" disabled>${esc(t('Scheduled later'))}</button>`;
-  return `<section class="field-care-section ${canComplete ? '' : 'is-task-unavailable'}" data-care-task="${esc(task.id)}"><h3>${esc(task.title)}</h3><p class="field-care-occurrence">${esc(task.repeatFromId ? t('Next occurrence') : status)}${task.repeatFromId ? ` · ${esc(status)}` : ''}</p><p>${esc(t(task.category))} · ${esc(task.dueDate)} · ${esc(task.time)}</p>${task.repeat && task.repeat !== 'none' ? `<p>${esc(taskRepeatLabel(task))}</p>` : ''}<div class="field-care-actions">${action}<button type="button" class="button button-secondary" data-care-skip="${esc(task.id)}" ${canComplete ? '' : 'disabled'}>${esc(t('Not now'))}</button></div></section>`;
+  return `<section class="field-care-section ${canComplete ? '' : 'is-task-unavailable'}" data-care-task="${esc(task.id)}"><h3>${esc(task.title)}</h3><p class="field-care-occurrence">${esc(task.repeatFromId ? t('Next occurrence') : status)}${task.repeatFromId ? ` · ${esc(status)}` : ''}</p><p>${esc(t(task.category))} · ${esc(task.dueDate)} · ${esc(task.time)}</p>${fertiliserTag(task.fertiliser)}${task.repeat && task.repeat !== 'none' ? `<p>${esc(taskRepeatLabel(task))}</p>` : ''}<div class="field-care-actions">${action}<button type="button" class="button button-secondary" data-care-skip="${esc(task.id)}" ${canComplete ? '' : 'disabled'}>${esc(t('Not now'))}</button></div></section>`;
 };
 /** @param {import('./store.mjs').AppState} state @param {string} farmId @param {string} plotId @param {string} taskId @returns {void} */
 export function completeFieldSchedule(state, farmId, plotId, taskId) {

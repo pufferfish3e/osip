@@ -460,6 +460,7 @@ const fieldsFrom = (form) => {
   const fields = Object.fromEntries(data);
   if (form.dataset.form === 'pilot-booking') fields.service = data.getAll('service').map(String);
   if (form.dataset.form === 'task') fields.plotIds = data.getAll('plotIds').map(String);
+  if (form.dataset.form === 'task' && fields.category === 'Fertilizer') fields.fertiliserProduct ??= '';
   if (form.dataset.form === 'availability') fields.days = data.getAll('days').map(String);
   return fields;
 };

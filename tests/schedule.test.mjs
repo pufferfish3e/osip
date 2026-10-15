@@ -43,11 +43,11 @@ test('shared calendar exposes selected date and task markers with accessible lab
   assert.match(html, /data-calendar-move="-1"/);
 });
 
-test('schedule has one task entry point and a six-step sheet using the calendar picker', () => {
+test('schedule has one task entry point and a seven-step sheet (fertiliser step shown only when needed) using the calendar picker', () => {
   const html = renderWorkspace('/farm/farm-1/schedule', structuredClone(INITIAL_STATE));
   assert.match(html, /data-schedule-calendar/);
   assert.match(html, /data-task-picker/);
-  assert.equal((html.match(/data-task-step/g) ?? []).length, 6);
+  assert.equal((html.match(/data-task-step=/g) ?? []).length, 7);
   assert.equal((html.match(/data-form="task"/g) ?? []).length, 1);
   assert.match(html, /data-plan-task/);
   assert.doesNotMatch(html, /name="dueDate" type="date"/);
@@ -59,7 +59,7 @@ test('task detail offers guided editing with saved values and explicit deletion'
   const html = renderWorkspace(`/farm/${task.farmId}/tasks/${task.id}`, state);
   assert.match(html, /data-plan-task/);
   assert.match(html, /data-action="delete-task"/);
-  assert.equal((html.match(/data-task-step/g) ?? []).length, 6);
+  assert.equal((html.match(/data-task-step=/g) ?? []).length, 7);
   assert.ok(html.includes(`name="id" value="${task.id}"`));
   assert.ok(html.includes(`value="${task.dueDate}"`));
   assert.ok(html.includes(`value="${task.time}"`));

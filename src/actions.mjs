@@ -2,6 +2,7 @@ import { pilotBookingDateRange } from './booking-dates.mjs';
 import { createRecordId } from './record-id.mjs';
 import { nextTaskOccurrence } from './task-history.mjs';
 import { startExpertChat } from './expert-data.mjs';
+import { FERTILISER_CATEGORY, fertiliserFromFields } from './fertiliser.mjs';
 import { ARTICLES, COURSES, PILOTS, PRODUCTS } from './data.mjs';
 import { getLocale, SUPPORTED_LOCALES, t } from './i18n.mjs';
 
@@ -120,11 +121,16 @@ const saveTask = (state, fields) => {
     validateSchedule(endDate, time);
     if (endDate < dueDate) throw new ActionError('The end date must be on or after the first task.');
   }
+  const category = text(fields, 'category', false);
+  let fertiliser = category === FERTILISER_CATEGORY ? existing?.fertiliser : undefined;
+  if (category === FERTILISER_CATEGORY && fields.fertiliserProduct !== undefined) {
+    try { fertiliser = fertiliserFromFields(fields); } catch (error) { throw new ActionError(error.message); }
+  }
   const repeatAnchorDay = existing?.dueDate === dueDate ? (existing.repeatAnchorDay ?? Number(dueDate.slice(8))) : Number(dueDate.slice(8));
-  const next = { endKind, endDate, scheduleId: existing?.scheduleId ?? makeId('schedule'), ...(creationKey ? { creationKey } : {}), repeat, ...(repeat === 'custom' ? { repeatInterval, repeatUnit } : {}), repeatAnchorDay, id: id || makeId('task'), farmId, plotId, title: text(fields, 'title'), dueDate, time, category: text(fields, 'category'), done: existing?.done ?? false, reminder: Boolean(fields.reminder) };
+  const next = { endKind, endDate, scheduleId: existing?.scheduleId ?? makeId('schedule'), ...(creationKey ? { creationKey } : {}), repeat, ...(repeat === 'custom' ? { repeatInterval, repeatUnit } : {}), repeatAnchorDay, id: id || makeId('task'), farmId, plotId, title: text(fields, 'title'), dueDate, time, category: text(fields, 'category'), ...(fertiliser ? { fertiliser } : {}), done: existing?.done ?? false, reminder: Boolean(fields.reminder) };
   for (const [index, selectedId] of plotIds.entries()) {
     const assigned = { ...next, plotId: selectedId, id: index === 0 ? next.id : makeId('task') };
-    if (existing && index === 0) Object.assign(existing, assigned); else state.tasks.push(assigned);
+    if (existing && index === 0) { if (!fertiliser) delete existing.fertiliser; Object.assign(existing, assigned); } else state.tasks.push(assigned);
   }
   return { redirect: `/farm/${farmId}/schedule`, message: t('Task saved. Reminders appear while the app is open.') };
 };
